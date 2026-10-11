@@ -15,6 +15,9 @@ import sqlite3
 from pathlib import Path
 
 
+HUNTS = ('hunt', 'deep-hunt')
+
+
 def lab_totals(path):
     db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
     out = dict(cpuSeconds=0.0, matches=0, findings=0, byKind={})
@@ -22,7 +25,7 @@ def lab_totals(path):
             "SELECT j.kind, t.payload, t.result, t.started, t.finished FROM tasks t JOIN jobs j ON j.id=t.job_id "
             "WHERE t.status='done'"):
         r, p = json.loads(result), json.loads(payload)
-        if kind in ('hunt', 'deep-hunt'):
+        if kind in HUNTS:
             matches = 1 + r.get('replays', 0)
             out['findings'] += len(r.get('findings', []))
         else:

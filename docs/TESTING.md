@@ -24,12 +24,15 @@ seat against the native AI in the same seat (win = 1, draw = 0.5).
   my 10 real decks). The player side is played by Better AI itself as a strong
   stand-in for a human; the NPC side is played by the native AI or by Better AI.
 
-| Level | Better AI | Native AI | Games |
-| --- | --- | --- | --- |
-| Easy | 242.5 | 220 | 440 |
-| Medium | 252.5 | 220 | 440 |
-| Hard | 253 / 274.5 | 220 | 440 per seed, 2 seeds |
-| Expert | 264 / 268 | 220 | 440 per seed, 2 seeds |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/levels-dark.svg">
+  <img src="img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 59.9%, Expert 60.5% (native AI = 50%)" width="880">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/player-decks-dark.svg">
+  <img src="img/player-decks-light.svg" alt="NPC win share against player-style decks, Better AI vs native AI, by deck style" width="880">
+</picture>
 
 ## 3. Mistakes: blunder hunting
 
@@ -41,6 +44,11 @@ on average.
 A deeper hunt also covers won matches, every legal move (narrowed with Sequential
 Halving, as in Gumbel MuZero) and smaller mistakes. Findings become regression cases.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/mistakes-dark.svg">
+  <img src="img/mistakes-light.svg" alt="Costly decisions found by round" width="880">
+</picture>
+
 ## 4. In-game validation
 
 I test every build in real matches with the mod installed; each match is recorded and
@@ -50,15 +58,13 @@ decks, Medic choosing a siege unit over a Spy.
 
 ## Running totals
 
-Updated as tests run (`python3 lab/report.py <lab databases> --evaluations <reports>`).
+Updated as tests run (`python3 lab/report.py <lab databases> --evaluations <reports>`); the README
+charts come from `python3 lab/dashboard.py <lab databases>`.
 
-| | As of 2026-10-11 |
-| --- | --- |
-| Simulated matches in the Gwent AI Lab | 9,131 |
-| CPU time in the Lab | ~10 hours |
-| Simulated matches in earlier evaluations (V1–V8 development) | ~61,600 |
-| Recorded in-game matches | 57 |
-| Costly decisions found by the blunder hunter | 43 |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/totals-dark.svg">
+  <img src="img/totals-light.svg" alt="Lab matches, earlier evaluation matches, Lab CPU time, in-game matches and mistakes found" width="880">
+</picture>
 
 ## Infrastructure
 

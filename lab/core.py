@@ -208,8 +208,14 @@ def refill(db):
 # ---- Work -------------------------------------------------------------------
 
 def run_payload(payload):
-    """One group: native baseline plus the candidate in each seat. Compact summary only."""
+    """One group: native baseline plus the candidate in each seat. Compact summary only.
+
+    Policy "response-v8:a+b" runs response-v8 with experiment switches a and b (A/B tests)."""
     sys.path.insert(0, str(SIM))
+    policy, _, flags = payload.get('policy', 'response-v8').partition(':')
+    import gwentsim.response_v8 as v8
+    v8.VARIANT = frozenset(f for f in flags.split('+') if f)
+    payload = dict(payload, policy=policy)
     if payload.get('kind') in HUNTS:
         import blunder_hunter
         report = (blunder_hunter.deep_hunt if payload['kind'] == 'deep-hunt' else blunder_hunter.hunt)(payload)

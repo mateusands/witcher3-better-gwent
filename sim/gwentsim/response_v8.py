@@ -6,6 +6,11 @@ from .sequence_search import overtaking_bounds
 from .response_search import choose_response, secured, tie_match
 
 
+# Simulator-only experiment switches for A/B tests in the Lab (policy "response-v8:flag+flag").
+# Empty in normal use, so response-v8 behaves exactly as shipped.
+VARIANT = frozenset()
+
+
 def choose_response_v8(position, context, profile):
     result = choose_response(position, context, profile)
 
@@ -224,7 +229,7 @@ def choose_response_v8(position, context, profile):
     # row) is replaced by the best searched alternative that does, or that costs
     # nothing (spies, Decoy, resurrection to hand). Without one, pass when that cannot
     # lose the match; otherwise keep the original move.
-    if not context.opponent_passed and result.action is not None:
+    if not context.opponent_passed and result.action is not None and 'no-waste-guard' not in VARIANT:
         if wasted_move(position, result.action):
             for alternative in result.alternatives:
                 move = alternative_action(alternative['action'])

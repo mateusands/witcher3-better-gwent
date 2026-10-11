@@ -41,6 +41,7 @@ The Gwent AI Lab runs benchmarks and blunder hunts in the background:
 ```sh
 python3 lab/gwent_lab.py                          # panel at http://127.0.0.1:8765
 python3 lab/report.py <lab databases>             # totals for docs/TESTING.md
+python3 lab/dashboard.py <lab databases>          # README charts (docs/img, light and dark)
 GWENT_LAB_SERVER=user@host lab/pull_results.sh    # copy a remote Lab's results locally
 ```
 

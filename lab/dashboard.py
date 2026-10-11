@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Dashboard images for the README: KPI tiles and comparison charts as static SVG.
+
+    python3 lab/dashboard.py DB [DB ...] [--records game/records] [--evaluations game/evaluations]
+
+Reads Lab databases (give each database once), writes docs/img/<chart>-light.svg and
+<chart>-dark.svg; the README picks the variant matching the reader's GitHub theme.
+Re-run whenever new results arrive. Colours: blue/orange categorical pair validated for
+colour-vision deficiency in both themes; every value is also written as text.
+"""
+import argparse
+import json
+import sqlite3
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(HERE))
+import report  # noqa: E402
+
+FONT = "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+THEMES = {
+    'light': dict(surface='#ffffff', border='#d0d7de', ink='#1f2328', ink2='#59636e',
+                  grid='#e6e8eb', ref='#8c959f', s1='#2a78d6', s2='#eb6834', s3='#1baf7a'),
+    'dark': dict(surface='#161b22', border='#30363d', ink='#f0f6fc', ink2='#9198a1',
+                 grid='#262c36', ref='#6e7681', s1='#3987e5', s2='#d95926', s3='#199e70'),
+}
+WIDTH = 880
+PROFILES = ['easy', 'medium', 'hard', 'expert']
+STYLE_LABELS = [('early', 'Early-game decks'), ('random', 'Random decks'), ('recorded', 'My real decks'),
+                ('power', 'Power decks'), ('synergy', 'Synergy decks'), ('all', 'All player decks')]
+
+
+# ---- data -------------------------------------------------------------------
+
+def score(won, winner):
+    return 1.0 if won else 0.5 if winner not in (0, 1) else 0.0
+
+
+def collect(dbs):
+    levels = defaultdict(lambda: [0.0, 0])          # profile -> [Better AI score, games]
+    styles = defaultdict(lambda: [0.0, 0.0, 0])     # style -> [Better AI, native, games]
+    rounds = defaultdict(int)
+    style_of = None
+    for path in dbs:
+        db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
+        for kind, params, payload, result in db.execute(
+                "SELECT j.kind, j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
+                "WHERE t.status='done'"):
+            params, p, r = json.loads(params), json.loads(payload), json.loads(result)
+            if kind in report.HUNTS:
+                for f in r.get('findings', []):
+                    rounds[f['round']] += 1
+                continue
+            if params.get('policy') != 'response-v8':
+                continue                             # A/B variants are not the shipped AI
+            if p['source'] == 'pool':
+                for s in r['seats']:
+                    levels[p['profile']][0] += score(s['won'], s['winner'])
+                    levels[p['profile']][1] += 1
+            elif p['source'] == 'player':
+                if style_of is None:
+                    style_of = player_styles()
+                s = r['seats'][0]
+                for key in (style_of[p['pair']], 'all'):
+                    styles[key][0] += score(s['won'], s['winner'])
+                    styles[key][1] += score(r['baselineWinner'] == s['seat'], r['baselineWinner'])
+                    styles[key][2] += 1
+    return levels, styles, rounds
+
+
+def player_styles():
+    sys.path.insert(0, str(ROOT / 'sim'))
+    from evaluate_pool import player_setup
+    out = []
+    for _, deck in player_setup():
+        parts = deck.name.split('/')
+        out.append(parts[1] if parts[0] == 'player' else 'recorded')
+    return out
+
+
+# ---- svg helpers --------------------------------------------------------------
+
+def esc(text):
+    return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def text(x, y, value, fill, size=13, weight=400, anchor='start'):
+    return ('<text x="%.1f" y="%.1f" fill="%s" font-size="%d" font-weight="%d" text-anchor="%s">%s</text>'
+            % (x, y, fill, size, weight, anchor, esc(value)))
+
+
+def bar(x0, y, x1, h, fill, r=4):
+    """Horizontal bar anchored at x0, rounded only at its data end."""
+    if x1 - x0 < r:
+        return '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"/>' % (x0, y, max(0, x1 - x0), h, fill)
+    return ('<path d="M%.1f,%.1f H%.1f A%d,%d 0 0 1 %.1f,%.1f V%.1f A%d,%d 0 0 1 %.1f,%.1f H%.1f Z" fill="%s"/>'
+            % (x0, y, x1 - r, r, r, x1, y + r, y + h - r, r, r, x1 - r, y + h, x0, fill))
+
+
+def card(height, t, body, title=None, subtitle=None):
+    head = ''
+    if title:
+        head += text(20, 32, title, t['ink'], 16, 600)
+    if subtitle:
+        head += text(20, 52, subtitle, t['ink2'], 12)
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" '
+            'font-family="%s" role="img" aria-label="%s">'
+            '<rect x="0.5" y="0.5" width="%d" height="%d" rx="10" fill="%s" stroke="%s"/>%s%s</svg>\n'
+            % (WIDTH, height, WIDTH, height, FONT, esc(title or 'Key figures'), WIDTH - 1, height - 1,
+               t['surface'], t['border'], head, body))
+
+
+def percent_axis(t, x0, x1, top, bottom):
+    out = []
+    for v in (0, 25, 50, 75, 100):
+        x = x0 + (x1 - x0) * v / 100
+        dash = ' stroke-dasharray="4 3"' if v == 50 else ''
+        colour = t['ref'] if v == 50 else t['grid']
+        out.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"%s/>'
+                   % (x, top, x, bottom, colour, dash))
+        out.append(text(x, bottom + 16, '%d%% · native AI' % v if v == 50 else '%d%%' % v, t['ink2'], 11, anchor='middle'))
+    return ''.join(out)
+
+
+# ---- charts -------------------------------------------------------------------
+
+def kpis(t, tiles):
+    w = (WIDTH - 40 - 16 * (len(tiles) - 1)) / len(tiles)
+    body = []
+    for i, (value, label, note) in enumerate(tiles):
+        x = 20 + i * (w + 16)
+        body.append('<rect x="%.1f" y="18" width="%.1f" height="96" rx="8" fill="none" stroke="%s"/>'
+                    % (x, w, t['border']))
+        body.append(text(x + 14, 58, value, t['ink'], 26, 700))
+        body.append(text(x + 14, 82, label, t['ink'], 12, 600))
+        body.append(text(x + 14, 100, note, t['ink2'], 11))
+    return card(132, t, ''.join(body))
+
+
+def levels_chart(t, levels):
+    rows = [(p.capitalize(), levels[p]) for p in PROFILES if levels[p][1]]
+    x0, x1, top = 110, WIDTH - 150, 76
+    h, gap = 22, 14
+    bottom = top + len(rows) * (h + gap) - gap + 8
+    body = [percent_axis(t, x0, x1, top - 8, bottom)]
+    for i, (name, (won, games)) in enumerate(rows):
+        y = top + i * (h + gap)
+        pct = 100 * won / games
+        body.append(text(20, y + 15, name, t['ink'], 13, 600))
+        body.append(bar(x0, y, x0 + (x1 - x0) * pct / 100, h, t['s1']))
+        body.append(text(x0 + (x1 - x0) * pct / 100 + 8, y + 15, '%.1f%%' % pct, t['ink'], 13, 600))
+        body.append(text(WIDTH - 20, y + 15, '%s games' % format(games, ','), t['ink2'], 11, anchor='end'))
+    return card(bottom + 40, t, ''.join(body), 'Better AI against the native AI, by difficulty',
+                'Score share in the same matchups with the same luck (win 1, draw 0.5). '
+                '110 NPC deck matchups, every faction and leader, both seats.')
+
+
+def styles_chart(t, styles):
+    rows = [(label, styles[key]) for key, label in STYLE_LABELS if styles[key][2]]
+    x0, x1, top = 150, WIDTH - 110, 92
+    h, inner, gap = 16, 3, 18
+    group = 2 * h + inner
+    bottom = top + len(rows) * (group + gap) - gap + 8
+    body = [percent_axis(t, x0, x1, top - 8, bottom)]
+    # legend
+    body.append('<rect x="20" y="64" width="12" height="12" rx="3" fill="%s"/>' % t['s1'])
+    body.append(text(38, 75, 'NPC played by Better AI', t['ink'], 12))
+    body.append('<rect x="210" y="64" width="12" height="12" rx="3" fill="%s"/>' % t['s2'])
+    body.append(text(228, 75, 'NPC played by the native AI', t['ink'], 12))
+    for i, (label, (better, native, games)) in enumerate(rows):
+        y = top + i * (group + gap)
+        body.append(text(20, y + h + 6, label, t['ink'], 13, 600))
+        body.append(text(20, y + h + 21, '%s games' % format(games, ','), t['ink2'], 11))
+        for j, (value, colour) in enumerate(((better, t['s1']), (native, t['s2']))):
+            pct = 100 * value / games
+            yy = y + j * (h + inner)
+            body.append(bar(x0, yy, x0 + (x1 - x0) * pct / 100, h, colour))
+            body.append(text(x0 + (x1 - x0) * pct / 100 + 8, yy + 12, '%.1f%%' % pct, t['ink'], 12, 600))
+    return card(bottom + 40, t, ''.join(body), 'NPC decks against player-style decks (Expert)',
+                'Win share of the NPC side; the player side is played by Better AI as a strong stand-in '
+                'for a human. Same decks and luck.')
+
+
+def rounds_chart(t, rounds):
+    rows = [('Round %d' % r, rounds[r]) for r in sorted(rounds)]
+    total = sum(n for _, n in rows) or 1
+    x0, x1, top = 110, WIDTH - 150, 76
+    h, gap = 20, 12
+    peak = max(n for _, n in rows) if rows else 1
+    body = []
+    for i, (name, n) in enumerate(rows):
+        y = top + i * (h + gap)
+        body.append(text(20, y + 14, name, t['ink'], 13, 600))
+        body.append(bar(x0, y, x0 + (x1 - x0) * n / peak, h, t['s1']))
+        body.append(text(x0 + (x1 - x0) * n / peak + 8, y + 14, '%d (%.0f%%)' % (n, 100 * n / total), t['ink'], 12, 600))
+    bottom = top + len(rows) * (h + gap)
+    return card(bottom + 20, t, ''.join(body), 'Costly decisions found by the blunder hunter, by round',
+                'A decision counts only when another move wins more often on the same later luck. '
+                'Most mistakes happen in round 1.')
+
+
+def requirement_curve(strengths):
+    """Extra NPC cards that enter, summed over every native NPC deck, by player deck strength:
+    vanilla (inverted check) and Better AI On per deck variant (Easy 1, Medium 2, Hard/Expert 3)."""
+    sys.path.insert(0, str(ROOT / 'sim'))
+    from evaluate_pool import setup, XML
+    from gwentsim.native_decks import NativeDecks
+    templates = setup()['match'].templates
+    native = NativeDecks(XML, templates)
+    decks = {}
+    for name in native.npc_names():
+        for variant in (1, 2, 3):
+            try:
+                decks[name, variant] = (native.build(name, variant).dynamic_card_requirements,
+                                        native.build(name, variant, repaired=True).dynamic_card_requirements)
+            except Exception:
+                pass
+    total = sum(len(v[0]) for (n, var), v in decks.items() if var == 3)
+    curves = {'vanilla': [], 1: [], 2: [], 3: []}
+    for st in strengths:
+        curves['vanilla'].append(sum(st >= q for (n, var), (van, _) in decks.items() if var == 3 for q in van))
+        for variant in (1, 2, 3):
+            curves[variant].append(sum(st >= q for (n, var), (_, rep) in decks.items() if var == variant for q in rep))
+    return curves, total
+
+
+def requirements_chart(t, strengths, curves, total):
+    x0, x1, top, bottom = 70, WIDTH - 150, 84, 300
+    xs = lambda st: x0 + (x1 - x0) * (st - strengths[0]) / (strengths[-1] - strengths[0])
+    ys = lambda n: bottom - (bottom - top) * n / total
+    body = []
+    for v in [v for v in range(0, total, 50)] + [total]:
+        body.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="%s"/>' % (x0, ys(v), x1, ys(v), t['grid']))
+        body.append(text(x0 - 8, ys(v) + 4, v, t['ink2'], 11, anchor='end'))
+    for st in strengths[::2]:
+        body.append(text(xs(st), bottom + 18, st, t['ink2'], 11, anchor='middle'))
+    body.append(text((x0 + x1) / 2, bottom + 36, "Strength of the player's deck", t['ink2'], 11, anchor='middle'))
+    body.append(text(20, top - 14, 'Extra NPC cards (of %d)' % total, t['ink2'], 11))
+    series = [(1, 'Easy', t['s3']), (2, 'Medium', t['s2']), (3, 'Hard / Expert', t['s1'])]
+    labels = [(curves['vanilla'][-1], 'Vanilla (bug)', t['ink2'])]
+    for variant, name, colour in series:
+        pts = ' '.join('%.1f,%.1f' % (xs(st), ys(n)) for st, n in zip(strengths, curves[variant]))
+        body.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round"/>' % (pts, colour))
+        for st, n in zip(strengths, curves[variant]):
+            body.append('<circle cx="%.1f" cy="%.1f" r="4" fill="%s" stroke="%s" stroke-width="2"/>' % (xs(st), ys(n), colour, t['surface']))
+        labels.append((curves[variant][-1], name, colour))
+    # vanilla drawn last so its dashed line stays visible where the curves meet at the top
+    van = ' '.join('%.1f,%.1f' % (xs(st), ys(n)) for st, n in zip(strengths, curves['vanilla']))
+    body.append('<polyline points="%s" fill="none" stroke="%s" stroke-width="2" stroke-dasharray="6 4"/>' % (van, t['ink2']))
+    # direct labels at the line ends, nudged apart so they never overlap
+    placed = []
+    for value, name, colour in sorted(labels, key=lambda item: -item[0]):
+        y = ys(value) + 4
+        while any(abs(y - other) < 15 for other in placed):
+            y += 15
+        placed.append(y)
+        body.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="2"/>' % (x1 + 8, y - 4, x1 + 18, y - 4, colour))
+        body.append(text(x1 + 22, y, name, t['ink'], 12, 600))
+    return card(bottom + 52, t, ''.join(body), "NPC extra cards by the strength of the player's deck",
+                'Vanilla gives almost every extra card at any strength; with Better AI On each card needs '
+                'its intended requirement. All native NPC decks.')
+
+
+LAYOUT = [('mod/settings/', 'Options menu and WitcherScript wrappers for settings, wagers and deck difficulty'),
+          ('mod/v8/as3/', 'The V8 AI in ActionScript, compiled into the Gwent interface at build time'),
+          ('mod/recorder/', 'Script sources of diagnostic builds (match recorder; also probe/, feasibility/)'),
+          ('tools/', 'Build pipeline, patchers that insert the mod hooks, format helpers, recorder readers'),
+          ('sim/', 'Python reference of the V8 policy, evaluation scripts and tests'),
+          ('sim/gwentsim/', 'Policy, search, belief, position and player-deck models'),
+          ('lab/', 'Gwent AI Lab: crash-safe job runner, web panel, reports and these charts'),
+          ('docs/', 'Testing, research, development and repository scope')]
+
+
+def table_card(t, title, rows, first=250):
+    top, h = 70, 30
+    body = []
+    for i, (left, right) in enumerate(rows):
+        y = top + i * h
+        if i:
+            body.append('<line x1="20" y1="%d" x2="%d" y2="%d" stroke="%s"/>' % (y - 10, WIDTH - 20, y - 10, t['grid']))
+        body.append('<text x="20" y="%d" fill="%s" font-size="13" font-weight="600" '
+                    'font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">%s</text>' % (y + 6, t['s1'], esc(left)))
+        body.append(text(20 + first, y + 6, right, t['ink'], 13))
+    return card(top + len(rows) * h, t, ''.join(body), title)
+
+
+# ---- main ---------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('dbs', nargs='+')
+    parser.add_argument('--records', default=str(ROOT / 'game/records'))
+    parser.add_argument('--evaluations', default=str(ROOT / 'game/evaluations'))
+    parser.add_argument('--out', default=str(ROOT / 'docs/img'))
+    args = parser.parse_args()
+    levels, styles, rounds = collect(args.dbs)
+    totals = [report.lab_totals(p) for p in args.dbs]
+    lab_matches = sum(x['matches'] for x in totals)
+    cpu_hours = sum(x['cpuSeconds'] for x in totals) / 3600
+    earlier = report.evaluation_matches(args.evaluations) if Path(args.evaluations).exists() else 0
+    recordings = len(list(Path(args.records).glob('g[0-9]*.json')))
+    findings = sum(rounds.values())
+    better, native, games = styles['all']
+    edge = 100 * (better - native) / native if native else 0
+    tiles = [('{:,}'.format(lab_matches + earlier), 'Simulated matches', 'Lab + earlier evaluations'),
+             ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
+             (str(recordings), 'In-game matches', 'recorded and analysed'),
+             (str(findings), 'Mistakes found', 'by the blunder hunter'),
+             ('%+.0f%%' % edge, 'More NPC wins', 'vs native AI, player decks')]
+    totals_tiles = [('{:,}'.format(lab_matches), 'Lab matches', 'Gwent AI Lab'),
+                    ('{:,}'.format(earlier), 'Earlier matches', 'V1-V8 evaluations'),
+                    ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
+                    (str(recordings), 'In-game matches', 'recorded and analysed'),
+                    (str(findings), 'Mistakes found', 'by the blunder hunter')]
+    strengths = list(range(80, 321, 20))
+    curves, total = requirement_curve(strengths)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    for theme, t in THEMES.items():
+        (out / ('totals-%s.svg' % theme)).write_text(kpis(t, totals_tiles))
+        (out / ('layout-%s.svg' % theme)).write_text(table_card(t, 'Repository layout', LAYOUT))
+        (out / ('requirements-%s.svg' % theme)).write_text(requirements_chart(t, strengths, curves, total))
+        (out / ('kpis-%s.svg' % theme)).write_text(kpis(t, tiles))
+        (out / ('levels-%s.svg' % theme)).write_text(levels_chart(t, levels))
+        if games:
+            (out / ('player-decks-%s.svg' % theme)).write_text(styles_chart(t, styles))
+        if rounds:
+            (out / ('mistakes-%s.svg' % theme)).write_text(rounds_chart(t, rounds))
+    print('levels', {k: v for k, v in levels.items()}, '\nstyles', dict(styles), '\nrounds', dict(rounds))
+    print('tiles', tiles)
+
+
+if __name__ == '__main__':
+    main()
