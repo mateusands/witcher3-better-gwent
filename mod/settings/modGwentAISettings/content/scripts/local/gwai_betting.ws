@@ -2,7 +2,14 @@
 // Standard pure-gold Gwent wagers only. No replacement game files or reward tables.
 function GwaiSettingsMaxBet() : int
 {
-    var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiMaxBet");
+    var raw : string;
+    // Better AI Off means the original game, wagers included: the stored choice is kept
+    // for when the mod is turned On again, but the vanilla maximum applies.
+    if (!GwaiSettingsEnabled())
+    {
+        return 10;
+    }
+    raw = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiMaxBet");
     // Menu OPTIONS store the option index 0-4 (ids follow the vanilla 0..n convention).
     // Older drafts stored the stake itself; both forms are accepted.
     if (raw == "1" || raw == "25") { return 25; }
@@ -14,7 +21,12 @@ function GwaiSettingsMaxBet() : int
 
 function GwaiSettingsStakesStronger() : bool
 {
-    var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiStakesStronger");
+    var raw : string;
+    if (!GwaiSettingsEnabled())
+    {
+        return false;
+    }
+    raw = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiStakesStronger");
     return raw == "true" || raw == "1";
 }
 

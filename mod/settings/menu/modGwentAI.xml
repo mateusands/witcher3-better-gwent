@@ -23,7 +23,7 @@
                 </OptionsArray>
             </Var>
             <Var id="GwaiAutoPlay" displayName="gwai_autoplay" displayType="TOGGLE" tags="indent"/>
-            <Var id="GwaiMaxBet" displayName="gwai_max_bet" displayType="OPTIONS">
+            <Var id="GwaiMaxBet" displayName="gwai_max_bet" displayType="OPTIONS" tags="indent">
                 <OptionsArray>
                     <Option id="0" displayName="gwai_bet_vanilla"><Entry varId="GwaiMaxBet" value="0"/></Option>
                     <Option id="1" displayName="gwai_bet_25"><Entry varId="GwaiMaxBet" value="1"/></Option>
@@ -32,7 +32,7 @@
                     <Option id="4" displayName="gwai_bet_150"><Entry varId="GwaiMaxBet" value="4"/></Option>
                 </OptionsArray>
             </Var>
-            <Var id="GwaiStakesStronger" displayName="gwai_stakes_stronger" displayType="TOGGLE"/>
+            <Var id="GwaiStakesStronger" displayName="gwai_stakes_stronger" displayType="TOGGLE" tags="indent"/>
         </VisibleVars>
     </Group>
 </UserConfig>

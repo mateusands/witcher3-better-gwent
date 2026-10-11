@@ -10,6 +10,7 @@ colour-vision deficiency in both themes; every value is also written as text.
 """
 import argparse
 import json
+import re
 import sqlite3
 import sys
 from collections import defaultdict
@@ -54,8 +55,9 @@ def collect(dbs):
                 for f in r.get('findings', []):
                     rounds[f['round']] += 1
                 continue
-            if params.get('policy') != 'response-v8':
-                continue                             # A/B variants are not the shipped AI
+            if kind != 'benchmark' or params.get('policy') != 'response-v8' or params.get('weights') \
+                    or params.get('npc_decks'):
+                continue                             # tuning, A/B variants and deck modes are not the shipped AI
             if p['source'] == 'pool':
                 for s in r['seats']:
                     levels[p['profile']][0] += score(s['won'], s['winner'])
@@ -287,6 +289,133 @@ def table_card(t, title, rows, first=250):
     return card(top + len(rows) * h, t, ''.join(body), title)
 
 
+def grouped_chart(t, title, subtitle, rows, legend=('NPC played by Better AI', 'NPC played by the native AI')):
+    """rows: (label, note, pct_a, pct_b). Two bars per row, 0-100% axis with the 50% line."""
+    x0, x1, top = 170, WIDTH - 110, 92
+    h, inner, gap = 16, 3, 18
+    group = 2 * h + inner
+    bottom = top + len(rows) * (group + gap) - gap + 8
+    body = [percent_axis(t, x0, x1, top - 8, bottom)]
+    body.append('<rect x="20" y="64" width="12" height="12" rx="3" fill="%s"/>' % t['s1'])
+    body.append(text(38, 75, legend[0], t['ink'], 12))
+    body.append('<rect x="230" y="64" width="12" height="12" rx="3" fill="%s"/>' % t['s2'])
+    body.append(text(248, 75, legend[1], t['ink'], 12))
+    for i, (label, note, a, b) in enumerate(rows):
+        y = top + i * (group + gap)
+        body.append(text(20, y + h + 6, label, t['ink'], 13, 600))
+        body.append(text(20, y + h + 21, note, t['ink2'], 11))
+        for j, (pct, colour) in enumerate(((a, t['s1']), (b, t['s2']))):
+            yy = y + j * (h + inner)
+            body.append(bar(x0, yy, x0 + (x1 - x0) * pct / 100, h, colour))
+            body.append(text(x0 + (x1 - x0) * pct / 100 + 8, yy + 12, '%.0f%%' % pct, t['ink'], 12, 600))
+    return card(bottom + 40, t, ''.join(body), title, subtitle)
+
+
+def deck_mode_rows(dbs, style_filter):
+    """NPC win share per (difficulty, mode) from player-deck benchmarks of the shipped AI."""
+    import sqlite3
+    sys.path.insert(0, str(ROOT / 'sim'))
+    styles = player_styles()
+    agg = defaultdict(lambda: [0.0, 0.0, 0])
+    for path in dbs:
+        db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
+        for params, payload, result, _name in db.execute(
+                "SELECT j.params, t.payload, t.result, j.name FROM tasks t JOIN jobs j ON j.id=t.job_id "
+                "WHERE t.status='done' AND j.kind='benchmark' AND j.status != 'superseded'"):
+            params, p, r = json.loads(params), json.loads(payload), json.loads(result)
+            if p.get('source') != 'player' or params.get('policy') != 'response-v8' or params.get('weights'):
+                continue
+            if style_filter and styles[p['pair']] != style_filter:
+                continue
+            s = r['seats'][0]
+            a = agg[params['profile'], params.get('npc_decks') or 'original']
+            a[0] += score(s['won'], s['winner'])
+            a[1] += score(r['baselineWinner'] == s['seat'], r['baselineWinner'])
+            a[2] += 1
+    return agg
+
+
+INTENSITY = {'light': ('#cde2fb', '#86b6ef', '#3987e5', '#1c5cab'),
+             'dark': ('#184f95', '#256abf', '#3987e5', '#86b6ef')}
+PRESETS = [('The original game', 'Mod Off', 'The game exactly as shipped.', 1),
+           ('A smarter opponent', 'Hard · Original decks', 'Same NPC decks, better decisions.', 2),
+           ('A fair fight', 'Hard or Expert · Adaptive', "The NPC's deck follows yours all game.", 3),
+           ('Maximum challenge', 'Expert · Strong · stakes On', 'NPC wins about half vs my decks.', 4)]
+
+
+def challenge_card(t, theme):
+    """Static infographic: the two difficulty dials and four combinations from light to heavy."""
+    ramp = INTENSITY[theme]
+    body = []
+    dials = [('AI difficulty', 'how well the NPC thinks', ['Easy', 'Medium', 'Hard', 'Expert']),
+             ('NPC decks', 'which cards the NPC plays: few extras, balanced to yours, best', ['Original', 'Adaptive', 'Strong'])]
+    col = (WIDTH - 56) / 2
+    for i, (name, note, steps) in enumerate(dials):
+        x = 20 + i * (col + 16)
+        body.append('<rect x="%.1f" y="70" width="%.1f" height="92" rx="8" fill="none" stroke="%s"/>' % (x, col, t['border']))
+        body.append(text(x + 14, 94, 'Dial %d · %s' % (i + 1, name), t['ink'], 14, 700))
+        body.append(text(x + 14, 112, note, t['ink2'], 12))
+        pill = (col - 28 - 8 * (len(steps) - 1)) / len(steps)
+        for j, step in enumerate(steps):
+            px = x + 14 + j * (pill + 8)
+            shade = ramp[min(3, j + (4 - len(steps)))]
+            fg = '#ffffff' if (theme == 'light' and j + (4 - len(steps)) >= 2) or (theme == 'dark' and j + (4 - len(steps)) <= 1) else t['ink']
+            if theme == 'dark' and j + (4 - len(steps)) >= 3:
+                fg = '#0d1117'
+            body.append('<rect x="%.1f" y="124" width="%.1f" height="26" rx="13" fill="%s"/>' % (px, pill, shade))
+            body.append(text(px + pill / 2, 141, step, fg, 12, 600, anchor='middle'))
+    body.append(text(20, 196, 'Combinations, from light to heavy', t['ink'], 14, 700))
+    w = (WIDTH - 40 - 3 * 12) / 4
+    for i, (title, setting, note, level) in enumerate(PRESETS):
+        x = 20 + i * (w + 12)
+        body.append('<rect x="%.1f" y="210" width="%.1f" height="128" rx="8" fill="none" stroke="%s"/>' % (x, w, t['border']))
+        for k in range(4):
+            body.append('<rect x="%.1f" y="224" width="%.1f" height="8" rx="4" fill="%s"/>'
+                        % (x + 14 + k * ((w - 28 - 12) / 4 + 4), (w - 28 - 12) / 4, ramp[k] if k < level else t['grid']))
+        body.append(text(x + 14, 258, title, t['ink'], 14, 700))
+        body.append(text(x + 14, 280, setting, t['s1'], 12, 600))
+        words, line, lines = note.split(), '', []
+        for word in words:
+            if len(line) + len(word) > 26:
+                lines.append(line); line = word
+            else:
+                line = (line + ' ' + word).strip()
+        lines.append(line)
+        for k, ln in enumerate(lines[:2]):
+            body.append(text(x + 14, 302 + k * 16, ln, t['ink2'], 12))
+    return card(356, t, ''.join(body), 'Choosing your challenge',
+                'Two independent dials; the mod Off leaves the game exactly as shipped.')
+
+
+def ab_chart(t, rows, title, subtitle, span=3.0):
+    """rows: (label, note, change_pct, z). Bars from zero: blue = better, orange = worse."""
+    x0, x1, top = 230, WIDTH - 150, 84
+    h, gap = 20, 16
+    mid = (x0 + x1) / 2
+    scale = (x1 - x0) / 2 / span
+    bottom = top + len(rows) * (h + gap) - gap + 8
+    body = []
+    for v in (-span, -span / 2, 0, span / 2, span):
+        x = mid + v * scale
+        body.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s"%s/>' % (
+            x, top - 8, x, bottom, t['ref'] if v == 0 else t['grid'], ' stroke-dasharray="4 3"' if v == 0 else ''))
+        body.append(text(x, bottom + 16, '%+.1f%%' % v if v else '0 · no change', t['ink2'], 11, anchor='middle'))
+    for i, (label, note, change, z) in enumerate(rows):
+        y = top + i * (h + gap)
+        if label:
+            body.append(text(20, y + 10, label, t['ink'], 13, 600))
+            body.append(text(20, y + 25, note, t['ink2'], 11))
+        else:
+            body.append(text(20, y + 15, note, t['ink2'], 11))
+        end = mid + max(-span, min(span, change)) * scale
+        colour = t['s1'] if change >= 0 else t['s2']
+        lo, hi = sorted((mid, end))
+        body.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%d" rx="3" fill="%s"/>' % (lo, y, max(1, hi - lo), h, colour))
+        verdict = 'proven' if abs(z) >= 2 else 'not proven'
+        body.append(text(WIDTH - 20, y + 15, '%+.2f%% · z %+.1f · %s' % (change, z, verdict), t['ink'], 12, 600, anchor='end'))
+    return card(bottom + 40, t, ''.join(body), title, subtitle)
+
+
 # ---- main ---------------------------------------------------------------------
 
 def main():
@@ -301,7 +430,7 @@ def main():
     lab_matches = sum(x['matches'] for x in totals)
     cpu_hours = sum(x['cpuSeconds'] for x in totals) / 3600
     earlier = report.evaluation_matches(args.evaluations) if Path(args.evaluations).exists() else 0
-    recordings = len(list(Path(args.records).glob('g[0-9]*.json')))
+    recordings = len([p for p in Path(args.records).glob('g[0-9]*.json') if re.fullmatch(r'g\d+\.json', p.name)])
     findings = sum(rounds.values())
     better, native, games = styles['all']
     edge = 100 * (better - native) / native if native else 0
@@ -322,6 +451,7 @@ def main():
     for theme, t in THEMES.items():
         (out / ('totals-%s.svg' % theme)).write_text(kpis(t, totals_tiles))
         (out / ('layout-%s.svg' % theme)).write_text(table_card(t, 'Repository layout', LAYOUT))
+        (out / ('challenge-%s.svg' % theme)).write_text(challenge_card(t, theme))
         (out / ('requirements-%s.svg' % theme)).write_text(requirements_chart(t, strengths, curves, total))
         (out / ('kpis-%s.svg' % theme)).write_text(kpis(t, tiles))
         (out / ('levels-%s.svg' % theme)).write_text(levels_chart(t, levels))
@@ -329,6 +459,19 @@ def main():
             (out / ('player-decks-%s.svg' % theme)).write_text(styles_chart(t, styles))
         if rounds:
             (out / ('mistakes-%s.svg' % theme)).write_text(rounds_chart(t, rounds))
+    names = dict(original='Original', balanced='Adaptive', strong='Strong')
+    for key, title, flt in (('deck-modes', 'NPC deck modes against player-style decks', None),
+                            ('deck-modes-mine', 'NPC deck modes against my own real decks', 'recorded')):
+        agg = deck_mode_rows(args.dbs, flt)
+        rows = [('%s · %s' % (prof.capitalize(), names[mode]), '%s games' % format(agg[prof, mode][2], ','),
+                 100 * agg[prof, mode][0] / agg[prof, mode][2], 100 * agg[prof, mode][1] / agg[prof, mode][2])
+                for prof in ('easy', 'medium', 'hard', 'expert') for mode in ('original', 'balanced', 'strong') if agg[prof, mode][2]]
+        if rows:
+            for theme, t in THEMES.items():
+                (out / ('%s-%s.svg' % (key, theme))).write_text(grouped_chart(
+                    t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and luck.',
+                    rows))
+            print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
     print('levels', {k: v for k, v in levels.items()}, '\nstyles', dict(styles), '\nrounds', dict(rounds))
     print('tiles', tiles)
 

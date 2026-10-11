@@ -8,6 +8,7 @@ from collections import Counter
 from dataclasses import dataclass, replace
 
 from . import constants as C
+from . import tuning
 from .future_value import ReserveCard, ROW_TYPES, supported_reserve_power
 
 ROWS=(5,4,3)
@@ -590,4 +591,4 @@ class Position:
         if extra:
             if self.random_recovery:extra=0
             medics+=extra
-        return supported_reserve_power(tuple(cards)+leader_cards+self.recovery_reserve(medics))+self.draw_value
+        return supported_reserve_power(tuple(cards)+leader_cards+self.recovery_reserve(medics))+self.draw_value*tuning.ACTIVE['draw_weight']

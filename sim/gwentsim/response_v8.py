@@ -157,6 +157,9 @@ def choose_response_v8(position, context, profile):
                 deck_left = sum(position.counts.values()) - position.unknown_draws
                 if not is_safe and not context.opponent_passed and len(position.hand) == 1 and deck_left >= 2:
                     is_safe = True
+                # Experiment: a recovered spy is worth its two draws in any open round.
+                if not is_safe and 'medic-spy-open' in VARIANT and not context.opponent_passed and deck_left >= 2:
+                    is_safe = True
                 if not is_safe and context.opponent_passed:
                     best_spy_cand = min(grave_spies, key=lambda k: (position.cards[k].power, k))
                     scores = position.scores()
@@ -270,5 +273,7 @@ def wasted_move(position, action):
     own, other = position.player, 1 - position.player
     before_scores, after_scores = position.scores(), after.scores()
     gain = (after_scores[own] - after_scores[other]) - (before_scores[own] - before_scores[other])
+    if weather and 'weather-zero' in VARIANT:
+        return gain <= 0   # experiment: weather that changes nothing now is also wasted
     return gain < 0 if weather else gain <= 0
 

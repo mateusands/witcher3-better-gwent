@@ -34,6 +34,18 @@ seat against the native AI in the same seat (win = 1, draw = 0.5).
   <img src="img/player-decks-light.svg" alt="NPC win share against player-style decks, Better AI vs native AI, by deck style" width="880">
 </picture>
 
+### NPC deck modes
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/deck-modes-dark.svg">
+  <img src="img/deck-modes-light.svg" alt="NPC win share by deck mode against player-style decks" width="880">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/deck-modes-mine-dark.svg">
+  <img src="img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks" width="880">
+</picture>
+
 ## 3. Mistakes: blunder hunting
 
 For matches the AI lost or drew, every decision is replayed with alternative moves. Each
@@ -47,6 +59,16 @@ Halving, as in Gumbel MuZero) and smaller mistakes. Findings become regression c
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/mistakes-dark.svg">
   <img src="img/mistakes-light.svg" alt="Costly decisions found by round" width="880">
+</picture>
+
+### A/B tests
+
+Every change to the AI is compared with the current AI on the same matchups and luck, and kept
+only when the gain is proven (z of 2 or more) and nothing gets worse.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/ab-expert-dark.svg">
+  <img src="img/ab-expert-light.svg" alt="A/B tests on Expert: Phase 3 tuned weights, weather that changes nothing counted as wasted, medic recovering a spy in open rounds; none proven" width="880">
 </picture>
 
 ## 4. In-game validation

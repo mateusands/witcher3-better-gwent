@@ -101,6 +101,11 @@ def normalize_betting_settings(raw):
     return BettingSettings(maximum, stronger), {k: v for k, v in expected.items() if raw.get(k) != v}
 
 
+def effective_betting_settings(settings, enabled):
+    """Better AI Off means the original game, wagers included (stored choices are kept)."""
+    return settings if enabled else BettingSettings(MAX_BETS[0], False)
+
+
 def open_popup(reward, wallet, settings, gwent_mode, override_percent=0):
     # Model original initial-value computation first. Special/non-Gwent wagers retain
     # their native limit and value; the mod's cap is applied only to the common reward.

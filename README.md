@@ -1,8 +1,9 @@
 # Better Gwent AI
 
 An unofficial mod in development for The Witcher 3: Wild Hunt (**Steam patch 5.01**)
-that replaces the Gwent opponent's decisions with a stronger AI, without changing any
-card, ability, rule or native NPC deck.
+that replaces the Gwent opponent's decisions with a stronger AI, without changing any card,
+ability or rule. NPC decks stay exactly as in the game unless you choose otherwise, and
+everything returns to vanilla when the mod is turned Off.
 
 > **Not magic, not a miracle.** The AI can still make mistakes. Better Gwent AI only
 > improves how it decides, through math, search and a lot of testing.
@@ -15,8 +16,93 @@ The repository is private and work in progress: there is no release yet.
 - **Options > Mods > Better Gwent AI**, with an On/Off switch (Off = vanilla game).
 - Easy, Medium, **Hard (default)** and Expert, independent of the game difficulty.
 - Optional **AI plays for you** (Off by default), using the selected difficulty.
-- Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150.
+- Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
 - Optional stronger existing NPC deck variants at higher stakes (Off by default).
+- **Better AI Off = the original game**, wagers included; the wager options are locked
+  while it is Off.
+- **NPC decks: Original (default) / Adaptive / Strong** (in development): which existing cards
+  an NPC brings, rebuilt in memory for each match, safe for saves.
+
+## NPC decks: Original, Adaptive, Strong
+
+Native NPC decks are uneven: many carry piles of weather and special cards (about 10 special
+cards on average, up to 13 weather cards), and the vanilla game gives them extra cards
+regardless of your deck because of an inverted check. This option chooses what the NPC brings:
+
+- **Original:** the NPC's own deck with the game's own adaptive rule, repaired. Each NPC has
+  a few extra cards on 15 levels that enter only when your deck is strong enough; with the
+  inverted check fixed, they finally follow your deck. But it is a small lever: 4.4 extra
+  cards per NPC on average (14 of 51 NPCs have none), worth about +31 strength (173 to 205),
+  while a good player deck sits at 250-300, and the pile of weather cards stays in.
+- **Adaptive:** the same idea done fully. The NPC keeps its faction, leader and heroes; its
+  whole deck is made legal and playable, and its weakest units are swapped for better cards
+  of its faction until it matches the strength of *your* deck at that match: 85% on Easy,
+  95% on Medium, 100% on Hard, 110% on Expert. A fair fight at every stage of the game.
+- **Strong:** the best deck the NPC's faction allows under the same rules.
+
+Every deck is built like a seasoned player builds one: a playable kit of special cards
+(never more than 8), no weather that hits its own strong rows, synergies kept whole, spies and
+medics capped, and leader-aware choices (a leader that clears weather replaces the Clear Weather
+card; a leader that doubles a row leaves one Horn for the other rows). It applies to every
+Gwent opponent, including quest and tournament players, except the tutorial.
+
+Measured in the simulator (same decks and luck; the player side is played by Better AI):
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-dark.svg">
+  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Hard and Expert, Better AI vs native AI" width="880">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-mine-dark.svg">
+  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Hard and Expert, Better AI vs native AI" width="880">
+</picture>
+
+Against my own real decks (300 games per cell), Adaptive climbs with the difficulty from 40% to 51%,
+an even fight on Expert, and Strong stays hard but winnable at about 50% on every level.
+
+Nothing is written to your save and no card is edited: the NPC's deck is rebuilt in memory
+for that match only. Turn the option or the mod Off and the next match uses the native deck.
+Details: [docs/NPC_DECKS.md](docs/NPC_DECKS.md).
+
+### Choosing your challenge
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/challenge-dark.svg">
+  <img src="docs/img/challenge-light.svg" alt="Choosing your challenge: dial 1 AI difficulty Easy to Expert, dial 2 NPC decks Original, Adaptive, Strong; combinations from the original game to maximum challenge" width="880">
+</picture>
+
+<details>
+<summary>Details</summary>
+
+You set the challenge with two independent dials:
+
+1. **AI difficulty (Easy, Medium, Hard, Expert): how well the NPC thinks.** It sets how deeply
+   the AI analyses its moves; on Expert it thinks longer and makes fewer mistakes.
+2. **NPC decks (Original, Adaptive, Strong): which cards the NPC plays.**
+   - **Original:** the game's deck, with the extra-card rule repaired. The NPC only gets the few
+     extra cards the game lists for it (4.4 on average, none for 14 of 51 NPCs), so against a
+     strong deck it stays weaker.
+   - **Adaptive:** the NPC gets more and better cards than in Original, but balanced: its deck
+     is rebuilt to follow the strength of yours, and the difficulty sets the target, from 85%
+     of your deck's strength on Easy to 110% on Expert.
+   - **Strong:** the best deck the NPC's faction allows.
+
+Two wager options come with it, both part of Better AI: a higher maximum bet for common Gwent
+matches (money only, the NPC is not harder), and an optional setting that makes NPCs stronger
+the more gold you bet. Turning **Better AI Off turns everything off**: the native AI, the game's
+own decks and the vanilla wagers, with no exception. Your choices are kept for when you turn it
+back On.
+
+Combinations, from light to heavy:
+
+- **The original game:** mod Off.
+- **Just a smarter opponent:** Hard with Original decks.
+- **A fair fight all game long:** Hard or Expert with Adaptive decks.
+- **Maximum challenge:** Expert with Strong decks and stronger stakes On. Against my own real
+  decks the NPC wins about half of the matches (49-50%): very hard, still winnable.
+
+</details>
 
 ## Fair play: the AI does not see your cards
 
@@ -34,7 +120,7 @@ different cards and checks that the decision does not change.
   never stalls.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/kpis-dark.svg">
-  <img src="docs/img/kpis-light.svg" alt="82,527 simulated matches, 31 hours of Lab CPU time, 57 in-game matches analysed, 152 mistakes found, 25% more NPC wins than the native AI against player decks" width="880">
+  <img src="docs/img/kpis-light.svg" alt="106,928 simulated matches, 72 hours of Lab CPU time, 37 in-game matches analysed, 229 mistakes found, 22% more NPC wins than the native AI against player decks" width="880">
 </picture>
 
 <picture>
@@ -44,12 +130,12 @@ different cards and checks that the decision does not change.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/player-decks-dark.svg">
-  <img src="docs/img/player-decks-light.svg" alt="NPC win share against player-style decks, Better AI vs native AI: early-game 82.9 vs 78.8, random 59.8 vs 45.4, my real decks 43.5 vs 31.5, power 23.7 vs 13.7, synergy 43.6 vs 31.5, all 51.6 vs 41.2 percent" width="880">
+  <img src="docs/img/player-decks-light.svg" alt="NPC win share against player-style decks by deck style, NPC played by Better AI vs by the native AI" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/mistakes-dark.svg">
-  <img src="docs/img/mistakes-light.svg" alt="Costly decisions found by round: round 1 95, round 2 53, round 3 4" width="880">
+  <img src="docs/img/mistakes-light.svg" alt="Costly decisions found by round: round 1 144, round 2 76, round 3 9" width="880">
 </picture>
 
 - In progress: fixing the mistake patterns the hunter found (round-1 overcommit, Horn and
@@ -154,6 +240,15 @@ tracking down the exact point of a bug, and drafting and updating documentation.
 design and gameplay decisions are mine, every change is measured in the simulator and
 tested in game before it is kept, and nothing is merged or released without my review,
 including code the AI wrote entirely.
+
+## Credits
+
+- [JPEXS Free Flash Decompiler](https://github.com/jindrapetrik/jpexs-decompiler): the open-source
+  Flash decompiler and editor used to build the V8 AI into the game's Gwent interface.
+- The [WolvenKit](https://github.com/WolvenKit) and W3Edit teams: for pioneering Witcher 3
+  reverse engineering and documenting the file formats (CR2W, bundles) that the community
+  tools, including this project's own, build on.
+- The Witcher 3, Gwent and all their assets belong to CD PROJEKT RED.
 
 ## License and rights
 

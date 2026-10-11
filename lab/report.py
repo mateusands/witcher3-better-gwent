@@ -25,7 +25,9 @@ def lab_totals(path):
             "SELECT j.kind, t.payload, t.result, t.started, t.finished FROM tasks t JOIN jobs j ON j.id=t.job_id "
             "WHERE t.status='done'"):
         r, p = json.loads(result), json.loads(payload)
-        if kind in HUNTS:
+        if kind == 'tune':
+            matches = int(r.get('games', 0))
+        elif kind in HUNTS:
             matches = 1 + r.get('replays', 0)
             out['findings'] += len(r.get('findings', []))
         else:

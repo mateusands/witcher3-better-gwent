@@ -122,6 +122,15 @@ function GwaiSettingsRefreshControlLocks() : void
     dataObject.SetMemberFlashUInt("tag", NameToFlashUInt('GwaiAutoPlay'));
     dataObject.SetMemberFlashBool("disabled", !GwaiSettingsEnabled());
     dataArray.PushBackFlashObject(dataObject);
+    // Wager options belong to Better AI too: Off locks them and the game behaves as shipped.
+    dataObject = m_flashValueStorage.CreateTempFlashObject();
+    dataObject.SetMemberFlashUInt("tag", NameToFlashUInt('GwaiMaxBet'));
+    dataObject.SetMemberFlashBool("disabled", !GwaiSettingsEnabled());
+    dataArray.PushBackFlashObject(dataObject);
+    dataObject = m_flashValueStorage.CreateTempFlashObject();
+    dataObject.SetMemberFlashUInt("tag", NameToFlashUInt('GwaiStakesStronger'));
+    dataObject.SetMemberFlashBool("disabled", !GwaiSettingsEnabled());
+    dataArray.PushBackFlashObject(dataObject);
     m_flashValueStorage.SetFlashArray("options.update_disabled", dataArray);
     theGame.GetGuiManager().ForceProcessFlashStorage();
 }

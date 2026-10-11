@@ -45,18 +45,26 @@ def player_setup():
     return _state['player_pairs']
 
 
-def player_seats(pair_index, swap):
-    """Decks per seat and the NPC seat. Without swap the player sits in seat 0 (as in the game)."""
+def player_seats(pair_index, swap, npc_mode=None, difficulty=2):
+    """Decks per seat and the NPC seat. Without swap the player sits in seat 0 (as in the game).
+    npc_mode: 'balanced' or 'strong' rebuilds the NPC deck with the mod's NPC deck option."""
     npc, player = player_setup()[pair_index]
+    if npc_mode not in (None, 'original'):
+        from dataclasses import replace
+        from gwentsim.npc_balance import apply_mode
+        from blunder_hunter import card_names
+        deck = apply_mode(setup()['match'].templates, npc.deck, card_names(), npc_mode, player.deck.card_indices,
+                          difficulty)
+        npc = replace(npc, name='%s/%s' % (npc.name, npc_mode), deck=deck)
     seats = (npc, player) if swap else (player, npc)
     return seats, (0 if swap else 1)
 
 
-def run_player(pair_index, seed, swap, npc_policy, profile):
+def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
     """NPC side played by npc_policy ('vanilla' or the candidate) against the player side
     played by response-v8 at the same profile, a strong stand-in for a human player."""
     match = setup()['match']
-    seats, npc_seat = player_seats(pair_index, swap)
+    seats, npc_seat = player_seats(pair_index, swap, npc_mode, profile)
     decks = [seats[0].for_player(0), seats[1].for_player(1)]
     policies = tuple(npc_policy if p == npc_seat else 'response-v8' for p in (0, 1))
     recorder, flow = run_match(match.templates.values(), decks, match.card_values, SeededRandom(seed),
@@ -66,10 +74,11 @@ def run_player(pair_index, seed, swap, npc_policy, profile):
 
 
 def group_player(task):
-    pair, seed, swap, policy, profile = task
+    pair, seed, swap, policy, profile = task[:5]
+    npc_mode = task[5] if len(task) > 5 else None
     try:
-        return [run_player(pair, seed, swap, 'vanilla', profile),
-                run_player(pair, seed, swap, policy, profile)], None
+        return [run_player(pair, seed, swap, 'vanilla', profile, npc_mode),
+                run_player(pair, seed, swap, policy, profile, npc_mode)], None
     except (SimulationStall, RuntimeError) as exc:
         return [], dict(pair=pair, seed=seed, swapped=swap, detail=str(exc))
 

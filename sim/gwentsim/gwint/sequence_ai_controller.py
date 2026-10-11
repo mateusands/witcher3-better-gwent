@@ -109,5 +109,10 @@ class ResourceAIPlayerController(SequenceAIPlayerController):
 class ResponseV8AIPlayerController(SequenceAIPlayerController):
     def search(self,position,context):
         from ..response_v8 import choose_response_v8
-        return choose_response_v8(position,context,self.search_profile)
+        from .. import tuning
+        tuning.use_seat(self.playerID)
+        try:
+            return choose_response_v8(position,context,self.search_profile)
+        finally:
+            tuning.reset()
 

@@ -26,8 +26,9 @@ def test_native_xml_adapter_matches_all_recorded_opponent_definitions():
     for path in corpus:
         if path.name in MOD_THRESHOLD_BUG:continue
         recorded=load_match(path).decks[1]
-        assert any(shape(native.build(name,difficulty))==shape(recorded)
-                   for name in native.npc_names() for difficulty in (1,2,3)),path.name
+        # From g130 on, the installed mod repairs the extra-card requirements (Better AI On).
+        assert any(shape(native.build(name,difficulty,repaired=repaired))==shape(recorded)
+                   for name in native.npc_names() for difficulty in (1,2,3) for repaired in (False,True)),path.name
 
 
 def test_high_stakes_preserves_defined_cards_and_only_enables_valid_level_fifteen():

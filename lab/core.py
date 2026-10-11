@@ -97,15 +97,22 @@ def set_(db, key, value):
 def benchmark_payloads(params):
     """Expand a benchmark into independent deterministic task payloads."""
     policy, profile, seeds = params['policy'], params['profile'], params['seeds']
+    weights = params.get('weights')
     out = []
     if params['source'] == 'player':
         sys.path.insert(0, str(SIM))
         from evaluate_pool import player_setup
-        pairs = len(player_setup())
+        pool = player_setup()
+        pairs = len(pool)
+        only_recorded = params.get('player_filter') == 'recorded'   # my own real decks only
         for pair in range(min(pairs, params.get('pairs') or pairs)):
+            if only_recorded and not pool[pair][1].name.startswith('recorded/'):
+                continue
             for seed in seeds:
                 for swap in (False, True):
-                    out.append(dict(source='player', pair=pair, seed=seed, swap=swap, policy=policy, profile=profile))
+                    out.append(dict(source='player', pair=pair, seed=seed, swap=swap, policy=policy, profile=profile,
+                                    **({'weights': weights} if weights else {}),
+                                    **({'npc_decks': params['npc_decks']} if params.get('npc_decks') else {})))
     elif params['source'] == 'pool':
         sys.path.insert(0, str(SIM))
         from evaluate_pool import setup
@@ -113,7 +120,8 @@ def benchmark_payloads(params):
         for pair in range(min(pairs, params.get('pairs') or pairs)):
             for seed in seeds:
                 for swap in (False, True):
-                    out.append(dict(source='pool', pair=pair, seed=seed, swap=swap, policy=policy, profile=profile))
+                    out.append(dict(source='pool', pair=pair, seed=seed, swap=swap, policy=policy, profile=profile,
+                                    **({'weights': weights} if weights else {})))
     else:
         records = sorted(str(p) for p in (ROOT / 'game/records').glob('g[0-9][0-9][0-9].json')
                          if p.name in set(params['records']))
@@ -148,7 +156,98 @@ def deep_hunt_payloads(params):
     return [dict(p, kind='deep-hunt') for p in hunt_payloads(params)]
 
 
-PAYLOADS = {'benchmark': benchmark_payloads, 'hunt': hunt_payloads, 'deep-hunt': deep_hunt_payloads}
+TUNE_DEFAULTS = dict(iterations=30, pool=32, player=32, a=0.4, c=0.1, A=5, alpha=0.602, gamma=0.101,
+                     low=0.25, high=4.0, seed_base=7000)
+
+
+def _tune_iteration(params):
+    """Tasks for SPSA iteration k: theta +/- c_k * delta on the same matchups and luck."""
+    import random
+    sys.path.insert(0, str(SIM))
+    from gwentsim.tuning import DEFAULTS
+    from evaluate_pool import setup, player_setup
+    k = params['iteration']
+    names = sorted(DEFAULTS)
+    rng = random.Random('%d/%d' % (params['seed_base'], k))
+    delta = {n: rng.choice((-1, 1)) for n in names}
+    ck = params['c'] / (k + 1) ** params['gamma']
+    params['delta'] = delta
+    thetas = {}
+    for sign in (1, -1):
+        thetas[sign] = {n: DEFAULTS[n] * min(params['high'], max(params['low'], params['x'][n] + sign * ck * delta[n]))
+                        for n in names}
+    pool = rng.sample(range(len(setup()['pairs'])), params['pool'])
+    player = rng.sample(range(len(player_setup())), params['player'])
+    out = []
+    for sign in (1, -1):
+        for pair in pool:
+            out.append(dict(kind='tune-eval', source='pool', pair=pair, seed=params['seed_base'] + k * 1000 + pair,
+                            swap=bool(pair % 2), profile=params['profile'], policy='response-v8',
+                            params=thetas[sign], iteration=k, sign=sign))
+        for pair in player:
+            out.append(dict(kind='tune-eval', source='player', pair=pair, seed=params['seed_base'] + k * 1000 + pair,
+                            swap=bool(pair % 2), profile=params['profile'], policy='response-v8',
+                            params=thetas[sign], iteration=k, sign=sign))
+    return out
+
+
+def tune_payloads(params):
+    """Phase 3: SPSA tuning of the V8 utility weights (gwentsim.tuning), x = weight / default."""
+    sys.path.insert(0, str(SIM))
+    from gwentsim.tuning import DEFAULTS
+    for key, value in TUNE_DEFAULTS.items():
+        params.setdefault(key, value)
+    params.setdefault('profile', 'hard')
+    params.setdefault('x', {n: 1.0 for n in DEFAULTS})
+    params.setdefault('iteration', 0)
+    params.setdefault('history', [])
+    return _tune_iteration(params)
+
+
+def tune_step(db):
+    """When every task of the current iteration is done, update x and queue the next one.
+    One transaction: a crash can never apply an iteration twice."""
+    stepped = []
+    for jid, params in db.execute("SELECT id, params FROM jobs WHERE kind='tune' AND status='active'").fetchall():
+        db.execute('BEGIN IMMEDIATE')
+        try:
+            params = json.loads(params)
+            k = params['iteration']
+            if params.get('finished') or one(db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status IN ('pending','running')", (jid,))[0]:
+                db.execute('COMMIT'); continue
+            f = {1: [0.0, 0], -1: [0.0, 0]}
+            for payload, result in db.execute("SELECT payload, result FROM tasks WHERE job_id=? AND status='done'", (jid,)).fetchall():
+                p = json.loads(payload)
+                if p['iteration'] == k:
+                    r = json.loads(result)
+                    f[p['sign']][0] += r['score']; f[p['sign']][1] += r['games']
+            if not f[1][1] or not f[-1][1]:
+                db.execute('COMMIT'); continue
+            fp, fm = f[1][0] / f[1][1], f[-1][0] / f[-1][1]
+            ck = params['c'] / (k + 1) ** params['gamma']
+            ak = params['a'] / (k + 1 + params['A']) ** params['alpha']
+            for n, d in params['delta'].items():
+                g = (fp - fm) / (2 * ck * d)
+                params['x'][n] = min(params['high'], max(params['low'], params['x'][n] + ak * g))
+            params['history'].append(dict(iteration=k, plus=fp, minus=fm, games=f[1][1] + f[-1][1],
+                                           x=dict(params['x'])))
+            params['iteration'] = k + 1
+            if params['iteration'] >= params['iterations']:
+                params['finished'] = True
+            else:
+                start = one(db, 'SELECT COALESCE(MAX(idx)+1, 0) FROM tasks WHERE job_id=?', (jid,))[0]
+                add_tasks(db, jid, _tune_iteration(params), start)
+            db.execute('UPDATE jobs SET params=? WHERE id=?', (json.dumps(params), jid))
+            db.execute('COMMIT')
+            stepped.append((jid, k, fp, fm))
+        except BaseException:
+            db.execute('ROLLBACK')
+            raise
+    return stepped
+
+
+PAYLOADS = {'benchmark': benchmark_payloads, 'hunt': hunt_payloads, 'deep-hunt': deep_hunt_payloads,
+            'tune': tune_payloads}
 HUNTS = ('hunt', 'deep-hunt')
 
 
@@ -216,6 +315,10 @@ def run_payload(payload):
     import gwentsim.response_v8 as v8
     v8.VARIANT = frozenset(f for f in flags.split('+') if f)
     payload = dict(payload, policy=policy)
+    if payload.get('weights') and payload.get('kind') not in ('tune-eval',):
+        return _with_weights(payload)
+    if payload.get('kind') == 'tune-eval':
+        return tune_eval(payload)
     if payload.get('kind') in HUNTS:
         import blunder_hunter
         report = (blunder_hunter.deep_hunt if payload['kind'] == 'deep-hunt' else blunder_hunter.hunt)(payload)
@@ -225,7 +328,8 @@ def run_payload(payload):
     profile = payload['profile'] if isinstance(payload['profile'], int) else PROFILES.index(payload['profile'])
     if payload['source'] == 'player':
         from evaluate_pool import group_player
-        trials, error = group_player((payload['pair'], payload['seed'], payload['swap'], payload['policy'], profile))
+        trials, error = group_player((payload['pair'], payload['seed'], payload['swap'], payload['policy'], profile,
+                                      payload.get('npc_decks')))
         if error:
             raise LabError(json.dumps(error))
         base, cand = trials
@@ -245,6 +349,45 @@ def run_payload(payload):
         if 'candidatePlayer' in t:
             out['seats'].append(dict(seat=t['candidatePlayer'], winner=t['winner'], won=t['candidateWon']))
     return out
+
+
+def _with_weights(payload):
+    """Benchmark group with tuned weights on the candidate side only (NPC side for player decks)."""
+    from gwentsim import tuning
+    from evaluate_pool import player_seats
+    weights = payload.pop('weights')
+    seats = (0, 1) if payload['source'] == 'pool' else (player_seats(payload['pair'], payload['swap'])[1],)
+    tuning.SEAT_PARAMS.clear()
+    tuning.SEAT_PARAMS.update({seat: weights for seat in seats})
+    try:
+        return run_payload(payload)
+    finally:
+        tuning.SEAT_PARAMS.clear(); tuning.reset()
+
+
+def tune_eval(payload):
+    """Score of the tuned V8 (its weights on the candidate/NPC seat only) on one matchup."""
+    from gwentsim import tuning
+    profile = PROFILES.index(payload['profile'])
+    score = games = 0.0
+    try:
+        if payload['source'] == 'pool':
+            from evaluate_pool import run
+            for seat in (0, 1):
+                tuning.SEAT_PARAMS.clear(); tuning.SEAT_PARAMS[seat] = payload['params']
+                r = run(payload['pair'], payload['seed'], payload['swap'], seat, 'response-v8', profile)
+                score += 1.0 if r['candidateWon'] else 0.5 if r['winner'] not in (0, 1) else 0.0
+                games += 1
+        else:
+            from evaluate_pool import player_seats, run_player
+            _, npc = player_seats(payload['pair'], payload['swap'])
+            tuning.SEAT_PARAMS.clear(); tuning.SEAT_PARAMS[npc] = payload['params']
+            r = run_player(payload['pair'], payload['seed'], payload['swap'], 'response-v8', profile)
+            score += 1.0 if r['winner'] == npc else 0.5 if r['winner'] not in (0, 1) else 0.0
+            games += 1
+    finally:
+        tuning.SEAT_PARAMS.clear(); tuning.reset()
+    return dict(score=score, games=games)
 
 
 def claim(db, worker):
@@ -334,6 +477,9 @@ def job_summary(db, job, max_findings=30):
         r = json.loads(result)
         if started and finished:
             durations.append(finished - started)
+        if kind == 'tune':
+            matches += r['games']
+            continue
         if kind in HUNTS:
             cand += r['score']; matches += 1; losses += r['score'] < 1
             p = json.loads(payload)

@@ -107,6 +107,7 @@ class Manager:
             self.auto_pause = 'disk' if self.lab_bytes > cap else 'game' if self.game_running() else None
             if not self.auto_pause and not core.get(self.db, 'paused'):
                 core.refill(self.db)
+                core.tune_step(self.db)
             self.reconcile()
             time.sleep(3)
 
@@ -195,10 +196,19 @@ def make_handler(manager):
                     params = dict(source=body['source'], policy=body.get('policy', 'response-v8'),
                                   profile=body.get('profile', 'hard'), seeds=[int(s) for s in body['seeds']],
                                   continuous=bool(body.get('continuous')))
+                    if body.get('player_filter'):
+                        params['player_filter'] = body['player_filter']
+                    if body.get('npc_decks'):
+                        params['npc_decks'] = body['npc_decks']
+                    if body.get('weights'):
+                        params['weights'] = {k: float(v) for k, v in body['weights'].items()}
                     if body['source'] in ('pool', 'player'):
                         params['pairs'] = int(body['pairs']) if body.get('pairs') else None
                     else:
                         params['records'] = body['records']
+                    if kind == 'tune':
+                        params = dict(profile=body.get('profile', 'hard'), policy='response-v8',
+                                      **{k: body[k] for k in core.TUNE_DEFAULTS if k in body})
                     core.create_job(db, body.get('name') or kind, kind, params)
                 elif self.path == '/api/quit':
                     core.set_(db, 'paused', True)

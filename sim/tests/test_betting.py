@@ -99,3 +99,23 @@ def test_repaired_requirements_mirror_better_ai_on():
     assert AcceptedBet(50, True).dynamic_requirement(15, 1, repaired=True) == 150
     assert AcceptedBet(25, True).dynamic_requirement(15, 1, repaired=True) == 230
     assert AcceptedBet(25, True).dynamic_requirement(3, 1, repaired=True) == 155 + 80
+
+
+def test_better_ai_off_restores_vanilla_wagers():
+    from gwentsim.betting import effective_betting_settings
+    settings, _ = normalize_betting_settings(dict(GwaiMaxBet='4', GwaiStakesStronger='true'))
+    assert effective_betting_settings(settings, True) == settings
+    off = effective_betting_settings(settings, False)
+    assert off.max_bet == 10 and not off.stronger_opponent
+
+
+def test_ws_wagers_follow_the_main_switch():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2] / 'mod/settings'
+    betting = (root / 'modGwentAISettings/content/scripts/local/gwai_betting.ws').read_text()
+    for name in ('GwaiSettingsMaxBet', 'GwaiSettingsStakesStronger'):
+        body = betting[betting.index('function %s(' % name):]
+        body = body[:body.index('\n}')]
+        assert 'if (!GwaiSettingsEnabled())' in body
+    locks = (root / 'modGwentAISettings/content/scripts/local/gwai_settings.ws').read_text()
+    assert "NameToFlashUInt('GwaiMaxBet')" in locks and "NameToFlashUInt('GwaiStakesStronger')" in locks

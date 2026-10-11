@@ -4,6 +4,7 @@ The move transitions are deterministic where supported. Opponent replies and fut
 rounds use visible-data heuristics, not solved win probabilities. No hidden hand or
 future draw order is sampled. Re-plan after every real turn.
 """
+from . import tuning
 from dataclasses import dataclass,asdict,replace
 from math import exp,sqrt
 from . import constants as C
@@ -72,13 +73,14 @@ def faction_carry(position,side,faction,next_round):
 
 
 def utility(position,context,depth,reserve,opponent_mean,passing=False,opponent_reserve=None):
+    T=tuning.ACTIVE
     own=position.player;other=1-own;scores=position.scores()
     replies=0 if context.opponent_passed else max(0,depth-1)
     count=max(0,context.opponent_hand_count-replies)
     gap=scores[own]-scores[other]-replies*opponent_mean
-    leader_credit=3 if context.opponent_leader_available else 0
+    leader_credit=T['leader_credit'] if context.opponent_leader_available else 0
     opposing=(count*opponent_mean if opponent_reserve is None else opponent_reserve)+leader_credit
-    scale=4+sqrt(max(1,count))*2
+    scale=T['scale_base']+sqrt(max(1,count))*T['scale_slope']
     tied_match_win=(gap==0 and context.opponent_losses>=1 and context.own_losses==0 and
         not (context.opponent_faction==C.FactionId_Nilfgaard and context.own_faction!=context.opponent_faction))
     wins=gap>=0 if context.wins_ties else gap>0
@@ -91,11 +93,11 @@ def utility(position,context,depth,reserve,opponent_mean,passing=False,opponent_
     elif passing:
         # Passing while behind gives the opponent a secured round. While ahead,
         # account for the visible hand count and uncertain remaining strength.
-        round_prospect=sigmoid((gap-opposing)/scale) if wins else 0
+        round_prospect=sigmoid((gap-T['pass_risk']*opposing)/scale) if wins else 0
     else:
         # Initiative plus remaining resources is a heuristic, not a calibrated
         # probability of eventually winning this round.
-        round_prospect=sigmoid((gap+(reserve-opposing)*0.25)/scale)
+        round_prospect=sigmoid((gap+(reserve-opposing)*T['reserve_weight'])/scale)
     if context.opponent_losses>=1 and context.own_losses>=1 or context.round_index==2:
         if context.opponent_passed and gap==0 and (
             context.own_faction==context.opponent_faction or
@@ -117,8 +119,8 @@ def utility(position,context,depth,reserve,opponent_mean,passing=False,opponent_
         return sigmoid((own_future-other_future)/scale)
     # Winning once permits a later concession; losing requires two wins. The
     # reserve advantage is evaluated separately for those outcomes.
-    future_leading=sigmoid((own_future+own_draw-other_future+opponent_mean)/scale)
-    future_trailing=sigmoid((own_future-other_future-enemy_draw-opponent_mean)/scale)
+    future_leading=sigmoid((own_future+own_draw-other_future+T['future_edge']*opponent_mean)/scale)
+    future_trailing=sigmoid((own_future-other_future-enemy_draw-T['future_edge']*opponent_mean)/scale)
     if context.opponent_losses>=1:
         return round_prospect+(1-round_prospect)*future_leading
     if context.own_losses>=1:
