@@ -1,0 +1,18 @@
+{
+  "panel_mods": "Mods",
+  "panel_gwentai": "Better Gwent AI",
+  "option_gwai_enabled": "Better Gwent AI",
+  "option_gwai_difficulty": "Difficulty",
+  "preset_value_gwai_easy": "Easy",
+  "preset_value_gwai_medium": "Medium",
+  "preset_value_gwai_hard": "Hard",
+  "preset_value_gwai_expert": "Expert",
+  "option_gwai_autoplay": "AI plays for you",
+  "option_gwai_max_bet": "Gwent max bet",
+  "preset_value_gwai_bet_vanilla": "Vanilla (10)",
+  "preset_value_gwai_bet_25": "25",
+  "preset_value_gwai_bet_50": "50",
+  "preset_value_gwai_bet_100": "100",
+  "preset_value_gwai_bet_150": "150",
+  "option_gwai_stakes_stronger": "Higher stakes, stronger opponent"
+}

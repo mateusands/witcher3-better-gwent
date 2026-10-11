@@ -1,0 +1,85 @@
+{
+  "feature_names": [
+    "score_gap",
+    "own_score",
+    "opp_score",
+    "own_board_units",
+    "opp_board_units",
+    "weather_melee",
+    "weather_ranged",
+    "weather_siege",
+    "own_hand_count",
+    "opp_hand_count",
+    "hand_count_diff",
+    "own_hand_total_power",
+    "own_hand_hero_count",
+    "own_hand_spies",
+    "own_hand_medics",
+    "own_hand_scorch",
+    "own_hand_decoys",
+    "grave_spies_target",
+    "grave_high_power_target",
+    "own_leader_available",
+    "opp_leader_available",
+    "round_index",
+    "own_rounds_won",
+    "opp_rounds_won",
+    "opp_passed"
+  ],
+  "weights": [
+    0.09106336490751113,
+    0.02769033437972916,
+    -0.01784134807402636,
+    -0.022824216857497966,
+    0.024293774746831143,
+    0.003964456635746112,
+    -0.026128332279894965,
+    0.0014691990463543572,
+    0.11162513646483913,
+    -0.21031308962334452,
+    0.3219382260881833,
+    0.12334518495592087,
+    0.11490911112678552,
+    0.17844240085512603,
+    0.060849357659450314,
+    0.1162719198799568,
+    0.0366200186494408,
+    0.02903843165152458,
+    0.026307789959787477,
+    0.05696217308379857,
+    -0.0696296783858248,
+    0.06163767969856505,
+    0.14368280890924198,
+    -0.08204512921067698,
+    0.16726049417748368
+  ],
+  "bias": -0.016619115154208976,
+  "calib_a": 8.880418994025371,
+  "calib_b": -0.6472557031488808,
+  "test_metrics": {
+    "baseline_raw": {
+      "log_loss": 0.6831483569313777,
+      "brier_score": 0.24501832097987972,
+      "accuracy": 0.5821596244131455,
+      "ece": 0.06356172586996595
+    },
+    "baseline_calibrated": {
+      "log_loss": 0.6584109091421004,
+      "brier_score": 0.2342689401273075,
+      "accuracy": 0.5751173708920188,
+      "ece": 0.08391671314586543
+    },
+    "full_model_raw": {
+      "log_loss": 0.6704385132307409,
+      "brier_score": 0.23873142108192397,
+      "accuracy": 0.6126760563380281,
+      "ece": 0.08634238602126998
+    },
+    "full_model_calibrated": {
+      "log_loss": 0.6256672292255376,
+      "brier_score": 0.22229257064213087,
+      "accuracy": 0.607981220657277,
+      "ece": 0.0822702592759255
+    }
+  }
+}

@@ -1,0 +1,62 @@
+# Allowlist: everything is ignored unless listed below. Review provenance before
+# adding a path: no game file or game content (and no third-party tool) may enter
+# this repository. See docs/PUBLICATION_SCOPE.md.
+/*
+!/.gitignore
+!/LICENSE
+!/NOTICE.md
+!/README.md
+!/docs/
+# Only the concise docs are public; research notes and the working log stay local.
+/docs/*
+!/docs/README.md
+!/docs/TESTING.md
+!/docs/RESEARCH.md
+!/docs/DEVELOPMENT.md
+!/docs/PUBLICATION_SCOPE.md
+!/mod/
+!/lab/
+!/tools/
+!/sim/
+
+# ---- Game content: never commit -------------------------------------------------
+# Local game files, records, evaluations, packaged builds and backups live in
+# /game, /dist and /backups (ignored above). Inside allowed folders:
+
+# Local rules engine of the simulator.
+/sim/gwentsim/constants.py
+/sim/gwentsim/as3.py
+/sim/gwentsim/sort.py
+/sim/gwentsim/gwint/__init__.py
+/sim/gwentsim/gwint/ai_player_controller.py
+/sim/gwentsim/gwint/base_player_controller.py
+/sim/gwentsim/gwint/card_effect_manager.py
+/sim/gwentsim/gwint/card_instance.py
+/sim/gwentsim/gwint/card_leader_instance.py
+/sim/gwentsim/gwint/card_manager.py
+/sim/gwentsim/gwint/card_template.py
+/sim/gwentsim/gwint/finite_state_machine.py
+/sim/gwentsim/gwint/gwint_deck.py
+/sim/gwentsim/gwint/gwint_game_flow_controller.py
+/sim/gwentsim/gwint/headless.py
+/sim/gwentsim/gwint/match.py
+/sim/gwentsim/gwint/small.py
+
+# Built mod packages contain the modified game interface file.
+*.bundle
+*.store
+*.swf
+*.redswf
+*.gfx
+*.zip
+
+# Third-party tool (own license, installed separately).
+/tools/ffdec
+
+# ---- Generated / local ----------------------------------------------------------
+__pycache__/
+*.pyc
+*.w3strings
+.pytest_cache/
+*.sqlite3
+*.sqlite3-*

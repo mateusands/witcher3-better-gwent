@@ -1,0 +1,172 @@
+      // ---- Gwent AI recorder ----------------------------------------------------------
+      // Records one match for the simulator: card templates, both decks, every Math.random
+      // value (with its call site), the AI decisions and a board snapshot per turn.
+      // Records are ";"-terminated, packed into chunks of up to 850 characters and sent to the
+      // script event CR4GwintGameMenu.OnGwaiRec(seq, chunk), which stores them in
+      // dx12user.settings. OnGwaiEnd(chunks, reason) closes the match.
+
+      public static var gwaiBuf:String = "";
+
+      public static var gwaiSeq:int = 0;
+
+      public static var gwaiEnded:Boolean = false;
+
+      public static function gwaiRnd(tag:String) : Number
+      {
+         var v:Number = Math.random();
+         gwaiRec("R" + tag + ":" + Math.round(v * 4294967295));
+         return v;
+      }
+
+      public static function gwaiRec(s:String) : void
+      {
+         // The recorder must never break a real match: every failure is swallowed.
+         try
+         {
+            gwaiBuf += s + ";";
+            while(gwaiBuf.length >= 850)
+            {
+               gwaiSend(gwaiBuf.substr(0,850));
+               gwaiBuf = gwaiBuf.substr(850);
+            }
+         }
+         catch(e:Error)
+         {
+         }
+      }
+
+      private static function gwaiSend(chunk:String) : void
+      {
+         if(GwintGameMenu.mSingleton)
+         {
+            GwintGameMenu.mSingleton.dispatchEvent(new GameEvent(GameEvent.CALL,"OnGwaiRec",[gwaiSeq,chunk]));
+         }
+         gwaiSeq++;
+      }
+
+      public static function gwaiEnd(reason:String) : void
+      {
+         if(gwaiEnded)
+         {
+            return;
+         }
+         // A surrender can still be cancelled in its confirmation popup: flush what we have,
+         // but keep recording. Only the final result closes the record for good.
+         gwaiEnded = reason != "quit";
+         gwaiRec("E" + reason);
+         if(gwaiBuf.length > 0)
+         {
+            gwaiSend(gwaiBuf);
+            gwaiBuf = "";
+         }
+         if(GwintGameMenu.mSingleton)
+         {
+            GwintGameMenu.mSingleton.dispatchEvent(new GameEvent(GameEvent.CALL,"OnGwaiEnd",[gwaiSeq,reason]));
+         }
+      }
+
+      public static function gwaiArr(a:*) : String
+      {
+         var s:String = "";
+         var i:int = 0;
+         if(a == null)
+         {
+            return "null";
+         }
+         for(i = 0; i < a.length; i++)
+         {
+            s += (i > 0 ? "." : "") + a[i];
+         }
+         return s;
+      }
+
+      public static function gwaiDeck(player:int, d:GwintDeck) : void
+      {
+         gwaiRec("D" + player + ":" + d.deckName + ":" + d.selectedKingIndex + ":" + d.specialCard + ":" + gwaiArr(d.cardIndices) + ":" + gwaiArr(d.dynamicCardRequirements) + ":" + gwaiArr(d.dynamicCards));
+      }
+
+      public static function gwaiInst(c:CardInstance) : String
+      {
+         return c == null ? "-" : c.templateId + "." + c.instanceId;
+      }
+
+      public static function gwaiPlay(player:int, tx:CardTransaction) : void
+      {
+         try
+         {
+            gwaiRec("H" + player + ":" + (tx == null ? "none" : gwaiInst(tx.sourceCardInstanceRef) + ":" + tx.targetSlotID + ":" + tx.targetPlayerID + ":" + gwaiInst(tx.targetCardInstanceRef)));
+         }
+         catch(e:Error)
+         {
+            gwaiRec("X" + "play");
+         }
+      }
+
+      public static function gwaiTx(player:int, attitude:int, tx:CardTransaction) : void
+      {
+         if(tx == null)
+         {
+            gwaiRec("A" + player + ":" + attitude + ":none");
+         }
+         else
+         {
+            gwaiRec("A" + player + ":" + attitude + ":" + gwaiInst(tx.sourceCardInstanceRef) + ":" + tx.targetSlotID + ":" + tx.targetPlayerID + ":" + gwaiInst(tx.targetCardInstanceRef) + ":" + tx.powerChangeResult + ":" + tx.strategicValue);
+         }
+      }
+
+      public function gwaiSnap(tag:String) : void
+      {
+         try
+         {
+            this.gwaiSnapImpl(tag);
+         }
+         catch(e:Error)
+         {
+            gwaiRec("X" + tag);
+         }
+      }
+
+      private function gwaiSnapImpl(tag:String) : void
+      {
+         var lists:Array = [CARD_LIST_LOC_HAND,CARD_LIST_LOC_GRAVEYARD,CARD_LIST_LOC_SEIGE,CARD_LIST_LOC_RANGED,CARD_LIST_LOC_MELEE,CARD_LIST_LOC_SEIGEMODIFIERS,CARD_LIST_LOC_RANGEDMODIFIERS,CARD_LIST_LOC_MELEEMODIFIERS,CARD_LIST_LOC_LEADER];
+         var s:String = "S" + tag;
+         var p:int = 0;
+         var l:int = 0;
+         var i:int = 0;
+         var list:Vector.<CardInstance> = null;
+         var leader:CardLeaderInstance = null;
+         for(p = 0; p < 2; p++)
+         {
+            leader = this.getCardLeader(p);
+            s += "|" + p + "~sc=" + this.currentPlayerScores[p] + "~ld=" + (leader == null ? "-" : (leader.canBeUsed ? "1" : "0") + (leader.hasBeenUsed ? "1" : "0"));
+            for(l = 0; l < lists.length; l++)
+            {
+               list = this.getCardInstanceList(lists[l],p);
+               s += "~" + lists[l] + "=";
+               if(list != null)
+               {
+                  for(i = 0; i < list.length; i++)
+                  {
+                     s += (i > 0 ? "," : "") + gwaiInst(list[i]);
+                  }
+               }
+            }
+            s += "~d=" + gwaiArr(this.playerDeckDefinitions[p].cardIndicesInDeck);
+         }
+         list = this.getCardInstanceList(CARD_LIST_LOC_WEATHERSLOT,PLAYER_INVALID);
+         s += "|w=";
+         if(list != null)
+         {
+            for(i = 0; i < list.length; i++)
+            {
+               s += (i > 0 ? "," : "") + gwaiInst(list[i]);
+            }
+         }
+         s += "|rr=";
+         for(i = 0; i < this.roundResults.length; i++)
+         {
+            s += (i > 0 ? "," : "") + (this.roundResults[i].played ? this.roundResults[i].getPlayerScore(0) + "/" + this.roundResults[i].getPlayerScore(1) + "/" + this.roundResults[i].winningPlayer : "-");
+         }
+         gwaiRec(s);
+      }
+

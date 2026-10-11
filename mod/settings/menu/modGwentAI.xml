@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Source draft for Options > Mods > Better Gwent AI.
+     Requires settings initialization, English w3strings and a WitcherScript hook
+     that disables sub-options while GwaiEnabled is off. Not installed. -->
+<UserConfig>
+    <Group id="GwentAI" displayName="Mods.gwentai">
+        <VisibleVars>
+            <Var id="GwaiEnabled" displayName="gwai_enabled" displayType="TOGGLE"/>
+            <Var id="GwaiDifficulty" displayName="gwai_difficulty" displayType="OPTIONS" tags="indent">
+                <OptionsArray>
+                    <Option id="0" displayName="gwai_easy">
+                        <Entry varId="GwaiDifficulty" value="0"/>
+                    </Option>
+                    <Option id="1" displayName="gwai_medium">
+                        <Entry varId="GwaiDifficulty" value="1"/>
+                    </Option>
+                    <Option id="2" displayName="gwai_hard">
+                        <Entry varId="GwaiDifficulty" value="2"/>
+                    </Option>
+                    <Option id="3" displayName="gwai_expert">
+                        <Entry varId="GwaiDifficulty" value="3"/>
+                    </Option>
+                </OptionsArray>
+            </Var>
+            <Var id="GwaiAutoPlay" displayName="gwai_autoplay" displayType="TOGGLE" tags="indent"/>
+            <Var id="GwaiMaxBet" displayName="gwai_max_bet" displayType="OPTIONS">
+                <OptionsArray>
+                    <Option id="0" displayName="gwai_bet_vanilla"><Entry varId="GwaiMaxBet" value="0"/></Option>
+                    <Option id="1" displayName="gwai_bet_25"><Entry varId="GwaiMaxBet" value="1"/></Option>
+                    <Option id="2" displayName="gwai_bet_50"><Entry varId="GwaiMaxBet" value="2"/></Option>
+                    <Option id="3" displayName="gwai_bet_100"><Entry varId="GwaiMaxBet" value="3"/></Option>
+                    <Option id="4" displayName="gwai_bet_150"><Entry varId="GwaiMaxBet" value="4"/></Option>
+                </OptionsArray>
+            </Var>
+            <Var id="GwaiStakesStronger" displayName="gwai_stakes_stronger" displayType="TOGGLE"/>
+        </VisibleVars>
+    </Group>
+</UserConfig>

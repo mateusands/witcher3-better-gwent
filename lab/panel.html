@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gwent AI Lab</title>
+<style>
+  :root { --bg:#16130f; --panel:#221d17; --line:#3a3128; --text:#ece3d4; --muted:#a8998a; --gold:#d9a646;
+          --good:#6fbf73; --bad:#d46a5c; --bar:#2d261f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:16px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  h1 { font-size:20px; margin:0; color:var(--gold); letter-spacing:.5px; }
+  h2 { font-size:15px; margin:0 0 12px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; padding:16px 24px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .wide { grid-column:1/-1; }
+  .state { padding:4px 12px; border-radius:20px; font-weight:600; background:var(--bar); }
+  .state.running { color:var(--good); } .state.paused { color:var(--muted); } .state.auto { color:var(--gold); }
+  button { background:var(--gold); color:#1b1610; border:0; border-radius:8px; padding:8px 16px; font-weight:700; cursor:pointer; }
+  button.secondary { background:var(--bar); color:var(--text); border:1px solid var(--line); }
+  button:disabled { opacity:.4; cursor:default; }
+  .row { display:flex; align-items:center; gap:10px; margin:8px 0; flex-wrap:wrap; }
+  .label { width:120px; color:var(--muted); }
+  .bar { flex:1; min-width:140px; height:14px; background:var(--bar); border-radius:7px; overflow:hidden; }
+  .bar > div { height:100%; background:var(--gold); transition:width .6s; }
+  .value { min-width:150px; text-align:right; font-variant-numeric:tabular-nums; }
+  .job { border-top:1px solid var(--line); padding:12px 0; }
+  .job:first-child { border-top:0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .good { color:var(--good); } .bad { color:var(--bad); }
+  input, select { background:var(--bar); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  input[type=range] { flex:1; }
+  form .row label { width:120px; color:var(--muted); }
+  details summary { cursor:pointer; color:var(--gold); }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
+  td, th { border-top:1px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gwent AI Lab</h1>
+  <span id="state" class="state">…</span>
+  <button id="resume">Resume</button>
+  <button id="pause" class="secondary">Pause</button>
+  <span class="muted" id="root"></span>
+  <button id="quit" class="secondary" style="margin-left:auto">Quit lab</button>
+</header>
+<main>
+  <section>
+    <h2>Machine</h2>
+    <div class="row"><span class="label">CPU</span><div class="bar"><div id="cpuBar"></div></div><span class="value" id="cpu"></span></div>
+    <div class="row"><span class="label">Memory</span><div class="bar"><div id="ramBar"></div></div><span class="value" id="ram"></span></div>
+    <div class="row"><span class="label">GPU</span><div class="bar"><div id="gpuBar"></div></div><span class="value" id="gpu"></span></div>
+    <div class="row"><span class="label">Disk (lab)</span><div class="bar"><div id="diskBar"></div></div><span class="value" id="disk"></span></div>
+  </section>
+  <section>
+    <h2>Limits</h2>
+    <div class="row"><span class="label">Workers</span><input type="range" id="workers" min="1" max="12"><span class="value" id="workersValue"></span></div>
+    <div class="row"><span class="label">Disk cap</span><input type="number" id="cap" min="1" style="width:90px"> GB
+      <button class="secondary" id="saveCap">Save</button></div>
+    <div class="row"><span class="label">Auto-pause</span><span class="muted" id="pauseOn"></span></div>
+    <div class="row"><span class="label">After reboot</span><span class="muted" id="autoresume"></span></div>
+    <div class="row"><span class="label">Engine</span><span class="muted" id="engine"></span></div>
+  </section>
+  <section class="wide">
+    <h2>Jobs</h2>
+    <div id="jobs"><span class="muted">No jobs yet.</span></div>
+  </section>
+  <section class="wide">
+    <details><summary>New job (advanced)</summary>
+    <form id="newJob">
+      <div class="row"><label>Kind</label>
+        <select id="jKind"><option value="benchmark">Benchmark (Better AI vs native)</option>
+          <option value="hunt">Blunder hunt (replay lost matches)</option>
+          <option value="deep-hunt">Deep blunder hunt (all matches, every move)</option></select></div>
+      <div class="row"><label>Name</label><input id="jName" value="pool benchmark"></div>
+      <div class="row"><label>Source</label>
+        <select id="jSource"><option value="pool">Deck pool (all factions × leaders)</option>
+          <option value="player">Player-style decks vs NPC decks</option></select></div>
+      <div class="row"><label>Difficulty</label>
+        <select id="jProfile"><option>easy</option><option>medium</option><option selected>hard</option><option>expert</option></select></div>
+      <div class="row"><label>Seeds</label><input id="jSeeds" value="500"> <span class="muted">space separated, use fresh ones</span></div>
+      <div class="row"><label>Pairs</label><input id="jPairs" type="number" min="1" max="110" value="110" style="width:90px"> <span class="muted">of 110</span></div>
+      <div class="row"><label>Continuous</label><input id="jCont" type="checkbox"> <span class="muted">refill with the next seed when finished</span></div>
+      <div class="row"><button type="submit">Add job</button><span class="muted" id="jMsg"></span></div>
+    </form>
+    </details>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const gb = b => (b / 1024 ** 3).toFixed(1) + ' GB';
+const pct = (a, b) => b ? Math.min(100, 100 * a / b) : 0;
+const dur = s => s == null ? '—' : s < 90 ? Math.round(s) + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h';
+async function post(path, body) {
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  if (!r.ok) throw new Error((await r.json()).error); refresh();
+}
+let editingWorkers = false; const openFindings = new Set();
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function refresh() {
+  let s; try { s = await (await fetch('/api/status')).json(); } catch (e) { $('state').textContent = 'offline'; return; }
+  const st = $('state'); st.textContent = s.state;
+  st.className = 'state ' + (s.state === 'running' ? 'running' : s.state === 'paused' ? 'paused' : 'auto');
+  $('resume').disabled = !s.settings.paused; $('pause').disabled = s.settings.paused;
+  $('root').textContent = 'data: ' + s.system.dataRoot;
+  const sys = s.system;
+  $('cpuBar').style.width = sys.cpu + '%';
+  $('cpu').textContent = sys.cpu.toFixed(0) + '% total · lab ' + (sys.workerCpu / s.cpuCount).toFixed(0) + '%';
+  $('ramBar').style.width = pct(sys.ramUsed, sys.ramTotal) + '%';
+  $('ram').textContent = gb(sys.ramUsed) + ' / ' + gb(sys.ramTotal) + ' · lab ' + gb(sys.workerRam);
+  if (sys.gpu) { $('gpuBar').style.width = sys.gpu.busy + '%';
+    $('gpu').textContent = sys.gpu.busy + '% · VRAM ' + gb(sys.gpu.vramUsed) + ' / ' + gb(sys.gpu.vramTotal); }
+  else $('gpu').textContent = 'not available';
+  const cap = s.settings.disk_cap_gb * 1024 ** 3;
+  $('diskBar').style.width = pct(sys.labBytes, cap) + '%';
+  $('disk').textContent = gb(sys.labBytes) + ' of ' + s.settings.disk_cap_gb + ' GB cap · ' + gb(sys.diskFree) + ' free';
+  $('workers').max = s.cpuCount;
+  if (!editingWorkers) $('workers').value = s.settings.workers;
+  $('workersValue').textContent = $('workers').value + ' of ' + s.cpuCount + ' cores (' + s.activeWorkers + ' active)';
+  if (document.activeElement !== $('cap')) $('cap').value = s.settings.disk_cap_gb;
+  $('pauseOn').textContent = (s.settings.pause_on_processes || []).join(', ') || 'off';
+  $('autoresume').textContent = s.settings.autoresume ? 'continues on its own' : 'stays paused until Resume';
+  $('engine').textContent = /pypy/i.test(s.workerEngine) ? 'PyPy (fast)' : s.workerEngine;
+  $('jobs').innerHTML = s.jobs.length ? '' : '<span class="muted">No jobs yet.</span>';
+  for (const j of s.jobs) {
+    const div = document.createElement('div'); div.className = 'job';
+    const p = j.params, edge = j.candidateScore - j.nativeScore;
+    const seeds = p.seeds.length > 4 ? p.seeds[0] + '…' + p.seeds[p.seeds.length - 1] : p.seeds.join(' ');
+    const errs = j.errors ? ` · <span class="bad">${j.errors} errors</span> ${esc(j.errorSamples[0] || '')}` : '';
+    const stats = j.kind.endsWith('hunt')
+      ? `${j.matches} matches · ${j.kind === 'hunt' ? j.lossesHunted + ' lost/drawn replayed' : 'every match analysed'} · <b>${j.findingCount}</b> costly decisions found${errs}`
+      : `${j.matches} matches · Better AI <b>${j.candidateScore}</b> vs native <b>${j.nativeScore}</b>
+        <span class="${edge >= 0 ? 'good' : 'bad'}">(${edge >= 0 ? '+' : ''}${edge.toFixed(1)})</span>${errs}`;
+    div.innerHTML = `<div class="row"><b>${esc(j.name)}</b><span class="muted">#${j.id} · ${j.kind} · ${p.source} · ${p.profile} · seeds ${seeds}${p.continuous ? ' · continuous' : ''} · ${j.status}</span></div>
+      <div class="row"><div class="bar"><div style="width:${pct(j.done, j.total)}%"></div></div>
+        <span class="value">${j.done} / ${j.total} tasks${j.running ? ' · ' + j.running + ' in progress' : ''} · ETA ${dur(j.etaSeconds)}</span></div>
+      <div class="row"><span class="muted">${stats}</span></div>`;
+    if (j.findings && j.findings.length) {
+      const rows = j.findings.map(f => `<tr><td>${esc(f.decks.join(' vs '))}<br><span class="muted">pair ${f.pair} · seed ${f.seed} · seat ${f.seat}</span></td>
+        <td>R${f.round} · ${f.ownScore}–${f.opponentScore} · hand ${f.ownHand}/${f.opponentHand}${f.opponentPassed ? ' · opp. passed' : ''}</td>
+        <td class="bad">${esc(f.chosen)} <span class="muted">${(100 * f.chosenValue).toFixed(0)}%</span></td>
+        <td class="good">${esc(f.better)} <span class="muted">${(100 * f.betterValue).toFixed(0)}%</span></td></tr>`).join('');
+      const d = document.createElement('details'); d.open = openFindings.has(j.id);
+      d.ontoggle = () => d.open ? openFindings.add(j.id) : openFindings.delete(j.id);
+      d.innerHTML = `<summary>Costly decisions (worst first)</summary><table><tr><th>Match</th><th>Moment</th><th>Played</th><th>Better</th></tr>${rows}</table>`;
+      div.appendChild(d);
+    }
+    const btn = document.createElement('button'); btn.className = 'secondary';
+    btn.textContent = j.status === 'active' ? 'Hold job' : 'Activate job';
+    btn.onclick = () => post('/api/job/status', {id:j.id, status: j.status === 'active' ? 'held' : 'active'});
+    if (j.done < j.total) div.appendChild(btn);
+    $('jobs').appendChild(div);
+  }
+}
+$('resume').onclick = () => post('/api/resume');
+$('pause').onclick = () => post('/api/pause');
+$('quit').onclick = async () => { if (confirm('Pause and close Gwent AI Lab? Progress is saved.')) {
+  try { await post('/api/quit'); } catch (e) {} document.body.innerHTML = '<p style="padding:24px">Gwent AI Lab closed. Progress is saved; open it again from the menu.</p>'; } };
+$('workers').oninput = () => { editingWorkers = true; $('workersValue').textContent = $('workers').value + ' cores'; };
+$('workers').onchange = async () => { await post('/api/settings', {workers: +$('workers').value}); editingWorkers = false; };
+$('saveCap').onclick = () => post('/api/settings', {disk_cap_gb: +$('cap').value});
+$('newJob').onsubmit = async e => {
+  e.preventDefault(); $('jMsg').textContent = 'creating…';
+  try {
+    await post('/api/job', {kind:$('jKind').value, name:$('jName').value, source:$('jSource').value, profile:$('jProfile').value,
+      seeds:$('jSeeds').value.trim().split(/\s+/), pairs:+$('jPairs').value, continuous:$('jCont').checked});
+    $('jMsg').textContent = 'added';
+  } catch (err) { $('jMsg').textContent = err.message; }
+};
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>

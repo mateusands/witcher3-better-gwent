@@ -1,0 +1,28 @@
+      // Observational Scorch trace. No animation or rule state is changed.
+      private var gwaiFrameNumber:uint = 0;
+
+      private function gwaiFrameTick(event:Event) : void
+      {
+         this.gwaiFrameNumber++;
+      }
+
+      private function gwaiTraceScorch(phase:String, fx:CardFX) : void
+      {
+         try
+         {
+            var className:String = getQualifiedClassName(fx).split("::").join(".");
+            if(className != "CardFXScorch")
+            {
+               return;
+            }
+            CardManager.gwaiRec("Y" + phase + ":" + fx.instanceID + ":" +
+               CardManager.gwaiInst(fx.associatedCardInstance) + ":" + getTimer() + ":" +
+               this.gwaiFrameNumber + ":" + fx.currentFrame + ":" + fx.totalFrames + ":" +
+               this.getChildIndex(fx) + ":" + this.numChildren + ":" + this.numEffectsPlaying);
+         }
+         catch(e:Error)
+         {
+            CardManager.gwaiRec("Xfxtrace");
+         }
+      }
+

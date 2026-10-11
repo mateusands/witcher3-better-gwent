@@ -1,0 +1,15 @@
+      // Start a separate complete recording on internal rematch. Observation only.
+      public function gwaiRecorderRestart() : void
+      {
+         CardManager.gwaiBuf = ""; CardManager.gwaiSeq = 0; CardManager.gwaiEnded = false;
+         if(GwintGameMenu.mSingleton)
+            GwintGameMenu.mSingleton.dispatchEvent(new GameEvent(GameEvent.CALL,"OnGwaiStart"));
+         CardManager.gwaiRec("I" + lastInstanceID);
+         for(var key:Object in this._cardTemplates)
+         {
+            var t:CardTemplate = this._cardTemplates[key];
+            CardManager.gwaiRec("T" + t.index + ":" + t.power + ":" + t.factionIdx + ":" + t.typeArray + ":" + CardManager.gwaiArr(t.effectFlags) + ":" + CardManager.gwaiArr(t.summonFlags));
+         }
+         CardManager.gwaiDeck(0,this.playerDeckDefinitions[0]); CardManager.gwaiDeck(1,this.playerDeckDefinitions[1]);
+         CardManager.gwaiRec("V" + [this.cardValues.weatherCardValue,this.cardValues.hornCardValue,this.cardValues.drawCardValue,this.cardValues.scorchCardValue,this.cardValues.summonClonesCardValue,this.cardValues.unsummonCardValue,this.cardValues.improveNeighboursCardValue,this.cardValues.nurseCardValue].join(","));
+      }
