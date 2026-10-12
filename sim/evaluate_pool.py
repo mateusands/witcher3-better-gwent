@@ -67,16 +67,20 @@ def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
     seats, npc_seat = player_seats(pair_index, swap, npc_mode, profile)
     decks = [seats[0].for_player(0), seats[1].for_player(1)]
     policies = tuple(npc_policy if p == npc_seat else 'response-v8' for p in (0, 1))
-    from contextlib import nullcontext
+    from contextlib import ExitStack
     import gwentsim.response_v8 as v8
-    hook = nullcontext()
+    from evaluate_mulligan import exchange_hook
+    hook = ExitStack()
+    if 'player-mulligan' in v8.VARIANT:
+        # As in the game, the player may exchange up to two opening cards (same evaluated rule),
+        # for the native and the Better AI NPC alike.
+        hook.enter_context(exchange_hook(1 - npc_seat, 'evaluated', seed + 7919, []))
     if npc_policy != 'vanilla' and v8.VARIANT & {'mulligan', 'mulligan-structural', 'mulligan-leader'}:
         # A/B "response-v8:mulligan": the Better AI NPC exchanges up to two opening cards (the
         # native NPC never does); own hand and remaining own-deck counts only.
-        from evaluate_mulligan import exchange_hook
         variant = ('structural' if 'mulligan-structural' in v8.VARIANT else
                    'leader' if 'mulligan-leader' in v8.VARIANT else 'evaluated')
-        hook = exchange_hook(npc_seat, variant, seed, [])
+        hook.enter_context(exchange_hook(npc_seat, variant, seed, []))
     with hook:
         recorder, flow = run_match(match.templates.values(), decks, match.card_values, SeededRandom(seed),
                                    coin_toss_choice=lambda: True, seat_policies=policies, candidate_profile=profile)

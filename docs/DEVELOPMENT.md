@@ -15,14 +15,18 @@ anything into the game.
 ## Build
 
 ```sh
-python3 tools/build_settings.py                  # menu labels -> *.w3strings
+python3 tools/build_settings.py                  # menu labels (18 languages) -> *.w3strings
 python3 tools/build_npc_decks.py                 # NPC deck table (needs the local vanilla XML)
-python3 tools/build_v8_core.py --with-recorder   # V8 AI + match recorder into the Gwent interface
-python3 tools/build_v8_package.py                # -> dist/BetterGwentAI-V8-5.01-test.zip
+python3 tools/build_v8_core.py                   # V8 AI into the Gwent interface
+python3 tools/build_v8_package.py release        # -> dist/BetterGwentAI-<version>.zip
+python3 tools/build_v8_core.py --with-recorder   # V8 AI + match recorder
+python3 tools/build_v8_package.py recorder       # -> dist/BetterGwentAI-<version>-recorder.zip
 ```
 
-Back up the game files and saves before installing a test build. With the mod Off the
-game behaves exactly as vanilla.
+The version is `VERSION` in `tools/build_settings.py`; menu translations are in
+`mod/settings/menu/labels.translations.json` (a missing text stays in English). Back up the
+game files and saves before installing a test build. With the mod Off the game behaves
+exactly as vanilla.
 
 ## Tests
 
@@ -32,8 +36,9 @@ python3 -m pytest sim/tests -q
 
 The suite checks the settings and wager contracts, the deck-difficulty wrappers, the V8
 policy in Python and the same policy compiled from ActionScript (run through Node), fair
-play (hidden cards never change a decision) and replay fidelity. One replay (a Scorch
-ordering case) is a known open failure.
+play (hidden cards never change a decision), the NPC opening exchange against its Python
+reference, the packages and replay fidelity. One replay (a Scorch ordering case) is a known
+open failure.
 
 ## Measuring strength
 
@@ -53,5 +58,5 @@ player-style decks, including early-game ones). See [TESTING.md](TESTING.md).
 
 ## In-game recordings
 
-The test build records every match into the game's user settings. `tools/rec_harvest.py`
+The recorder edition records every match into the game's user settings ([RECORDER.md](RECORDER.md)). `tools/rec_harvest.py`
 moves finished records into `game/records/` for analysis; `tools/rec_read.py` parses them.

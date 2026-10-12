@@ -200,6 +200,8 @@ def make_handler(manager):
                         params['player_filter'] = body['player_filter']
                     if body.get('npc_decks'):
                         params['npc_decks'] = body['npc_decks']
+                    if body.get('game_seat'):
+                        params['game_seat'] = True
                     if body.get('weights'):
                         params['weights'] = {k: float(v) for k, v in body['weights'].items()}
                     if body['source'] in ('pool', 'player'):

@@ -65,7 +65,7 @@ def run(code,side=1,level=2,real=None):
         params,method=body(name)
         script+='controller.'+name+'=function('+params+'){with(this){'+method+'}};\n'
     script+=code
-    process=subprocess.run(['node','-e',script],capture_output=True,text=True)
+    process=subprocess.run(['node'],input=script,capture_output=True,text=True)
     assert process.returncode==0,process.stderr
     return json.loads(process.stdout)
 

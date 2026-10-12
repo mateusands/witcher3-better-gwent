@@ -1,6 +1,6 @@
 # Better Gwent AI
 
-An unofficial mod in development for The Witcher 3: Wild Hunt (**Steam patch 5.01**)
+An unofficial mod for The Witcher 3: Wild Hunt (**Steam patch 5.01**)
 that replaces the Gwent opponent's decisions with a stronger AI, without changing any card,
 ability or rule. NPC decks stay exactly as in the game unless you choose otherwise, and
 everything returns to vanilla when the mod is turned Off.
@@ -9,7 +9,7 @@ everything returns to vanilla when the mod is turned Off.
 > improves how it decides, through math, search and a lot of testing.
 
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
-The repository is private and work in progress: there is no release yet.
+**Status: 0.9.0 beta.** Installation: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Features
 
@@ -18,10 +18,15 @@ The repository is private and work in progress: there is no release yet.
 - Optional **AI plays for you** (Off by default), using the selected difficulty.
 - Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
 - Optional stronger existing NPC deck variants at higher stakes (Off by default).
+- Menu in 18 languages.
 - **Better AI Off = the original game**, wagers included; the wager options are locked
   while it is Off.
 - **NPC decks: Original (default) / Adaptive / Strong**: which existing cards an NPC brings,
-  rebuilt in memory for each match, safe for saves (in the test build; in-game check pending).
+  rebuilt in memory for each match, safe for saves. Adaptive is checked in game; Strong is
+  checked in the simulator.
+- **The NPC exchanges up to two opening cards** (Medium and above), as you can. Lab: +5.4
+  points of NPC win share on Expert with Adaptive decks even when the player exchanges too
+  (z 3.9).
 
 ## NPC decks: Original, Adaptive, Strong
 
@@ -50,16 +55,16 @@ Measured in the simulator (same decks and luck; the player side is played by Bet
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-dark.svg">
-  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Hard and Expert, Better AI vs native AI" width="880">
+  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Expert, Better AI vs native AI: Original 39-40%, Adaptive 65-71%, Strong 76-78% with Better AI" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-mine-dark.svg">
-  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Hard and Expert, Better AI vs native AI" width="880">
+  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Expert, Better AI vs native AI: Original 22-25%, Adaptive 39-53%, Strong 52-56% with Better AI" width="880">
 </picture>
 
-Against my own real decks (300 games per cell), Adaptive climbs with the difficulty from 40% to 51%,
-an even fight on Expert, and Strong stays hard but winnable at about 50% on every level.
+Against my own real decks (240 games per cell), Adaptive goes from 39% on Easy to 53% on
+Expert, an even fight, and Strong stays hard but winnable at 52-56% on every level.
 
 Nothing is written to your save and no card is edited: the NPC's deck is rebuilt in memory
 for that match only. Turn the option or the mod Off and the next match uses the native deck.
@@ -100,7 +105,7 @@ Combinations, from light to heavy:
 - **Just a smarter opponent:** Hard with Original decks.
 - **A fair fight all game long:** Hard or Expert with Adaptive decks.
 - **Maximum challenge:** Expert with Strong decks and stronger stakes On. Against my own real
-  decks the NPC wins about half of the matches (49-50%): very hard, still winnable.
+  decks the NPC wins about half of the matches (54% on Expert): very hard, still winnable.
 
 </details>
 
@@ -111,7 +116,8 @@ player could see: the board, both graveyards, how many cards you hold, your fact
 leader, the cards you have already played and cards revealed by an effect. It never
 reads your hand, your deck list or the order of your draws. It samples plausible hidden
 hands from public information instead, and an automated test swaps the hidden hand for
-different cards and checks that the decision does not change.
+different cards and checks that the decision does not change. Its opening exchange uses only
+its own hand and which of its own cards are left in its deck, never their order.
 
 ## Status
 
@@ -120,12 +126,12 @@ different cards and checks that the decision does not change.
   never stalls.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/kpis-dark.svg">
-  <img src="docs/img/kpis-light.svg" alt="106,928 simulated matches, 72 hours of Lab CPU time, 37 in-game matches analysed, 229 mistakes found, 22% more NPC wins than the native AI against player decks" width="880">
+  <img src="docs/img/kpis-light.svg" alt="250,429 simulated matches, 222 hours of Lab CPU time, 40 in-game matches analysed, 281 mistakes found, 20% more NPC wins than the native AI against player decks" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/levels-dark.svg">
-  <img src="docs/img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 59.9%, Expert 60.5% (native AI = 50%)" width="880">
+  <img src="docs/img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 57.5%, Expert 57.7% (native AI = 50%)" width="880">
 </picture>
 
 <picture>
@@ -135,7 +141,7 @@ different cards and checks that the decision does not change.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/mistakes-dark.svg">
-  <img src="docs/img/mistakes-light.svg" alt="Costly decisions found by round: round 1 144, round 2 76, round 3 9" width="880">
+  <img src="docs/img/mistakes-light.svg" alt="Costly decisions found by round: round 1 178, round 2 93, round 3 10" width="880">
 </picture>
 
 - In progress: fixing the mistake patterns the hunter found (round-1 overcommit, Horn and
@@ -192,8 +198,10 @@ PyPy is installed separately (`uv python install pypy3.11`) and is not part of t
 ```sh
 python3 tools/build_settings.py                     # menu labels -> *.w3strings
 python3 tools/build_npc_decks.py                    # NPC deck table (needs the local vanilla XML)
-python3 tools/build_v8_core.py --with-recorder      # compile V8 into the Gwent interface
-python3 tools/build_v8_package.py                   # -> dist/BetterGwentAI-V8-5.01-test.zip
+python3 tools/build_v8_core.py                      # compile V8 into the Gwent interface
+python3 tools/build_v8_package.py release           # -> dist/BetterGwentAI-<version>.zip
+python3 tools/build_v8_core.py --with-recorder      # same, plus the match recorder
+python3 tools/build_v8_package.py recorder          # -> dist/BetterGwentAI-<version>-recorder.zip
 python3 -m pytest sim/tests -q                      # test suite
 ```
 
@@ -223,6 +231,9 @@ GWENT_LAB_SERVER=user@host lab/open_server_panel.sh
 
 ## Documentation
 
+- [Installation](docs/INSTALL.md): install, options, compatibility and uninstall.
+- [Recorder edition](docs/RECORDER.md): record your matches to help development.
+- [NPC decks](docs/NPC_DECKS.md): the Original / Adaptive / Strong option.
 - [Testing](docs/TESTING.md): methods, results and running totals.
 - [Research](docs/RESEARCH.md): papers, tools, and what I tried and dropped.
 - [Development](docs/DEVELOPMENT.md): local setup, builds, tests and the Lab.

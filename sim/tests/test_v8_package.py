@@ -13,24 +13,26 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
 import metastore
 from redswf import split_redswf
-from build_settings import LANGUAGES,build
+from build_settings import LANGUAGES,VERSION,build,language_labels
 
 
-@pytest.fixture(scope='module')
-def shipping():
-    archive=ROOT/'dist/BetterGwentAI-V8-5.01-test.zip'
-    if not archive.exists():pytest.skip('Generate combined build and offline package first')
+@pytest.fixture(scope='module',params=['release','recorder'])
+def shipping(request):
+    archive=ROOT/('dist/BetterGwentAI-%s%s.zip' % (VERSION,'-recorder' if request.param=='recorder' else ''))
+    if not archive.exists():pytest.skip('Build the SWF and run tools/build_v8_package.py %s first' % request.param)
     with zipfile.ZipFile(archive) as z:
         assert z.testzip() is None
         files={name:z.read(name) for name in z.namelist()}
-    return files,json.loads(files['BUILD_MANIFEST.json'])
+    manifest=json.loads(files['BUILD_MANIFEST.json'])
+    assert manifest['variant']==request.param
+    return files,manifest
 
 
 def test_archive_hashes_exact_contents_and_explicit_runtime_status(shipping):
     files,manifest=shipping
     assert set(files)==set(manifest['files'])|{'BUILD_MANIFEST.json'}
     for name,digest in manifest['files'].items():assert hashlib.sha256(files[name]).hexdigest()==digest
-    assert manifest['status']=='offline_verified_test_candidate'
+    assert manifest['status']=='offline_verified_package' and manifest['version']==VERSION
     assert manifest['installed'] is False and manifest['runtimeGameVerified'] is False
     assert manifest['witcherScriptEngineCompiled'] is False
     for path,digest in manifest['packageInputs'].items():
@@ -50,7 +52,7 @@ def test_one_combined_resource_round_trips_compiled_swf_and_native_trailer(shipp
     red=zlib.decompress(blob[offset:offset+zsize])
     assert len(red)==size and zlib.crc32(red)==crc
     swf,trailer=split_redswf(red)
-    compiled=(ROOT/'game/port-v8/combined/gwint_game.swf').read_bytes()
+    compiled=(ROOT/'game/port-v8'/('combined' if manifest['variant']=='recorder' else 'core')/'gwint_game.swf').read_bytes()
     if compiled[:3]==b'CWS':compiled=b'FWS'+compiled[3:8]+zlib.decompress(compiled[8:])
     assert swf==compiled
     assert trailer==split_redswf((ROOT/'game/vanilla/swf/gwint_game.redswf').read_bytes())[1]
@@ -59,18 +61,22 @@ def test_one_combined_resource_round_trips_compiled_swf_and_native_trailer(shipp
 
 
 def test_settings_receiver_and_close_channels_are_shipped_together(shipping):
-    files,_=shipping;prefix='Mods/modBetterGwentAI/content/scripts/local/'
+    files,manifest=shipping;prefix='Mods/modBetterGwentAI/content/scripts/local/'
     settings=files[prefix+'gwai_settings.ws'].decode()
     betting=files[prefix+'gwai_betting.ws'].decode()
-    recorder=files[prefix+'gwai_recorder.ws'].decode()
     assert 'SetFlashObject("gwai.match.settings", packet)' in settings
     assert 'SetFlashBool("gwai.match.stop", true)' in betting
-    for name in ('OnGwaiRec','OnGwaiEnd','OnGwaiStart'):assert 'event '+name+'(' in recorder
+    if manifest['variant']=='recorder':
+        recorder=files[prefix+'gwai_recorder.ws'].decode()
+        for name in ('OnGwaiRec','OnGwaiEnd','OnGwaiStart'):assert 'event '+name+'(' in recorder
+    else:
+        assert prefix+'gwai_recorder.ws' not in files
     assert 'function GetCurrentAIDeck()' in files[prefix+'gwai_npc_decks.ws'].decode()
     assert 'function GwaiNpcDeckTable(' in files[prefix+'gwai_npc_decks_data.ws'].decode()
     menu=ET.fromstring(files['bin/config/r4game/user_config_matrix/pc/modGwentAI.xml'])
     ids={node.attrib['id'] for node in menu.findall('.//VisibleVars/Var')}
     assert ids=={'GwaiEnabled','GwaiDifficulty','GwaiNpcDecks','GwaiAutoPlay','GwaiMaxBet','GwaiStakesStronger'}
     assert not any('filelist' in name for name in files)
-    labels=build(json.loads((ROOT/'mod/settings/menu/labels.en.json').read_text()))
-    for language in LANGUAGES:assert files['Mods/modBetterGwentAI/content/'+language+'.w3strings']==labels
+    for language in LANGUAGES:
+        assert files['Mods/modBetterGwentAI/content/'+language+'.w3strings']==build(language_labels(language))
+    assert files['Mods/modBetterGwentAI/content/br.w3strings']!=files['Mods/modBetterGwentAI/content/en.w3strings']

@@ -78,6 +78,9 @@ def patch(name, source):
             'protected function state_update_Initializing() : void\n      {\n         if(!this.gwaiSettingsReady) return;')
         source=once(source,'if(this.playerControllers[CardManager.PLAYER_1] is HumanPlayerController)\n         {\n            (this.playerControllers[CardManager.PLAYER_1] as HumanPlayerController).setChoiceDialog(this.mcChoiceDialog);',
             'this.gwaiApplyControllers();\n         if(this.playerControllers[CardManager.PLAYER_1] is HumanPlayerController)\n         {\n            (this.playerControllers[CardManager.PLAYER_1] as HumanPlayerController).setChoiceDialog(this.mcChoiceDialog);')
+        # NPC opening exchange right after the deal, while the player's own exchange dialog opens.
+        source=once(source,'this.cardManager.shuffleAndDrawCards();',
+            'this.cardManager.shuffleAndDrawCards();\n         if(this.playerControllers[CardManager.PLAYER_2] is AIPlayerController) (this.playerControllers[CardManager.PLAYER_2] as AIPlayerController).gwaiNpcMulligan();')
         source=once(source,'protected function state_begin_reset() : void\n      {',
             'protected function state_begin_reset() : void\n      {\n         this.gwaiStopSearches();')
         source=once(source,'protected function state_begin_ShowingFinalResult() : void\n      {',

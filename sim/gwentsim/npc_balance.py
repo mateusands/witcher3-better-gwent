@@ -29,6 +29,10 @@ MIN_UNITS, MAX_UNITS = 22, 26
 BALANCED_TARGET = (0.85, 0.95, 1.0, 1.1)
 MAX_SPIES, MAX_MEDICS = 3, 2
 AVALLACH = 'mysterious_elf'
+# Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
+# lands after he has left the board (seen in the Lab with Adaptive Skellige decks, 2026-10-12);
+# no native NPC deck uses him.
+EXCLUDED = {'olaf'}
 ROW_FLAGS = ((C.CardType_Melee, 'melee'), (C.CardType_Ranged, 'ranged'), (C.CardType_Siege, 'siege'))
 WEATHER_ROW = {C.CardEffect_Melee: 'melee', C.CardEffect_Ranged: 'ranged', C.CardEffect_Siege: 'siege'}
 LEADER_HORN_ROW = {C.CardEffect_Melee_Horn: 'melee', C.CardEffect_Range_Horn: 'ranged',
@@ -93,7 +97,7 @@ def packages(templates, faction, names):
     Arachas, so all four are one package). Tight bond: copies with the same name stem (e.g.
     blue_stripes, blue_stripes2) form one package. Everything else is single."""
     pool = [t for t in templates.values() if t.index < 1000 and t.faction in (faction, C.FactionId_Neutral)
-            and t.is_type(C.CardType_Creature)]
+            and t.is_type(C.CardType_Creature) and names.get(t.index) not in EXCLUDED]
     groups = defaultdict(list)
     musters = []                                         # [set of summon targets, cards]
     for t in sorted(pool, key=lambda t: t.index):

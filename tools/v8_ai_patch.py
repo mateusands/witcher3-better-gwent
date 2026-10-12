@@ -83,6 +83,43 @@ def patch_ai(source):
          this._decidedCardTransaction = null; this.attitude = TACTIC_NONE;
          return true;
       }
+      // Opening exchange (Medium and above), proven in the Lab: up to two own cards go back to
+      // the deck, chosen from the own remaining composition only (never the shuffled order).
+      // Same steps as CardManager.mulliganCard, without its hero-drawn sound, which would tell
+      // the player what the NPC drew.
+      public function gwaiNpcMulligan() : void
+      {
+         var level:int = this.gameFlowControllerRef.gwaiProfileForPlayer(this.playerID);
+         if(level < 1) return;
+         try
+         {
+            var manager:CardManager = CardManager.getInstance();
+            var deck:GwintDeck = manager.playerDeckDefinitions[this.playerID];
+            var started:int = getTimer();
+            for(var turn:int = 0; turn < 2; ++turn)
+            {
+               var state:GwaiV8Position = GwaiV8Capture.capture(manager,this.playerID);
+               var key:int = GwaiV8Mulligan.choose(state);
+               if(key < 0) break;
+               var card:CardInstance = manager.getCardInstance(key);
+               if(card == null || manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,this.playerID).indexOf(card) < 0)
+                  throw new Error("exchange source outside own hand");
+               deck.readdCard(card.templateId);
+               var drawn:int = deck.drawCard();
+               if(drawn == CardInstance.INVALID_INSTANCE_ID) throw new Error("exchange draw failed");
+               var fresh:CardInstance = manager.spawnCardInstance(drawn,this.playerID);
+               manager.addCardInstanceToList(fresh,CardManager.CARD_LIST_LOC_HAND,this.playerID);
+               manager.returnCardToDeck(card);
+               this.gwaiNote("npc_mulligan:" + card.templateId + ">" + drawn);
+            }
+            this.gwaiNote("npc_mulligan_done:" + turn + ":" + (getTimer() - started) + "ms:lvl=" + level);
+         }
+         catch(error:Error)
+         {
+            this._gwaiFailures++;
+            this.gwaiNote("v8_error:mulligan:" + error.message);
+         }
+      }
       public function gwaiAllowedPass(reason:String) : Boolean
       { return ["pass_for_match_resources","proven_no_supported_overtake","concede_unwinnable_chase"].indexOf(reason) >= 0; }
       public function gwaiNativeFallback(reason:String) : void

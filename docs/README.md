@@ -1,5 +1,7 @@
 # Better Gwent AI documentation
 
+- **[Installation](INSTALL.md)**: Install, options, compatibility and uninstall.
+- **[Recorder edition](RECORDER.md)**: Record your matches to help development.
 - **[Testing](TESTING.md)**: How the AI is measured, results and running totals.
 - **[Research](RESEARCH.md)**: Papers and tools behind the AI, and what I tried and dropped.
 - **[NPC decks](NPC_DECKS.md)**: the Original / Adaptive / Strong NPC deck option.

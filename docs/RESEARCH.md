@@ -93,6 +93,12 @@ information and searches its own moves and the opponent's replies against those 
 - **V8**
   - What changed: All of the above ported to ActionScript and running inside the game, with time limits and native fallback
   - Outcome: Current version
+- **NPC opening exchange**
+  - What changed: The NPC exchanges up to two opening cards, chosen from its own hand and remaining deck composition
+  - Outcome: Kept from Medium up: +5.4 points of NPC win share on Expert with Adaptive decks, with the player exchanging too (z 3.9)
+- **Weather that changes nothing, three Decoys against spy factions**
+  - What changed: Count a weather card that changes no score as wasted; NPC decks carry three Decoys against Nilfgaard and Northern Kingdoms player decks (spies)
+  - Outcome: Dropped: no measurable effect (z below 1)
 - **In-game fixes**
   - What changed: Stalls, wasted Frost/Horn, round-1 overcommit, Medic choosing a Spy when out of cards, NPC extra-card requirements
   - Outcome: Kept

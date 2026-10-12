@@ -23,9 +23,10 @@ def test_native_xml_adapter_matches_all_recorded_opponent_definitions():
     # Recorded with the Better AI build whose GetDifficulty returned real level 1-14 thresholds
     # (fewer NPC dynamic cards than vanilla); fixed in gwai_betting.ws on 2026-10-11.
     MOD_THRESHOLD_BUG={'g127.json','g128.json'}
-    # Played with the NPC decks option on Adaptive (ScoiaHard:3 step 251, built by the first
-    # in-game table, before muster groups were kept whole): not a native deck.
-    NPC_DECK_OPTION={'g132.json'}
+    # g132-g134: played with the NPC decks option on Adaptive (e.g. ScoiaHard:3 step 251, built by the first
+    # in-game table, before muster groups were kept whole): not a native deck. g135: Adaptive on Hard,
+    # exactly the simulator's ScoiaEasy:3 deck (muster fix and NPC opening exchange installed).
+    NPC_DECK_OPTION={'g132.json','g133.json','g134.json','g135.json'}
     for path in corpus:
         if path.name in MOD_THRESHOLD_BUG|NPC_DECK_OPTION:continue
         recorded=load_match(path).decks[1]

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Package the verified combined SWF and original WS/menu sources, offline only."""
+"""Package the mod, offline only.
+
+  release   the mod alone (core SWF, no recorder): BetterGwentAI-<version>.zip
+  recorder  the same mod plus the match recorder, for people who help with development:
+            BetterGwentAI-<version>-recorder.zip (same folder name; it replaces the release)
+"""
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -11,11 +17,11 @@ import zlib
 from redswf import split_redswf,patch_redswf,build_bundle
 import bundle
 import metastore
-from build_settings import build,LANGUAGES
+from build_settings import build,language_labels,LANGUAGES,VERSION
 
 ROOT=Path(__file__).resolve().parents[1]
 RESOURCE='gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf'
-NAME='BetterGwentAI-V8-5.01-test'
+VARIANTS={'release':('core','INSTALL.md',''),'recorder':('combined','RECORDER.md','-recorder')}
 
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -40,14 +46,21 @@ def verify_resource(content,swf,trailer):
 
 
 def main():
-    compiled=ROOT/'game/port-v8/combined'
+    parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('variant',choices=sorted(VARIANTS))
+    variant=parser.parse_args().variant
+    build_dir,readme_name,suffix=VARIANTS[variant]
+    name='BetterGwentAI-'+VERSION+suffix
+    compiled=ROOT/'game/port-v8'/build_dir
     proof=json.loads((compiled/'manifest.json').read_text())
-    if proof['status']!='core_compiled' or not all(proof.get(k) for k in ['decisionHookConnected','autoplayControllerConnected','recorderMerged','explicitChoiceHooksCompiled']):
-        raise ValueError('combined build is incomplete')
+    if proof['status']!='core_compiled' or not all(proof.get(k) for k in ['decisionHookConnected','autoplayControllerConnected','explicitChoiceHooksCompiled']):
+        raise ValueError('compiled build is incomplete')
+    if bool(proof.get('recorderMerged'))!=(variant=='recorder'):
+        raise ValueError('recorder presence does not match the variant')
     for path,digest in proof['inputs'].items():
         if sha(ROOT/path)!=digest:raise ValueError('stale compiled input: '+path)
     if sha(compiled/'gwint_game.swf')!=proof['compiledSha256']:raise ValueError('compiled SWF digest mismatch')
-    stage=ROOT/'dist'/NAME
+    stage=ROOT/'dist'/name
     if stage.exists():shutil.rmtree(stage)
     content=stage/'Mods/modBetterGwentAI/content';content.mkdir(parents=True)
     source=ROOT/'game/vanilla/swf/gwint_game.redswf'
@@ -63,19 +76,18 @@ def main():
     for path in ['mod/settings/modGwentAISettings/content/scripts/local/gwai_settings.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_betting.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks.ws',
-        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws',
-        'mod/recorder/modGwentAIRecorder/content/scripts/local/gwai_recorder.ws']:
+        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws']+(
+        ['mod/recorder/modGwentAIRecorder/content/scripts/local/gwai_recorder.ws'] if variant=='recorder' else []):
         shutil.copyfile(ROOT/path,scripts/Path(path).name);inputs[path]=sha(ROOT/path)
-    labels=ROOT/'mod/settings/menu/labels.en.json'
-    strings=build(json.loads(labels.read_text()))
-    for language in LANGUAGES:(content/(language+'.w3strings')).write_bytes(strings)
-    inputs[str(labels.relative_to(ROOT))]=sha(labels)
+    for language in LANGUAGES:(content/(language+'.w3strings')).write_bytes(build(language_labels(language)))
+    for labels in [ROOT/'mod/settings/menu/labels.en.json',ROOT/'mod/settings/menu/labels.translations.json',ROOT/'tools/build_settings.py']:
+        inputs[str(labels.relative_to(ROOT))]=sha(labels)
     menu=ROOT/'mod/settings/menu/modGwentAI.xml'
     target=stage/'bin/config/r4game/user_config_matrix/pc/modGwentAI.xml';target.parent.mkdir(parents=True)
     shutil.copyfile(menu,target);inputs[str(menu.relative_to(ROOT))]=sha(menu)
-    readme=ROOT/'docs/V8_INSTALL_TEST.md';shutil.copyfile(readme,stage/'README.md');inputs[str(readme.relative_to(ROOT))]=sha(readme)
-    manifest=dict(status='offline_verified_test_candidate',installed=False,runtimeGameVerified=False,
-        witcherScriptEngineCompiled=False,patch='5.01',policy='response-v8',recorderMerged=True,
+    readme=ROOT/'docs'/readme_name;shutil.copyfile(readme,stage/'README.md');inputs[str(readme.relative_to(ROOT))]=sha(readme)
+    manifest=dict(status='offline_verified_package',version=VERSION,variant=variant,installed=False,runtimeGameVerified=False,
+        witcherScriptEngineCompiled=False,patch='5.01',policy='response-v8',recorderMerged=variant=='recorder',
         decisionHookConnected=True,autoplayControllerConnected=True,resource=RESOURCE,
         compiledSha256=proof['compiledSha256'],compiledInputs=proof['inputs'],packageInputs=inputs,
         files={str(p.relative_to(stage)):sha(p) for p in sorted(stage.rglob('*')) if p.is_file()})
@@ -91,7 +103,7 @@ def main():
             if hashlib.sha256(check.read(name)).hexdigest()!=digest:raise ValueError('archive content mismatch: '+name)
     report=dict(archive=str(archive),sha256=sha(archive),files=len(manifest['files'])+1,installed=False,
         runtimeGameVerified=False,resourceRoundTripVerified=True,compiledSha256=proof['compiledSha256'])
-    (ROOT/'game/port-v8/combined/package-report.json').write_text(json.dumps(report,indent=2)+'\n')
+    (compiled/('package-report-%s.json' % variant)).write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))
 
 

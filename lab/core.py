@@ -138,12 +138,16 @@ def hunt_payloads(params):
     sys.path.insert(0, str(SIM))
     if params['source'] == 'player':
         from evaluate_pool import player_setup
-        pairs = len(player_setup())
+        pool = player_setup()
+        pairs = len(pool)
+        only_recorded = params.get('player_filter') == 'recorded'   # my own real decks only
+        swaps = (False,) if params.get('game_seat') else (False, True)  # NPC in seat 1, as in the game
         return [dict(kind='hunt', source='player', pair=pair, seed=seed, swap=swap, seat=0 if swap else 1,
                      policy=params['policy'], profile=params['profile'],
                      **({'npc_decks': params['npc_decks']} if params.get('npc_decks') else {}))
                 for pair in range(min(pairs, params.get('pairs') or pairs))
-                for seed in params['seeds'] for swap in (False, True)]
+                if not only_recorded or pool[pair][1].name.startswith('recorded/')
+                for seed in params['seeds'] for swap in swaps]
     from evaluate_pool import setup
     pairs = len(setup()['pairs'])
     return [dict(kind='hunt', source='pool', pair=pair, seed=seed, swap=False, seat=seat,

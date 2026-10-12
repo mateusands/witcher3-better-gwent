@@ -89,3 +89,15 @@ def test_scripts_read_struct_fields_from_variables():
     for path in SCRIPTS.glob('gwai_*.ws'):
         text = path.read_text()
         assert not re.search(r'\)\.(cards|deckName|difficulty|leaderCard|specialCard|power|typeFlags|effectFlags)\b', text), path.name
+
+
+def test_excluded_cards_never_in_npc_decks():
+    names = card_names()
+    excluded = {i for i, n in names.items() if n in nb.EXCLUDED}
+    assert excluded
+    for key, strong, steps in table():
+        assert not excluded & set(apply([], strong)), key
+        cards = []
+        for step in steps.split('|'):
+            apply(cards, step.split(':', 1)[1])
+            assert not excluded & set(cards), key

@@ -1,12 +1,14 @@
 # Repository scope
 
 This is a **private** repository with the mod sources, the Gwent AI Lab, the tools,
-the simulator policy code, the tests and a short documentation set. There is no release.
+the simulator policy code, the tests and a short documentation set. Mod packages are built
+locally into `dist/` and are never committed: they contain the modified Gwent interface.
 
 ## What belongs here
 
 - Original work only: mod scripts and the V8 AI, build and test tools, the Lab and
-  concise docs (`README.md`, `TESTING.md`, `RESEARCH.md`, `DEVELOPMENT.md`, this file).
+  concise docs (`README.md`, `INSTALL.md`, `RECORDER.md`, `NPC_DECKS.md`, `TESTING.md`,
+  `RESEARCH.md`, `DEVELOPMENT.md`, this file).
 - Research notes and the working log stay local.
 - The `.gitignore` is an allowlist: anything not explicitly allowed stays out.
 

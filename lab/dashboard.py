@@ -416,6 +416,41 @@ def ab_chart(t, rows, title, subtitle, span=3.0):
     return card(bottom + 40, t, ''.join(body), title, subtitle)
 
 
+def ab_rows(dbs):
+    """Paired A/B tests: every benchmark whose policy carries a variant ("response-v8:x") or whose
+    npc_decks carries flags ("balanced:decoy3") against the plain job with the same source,
+    level and deck mode, on the same matchups and luck. Returns {(label, level, decks): (change %, z, n)}."""
+    import sqlite3
+    groups = defaultdict(dict)
+    for path in dbs:
+        db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
+        for params, payload, result in db.execute(
+                "SELECT j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
+                "WHERE t.status='done' AND j.kind='benchmark' AND j.status != 'superseded'"):
+            params, p, r = json.loads(params), json.loads(payload), json.loads(result)
+            if p.get('source') != 'player' or params.get('weights'):
+                continue
+            policy, _, variant = params.get('policy', 'response-v8').partition(':')
+            decks, _, flags = (params.get('npc_decks') or 'original').partition(':')
+            s = r['seats'][0]
+            groups[variant or flags, params['profile'], decks][p['pair'], p['seed'], p['swap']] = score(s['won'], s['winner'])
+    out = {}
+    for (label, level, decks), runs in groups.items():
+        # Flags starting with "player-" set the scene (both arms); the others are tested.
+        context = '+'.join(f for f in label.split('+') if f.startswith('player-'))
+        if label == context:
+            continue
+        base = groups.get((context, level, decks), {})
+        keys = sorted(set(runs) & set(base))
+        if not label or len(keys) < 30:
+            continue
+        diffs = [runs[k] - base[k] for k in keys]
+        mean = sum(diffs) / len(diffs)
+        sd = (sum((d - mean) ** 2 for d in diffs) / (len(diffs) - 1)) ** 0.5 or 1e-9
+        out[label, level, decks] = (100 * mean, mean / (sd / len(diffs) ** 0.5), len(diffs))
+    return out
+
+
 # ---- main ---------------------------------------------------------------------
 
 def main():
@@ -424,6 +459,8 @@ def main():
     parser.add_argument('--records', default=str(ROOT / 'game/records'))
     parser.add_argument('--evaluations', default=str(ROOT / 'game/evaluations'))
     parser.add_argument('--out', default=str(ROOT / 'docs/img'))
+    parser.add_argument('--battery', nargs='*', default=None,
+                        help='databases for the deck-mode and A/B charts (default: all databases)')
     args = parser.parse_args()
     levels, styles, rounds = collect(args.dbs)
     totals = [report.lab_totals(p) for p in args.dbs]
@@ -462,7 +499,7 @@ def main():
     names = dict(original='Original', balanced='Adaptive', strong='Strong')
     for key, title, flt in (('deck-modes', 'NPC deck modes against player-style decks', None),
                             ('deck-modes-mine', 'NPC deck modes against my own real decks', 'recorded')):
-        agg = deck_mode_rows(args.dbs, flt)
+        agg = deck_mode_rows(args.battery or args.dbs, flt)
         rows = [('%s · %s' % (prof.capitalize(), names[mode]), '%s games' % format(agg[prof, mode][2], ','),
                  100 * agg[prof, mode][0] / agg[prof, mode][2], 100 * agg[prof, mode][1] / agg[prof, mode][2])
                 for prof in ('easy', 'medium', 'hard', 'expert') for mode in ('original', 'balanced', 'strong') if agg[prof, mode][2]]
@@ -472,6 +509,29 @@ def main():
                     t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and luck.',
                     rows))
             print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
+    ab = ab_rows(args.battery or args.dbs)
+    if ab:
+        labels = {'weather-zero': ('Weather that changes nothing', 'counted as a wasted card'),
+                  'mulligan': ('NPC exchanges opening cards', 'up to two, evaluated'),
+                  'mulligan-structural': ('NPC exchanges muster copies', 'structural only'),
+                  'mulligan-leader': ("NPC returns its leader's weather", 'only that card'),
+                  'decoy3': ('3 Decoys vs spy factions', 'Nilfgaard / Northern Kingdoms')}
+        decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
+        scenes = {'player-mulligan': 'player exchanges too'}
+
+        def name(label):
+            flags = label.split('+')
+            tested = '+'.join(f for f in flags if not f.startswith('player-'))
+            scene = [scenes.get(f, f) for f in flags if f.startswith('player-')]
+            return labels.get(tested, (tested, ''))[0] + (' (%s)' % ', '.join(scene) if scene else '')
+        rows = [(name(k[0]), '%s · %s · %s games' % (k[1].capitalize(), decks[k[2]],
+                 format(v[2], ',')), v[0], v[1]) for k, v in sorted(ab.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2]))]
+        span = max(3.0, max(abs(r[2]) for r in rows) * 1.15)
+        for theme, t in THEMES.items():
+            (out / ('ab-%s.svg' % theme)).write_text(ab_chart(
+                t, rows, 'A/B tests: candidate vs the current AI',
+                'Change in NPC win share, same matchups and luck. Proven: z of 2 or more.', span))
+        print('ab', [(r[0], r[1], round(r[2], 2), round(r[3], 2)) for r in rows])
     print('levels', {k: v for k, v in levels.items()}, '\nstyles', dict(styles), '\nrounds', dict(rounds))
     print('tiles', tiles)
 

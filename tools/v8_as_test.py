@@ -65,5 +65,5 @@ def javascript(source):
 
 
 def core_javascript():
-    files=['GwaiV8Const','GwaiV8Position','GwaiV8Capture','GwaiV8Reserve','GwaiV8Sequence','GwaiV8Random','GwaiV8Hash','GwaiV8Belief','GwaiV8Response','GwaiV8Policy','GwaiV8Context','GwaiV8Execution','GwaiV8SequenceTask','GwaiV8Runner']
+    files=['GwaiV8Const','GwaiV8Position','GwaiV8Capture','GwaiV8Reserve','GwaiV8Mulligan','GwaiV8Sequence','GwaiV8Random','GwaiV8Hash','GwaiV8Belief','GwaiV8Response','GwaiV8Policy','GwaiV8Context','GwaiV8Execution','GwaiV8SequenceTask','GwaiV8Runner']
     return 'function int(v) { return v|0; } function uint(v) { return v>>>0; }\n'+javascript('\n'.join((ROOT/f'mod/v8/as3/{name}.as').read_text() for name in files))

@@ -6,9 +6,10 @@ checked in real matches inside the game.
 ## 1. Fidelity: does the simulator play like the game?
 
 - In-game matches are recorded with every random draw and decision. The fidelity corpus
-  of native AI-vs-AI recordings is replayed move by move and must match exactly:
-  **21 of 22** do; the remaining one (a Scorch ordering case) is a known open issue and
-  is never hidden by the tests.
+  (matches against the native AI) is replayed move by move and must match exactly:
+  **22 of 23** do; the remaining one (a Scorch ordering case) is a known open issue and
+  is never hidden by the tests. Matches played by Better AI are analysed separately
+  (decision notes, timing, errors); the native replay cannot reproduce its decisions.
 - NPC decks built by the simulator match the game's decks in every available recording.
 
 ## 2. Strength: benchmark against the native AI
@@ -26,7 +27,7 @@ seat against the native AI in the same seat (win = 1, draw = 0.5).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/levels-dark.svg">
-  <img src="img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 59.9%, Expert 60.5% (native AI = 50%)" width="880">
+  <img src="img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 57.5%, Expert 57.7% (native AI = 50%)" width="880">
 </picture>
 
 <picture>
@@ -67,8 +68,8 @@ Every change to the AI is compared with the current AI on the same matchups and 
 only when the gain is proven (z of 2 or more) and nothing gets worse.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/ab-expert-dark.svg">
-  <img src="img/ab-expert-light.svg" alt="A/B tests on Expert: Phase 3 tuned weights, weather that changes nothing counted as wasted, medic recovering a spy in open rounds; none proven" width="880">
+  <source media="(prefers-color-scheme: dark)" srcset="img/ab-dark.svg">
+  <img src="img/ab-light.svg" alt="A/B tests from the NPC deck battery: the evaluated NPC mulligan is proven on Adaptive and Strong decks, also when the player exchanges too; weather that changes nothing and 3 Decoys are not proven" width="880">
 </picture>
 
 ## 4. In-game validation
@@ -76,7 +77,8 @@ only when the gain is proven (z of 2 or more) and nothing gets worse.
 I test every build in real matches with the mod installed; each match is recorded and
 analysed (decision source, timing, errors). Problems I found in game and fixed so far:
 stalled matches, wager menu values, wasted Frost/Horn, round-1 overcommit, weaker NPC
-decks, Medic choosing a siege unit over a Spy.
+decks, Medic choosing a siege unit over a Spy, muster groups split by the Adaptive decks, and
+the NPC never exchanging opening cards (now it does, from Medium up).
 
 ## Running totals
 
@@ -93,6 +95,6 @@ charts come from `python3 lab/dashboard.py <lab databases>`.
 - **Gwent AI Lab** (`lab/`): crash-safe job runner; a power cut only repeats the tasks
   that were running, and a self-test kills workers repeatedly and requires identical results.
 - Workers run under **PyPy** (1.7–2.1x faster than CPython, identical results), on
-  my PC, a home server or a rented cloud server (16 ARM cores; ARM results are
-  identical to x86).
+  my PC, a home server or rented cloud servers (16 ARM cores, and 32 x86 cores for the NPC
+  deck battery; ARM results are identical to x86).
 - Every result is deterministic: the same task always gives the same result.

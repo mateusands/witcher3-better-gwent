@@ -32,6 +32,8 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
 - **Synergy whole or not at all:** muster groups complete (a card that calls others, like
   Arachas Behemoth, comes with the cards it calls), tight bond with two or more copies,
   medics capped at two, spies capped at three. Avallac'h, the neutral hero spy, fits most decks.
+- **Never Olaf:** the original game's board can throw an error when Olaf's effect lands after
+  he left the board, so the builder never adds him (Madman Lugos takes his place in Strong).
 
 **Adaptive** (internal mode name `balanced`) starts from the NPC's own deck, makes it legal under these rules, and swaps its
 weakest units for better eligible ones until its strength reaches the strength of the
@@ -51,7 +53,8 @@ Every Gwent opponent, including quest and tournament players, except the tutoria
 - Simulator benchmarks compare Original, Adaptive and Strong against player-style decks
   (early-game, random, power, synergy and my own real decks) with the same luck.
   Target: Adaptive close to an even match, Strong above it.
-- In game: switch the option on and off in the same save and confirm the native deck returns.
+- In game: Adaptive decks were played and matched the table; switch the option on and off in
+  the same save and the native deck returns.
 
 ## In the game
 

@@ -7,7 +7,7 @@
 2. A/B weather-zero (hard, expert) on Adaptive decks, same seeds as 1.
 3. A/B NPC mulligan (evaluated, structural, leader-weather only) on Adaptive decks, expert.
 3b. A/B decoy3 (3 Decoys against Nilfgaard / Northern Kingdoms decks), Adaptive and Strong, expert.
-4. Blunder hunts on Adaptive and Strong decks, expert.
+4. Blunder hunts on Adaptive decks against my real decks, expert, NPC in seat 1 (60 hunts).
 """
 import argparse
 import json
@@ -35,7 +35,10 @@ def main():
     jobs = []
     for mode in ('original', 'balanced', 'strong'):
         for level in LEVELS:
+            # One seed per cell; Adaptive hard/expert get every seed: they are the A/B baselines.
+            ab_base = mode == 'balanced' and level in ('hard', 'expert')
             jobs.append(dict(base, name='decks %s %s' % (mode, level), policy='response-v8', profile=level,
+                             seeds=seeds if ab_base else seeds[:1],
                              **({'npc_decks': mode} if mode != 'original' else {})))
     for level in ('hard', 'expert'):
         jobs.append(dict(base, name='AB weather-zero %s' % level, policy='response-v8:weather-zero', profile=level,
@@ -46,9 +49,10 @@ def main():
     for mode in ('balanced', 'strong'):
         jobs.append(dict(base, name='AB decoy3 %s expert' % mode, policy='response-v8', profile='expert',
                          npc_decks='%s:decoy3' % mode))
-    for mode in ('balanced', 'strong'):
-        jobs.append(dict(base, name='hunt %s expert' % mode, kind='hunt', policy='response-v8', profile='expert',
-                         npc_decks=mode, seeds=hunt_seeds))
+    # Hunts are slow (~13 min each on the pod): my real decks only, NPC in the game's seat.
+    jobs.append(dict(base, name='hunt balanced expert (my decks)', kind='hunt', policy='response-v8',
+                     profile='expert', npc_decks='balanced', seeds=hunt_seeds, player_filter='recorded',
+                     game_seat=True))
     for job in jobs:
         print(job['name'], post(a.port, job)[:120])
 

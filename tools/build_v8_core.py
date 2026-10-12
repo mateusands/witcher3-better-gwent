@@ -10,7 +10,7 @@ from v8_runtime_patch import NATIVE_CLASSES, patch
 from v8_ai_patch import patch_ai
 ROOT=Path(__file__).resolve().parents[1]
 PKG='red.game.witcher3.menus.gwint'
-CLASSES=['GwaiV8Const','GwaiV8Position','GwaiV8Capture','GwaiV8Reserve','GwaiV8Sequence','GwaiV8Random','GwaiV8Hash','GwaiV8Belief','GwaiV8Response','GwaiV8Policy','GwaiV8Context','GwaiV8Execution','GwaiV8SequenceTask','GwaiV8Runner']
+CLASSES=['GwaiV8Const','GwaiV8Position','GwaiV8Capture','GwaiV8Reserve','GwaiV8Mulligan','GwaiV8Sequence','GwaiV8Random','GwaiV8Hash','GwaiV8Belief','GwaiV8Response','GwaiV8Policy','GwaiV8Context','GwaiV8Execution','GwaiV8SequenceTask','GwaiV8Runner']
 
 
 def main():
@@ -90,7 +90,7 @@ def main():
                 report['compiledMembers'][name]={'methods':methods,'constants':constants}
                 audit=dest/'compiled-source'/ (name+'.as');audit.parent.mkdir(exist_ok=True)
                 audit.write_text(exported)
-            expected_native={'AIPlayerController':['gwaiCancelV8','gwaiShutdownV8','gwaiBeginV8','gwaiAllowedPass','gwaiNativeFallback','gwaiPumpV8','gwaiNote','gwaiPumpV8Step'],
+            expected_native={'AIPlayerController':['gwaiCancelV8','gwaiShutdownV8','gwaiBeginV8','gwaiAllowedPass','gwaiNativeFallback','gwaiPumpV8','gwaiNote','gwaiPumpV8Step','gwaiNpcMulligan'],
                 'BasePlayerController':['gwaiObservedRoundStatus'],
                 'CardManager':['gwaiPublicHandCount','gwaiClearPlan','gwaiStorePlan','gwaiActivePlan','gwaiLeaderTarget','gwaiNurseChoice','gwaiTakePlacement'],
                 'GwintGameFlowController':['gwaiRoundIndex','gwaiConfigure','gwaiSettingsReady','gwaiProfileForPlayer','gwaiSettingsSnapshot','gwaiApplyControllers','gwaiStopSearches'],
@@ -104,7 +104,8 @@ def main():
                     if not re.search(r'function\s+(?:get\s+)?'+method+r'\s*\(',exported):
                         raise RuntimeError('Compiled native bridge missing: '+name+'.'+method)
                 (dest/'compiled-source'/(name+'.as')).write_text(exported)
-                hooks={'AIPlayerController':['gwaiBeginV8','gwaiPumpV8','GwaiV8Execution.prepare','GwaiV8Capture.capture','GwaiV8Runner'],
+                hooks={'AIPlayerController':['gwaiBeginV8','gwaiPumpV8','GwaiV8Execution.prepare','GwaiV8Capture.capture','GwaiV8Runner','GwaiV8Mulligan.choose'],
+                    'GwintGameFlowController':['gwaiNpcMulligan'],
                     'CardInstance':['gwaiNurseChoice','gwaiTakePlacement'],
                     'CardLeaderInstance':['gwaiLeaderTarget']}.get(name,[])
                 for hook in hooks:
@@ -120,6 +121,8 @@ def main():
                 exported=(dest/'compiled-source'/'AIPlayerController.as').read_text()
                 update=exported[exported.index('function state_update_ChooseMove'):exported.index('function state_begin_SendingCard')]
                 if update.index('gwaiPumpV8')>update.index('gwaiTx'):raise RuntimeError('Recorder logs unfinished search steps')
+                exported=(dest/'compiled-source'/'GwintGameFlowController.as').read_text()
+                if exported.index('gwaiSnap("deal")')>exported.index('gwaiNpcMulligan'):raise RuntimeError('Deal snapshot after the NPC exchange')
                 report['recorderMerged']=True
             report['decisionHookConnected']=True
             report['publicContextBridgeCompiled']=True

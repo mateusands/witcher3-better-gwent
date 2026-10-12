@@ -75,10 +75,17 @@ def _check(path):
     assert n == len(m.events)
 
 
+def _native(path):
+    # Records with "X" notes were played by Better AI: the replay drives the native AI, so only
+    # native AI matches form the fidelity corpus.
+    import json
+    return not any(e.get('k') == 'X' for e in json.load(open(path))['events'])
+
+
 def test_replays():
     assert RECORDS, 'no recorded matches in game/records'
     failures = []
-    for path in RECORDS:
+    for path in [p for p in RECORDS if _native(p)]:
         try:
             _check(path)
         except AssertionError as exc:
