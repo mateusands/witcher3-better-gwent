@@ -254,6 +254,7 @@ GWENT_LAB_SERVER=user@host lab/open_server_panel.sh
 - [Research](docs/RESEARCH.md): papers, tools, and what I tried and dropped.
 - [Development](docs/DEVELOPMENT.md): local setup, builds, tests and the Lab.
 - [Repository scope](docs/PUBLICATION_SCOPE.md): what may and may not be committed.
+- [Known limitations](docs/KNOWN_LIMITATIONS.md): what does not work well yet, and why.
 - [Roadmap](docs/ROADMAP.md): planned work, including optional modules for new cards and card balance.
 - [Contributing](CONTRIBUTING.md): what a change needs before it is kept.
 

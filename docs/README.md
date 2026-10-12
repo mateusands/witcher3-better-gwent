@@ -7,6 +7,7 @@
 - **[NPC decks](NPC_DECKS.md)**: the Original / Adaptive / Strong NPC deck option.
 - **[Development](DEVELOPMENT.md)**: Requirements, builds, tests and the Gwent AI Lab.
 - **[Repository scope](PUBLICATION_SCOPE.md)**: What may and may not be committed.
+- **[Known limitations](KNOWN_LIMITATIONS.md)**: What does not work well yet, and why.
 - **[Roadmap](ROADMAP.md)**: Planned work, including optional modules for new cards and card balance.
 - **[Contributing](../CONTRIBUTING.md)**: What a change needs before it is kept.
 
