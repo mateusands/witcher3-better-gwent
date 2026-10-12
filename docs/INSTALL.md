@@ -48,6 +48,8 @@ already played, and its own hand and deck.
 Close the game and delete `Mods/modBetterGwentAI`, `modGwentAI.xml` and its lines in the
 filelists. Saves stay valid: the mod adds no items, quests or cards. Money won in wagers stays
 yours.
+The per-copy card art (Tight Bond cards, Blue Stripes Commando, Siege Tower) is drawn by the mod at display time; saves store only card
+numbers, so removing the mod brings back the stock pictures.
 
 ## Known issues
 

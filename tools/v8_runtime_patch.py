@@ -1,5 +1,38 @@
 """Original native public-context/settings bridge patches, not a decision hook."""
-NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance']
+NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance','CardSlot']
+
+# Tight Bond art: the game ships one texture per copy, but the card definitions give every
+# copy the same picture. Card index -> (picture in the card definitions, picture we show).
+# Visual only: the index, power and abilities are untouched, and saves keep only indices.
+BOND_ART = {
+    126: ('nor_poor_infantry', 'nor_poor_infantry_1'),
+    127: ('nor_poor_infantry', 'nor_poor_infantry_2'),
+    131: ('nor_crinfrid', 'nor_crinfrid_1'),
+    132: ('nor_crinfrid', 'nor_crinfrid_2'),
+    140: ('nor_catapult_1', 'nor_catapult'),
+    246: ('nil_impera_brigade', 'nil_impera_brigade_1'),
+    247: ('nil_impera_brigade', 'nil_impera_brigade_2'),
+    248: ('nil_impera_brigade', 'nil_impera_brigade_3'),
+    250: ('nil_nauzicaa_2', 'nil_nauzicaa'),
+    251: ('nil_nauzicaa_2', 'nil_nauzicaa_1'),
+}
+
+# Cards with one definition but several owned copies (a deck lists the same index again).
+# Card index -> (picture in the card definitions, pictures for copy 1, 2, ...; further copies cycle).
+# A copy is the slot an instance takes among live instances of the same card and owner.
+COPY_ART = {
+    160: ('nor_blue_stripes', ('nor_blue_stripes', 'nor_blue_stripes_1', 'nor_blue_stripes_2')),
+    170: ('nor_siege_tower', ('nor_siege_tower', 'nor_siege_tower_1')),
+}
+
+
+def copy_art_table():
+    return '{'+','.join('%d:["%s",[%s]]' % (index, old, ','.join('"%s"' % p for p in pictures))
+                        for index, (old, pictures) in sorted(COPY_ART.items()))+'}'
+
+
+def bond_art_table():
+    return '{'+','.join('%d:["%s","%s"]' % (index, old, new) for index, (old, new) in sorted(BOND_ART.items()))+'}'
 
 
 def once(source, old, new):
@@ -36,12 +69,29 @@ def patch(name, source):
       { return this._gwaiObservedRoundStatus; }
 ''')
     if name=='CardManager':
-        source=once(source,'protected static var _instance:CardManager;','protected static var _instance:CardManager;\n      private var _gwaiPlans:Object = {0:null,1:null};\n      private var _gwaiKnown:Object = {};')
+        source=once(source,'protected static var _instance:CardManager;','protected static var _instance:CardManager;\n      private var _gwaiPlans:Object = {0:null,1:null};\n      private var _gwaiKnown:Object = {};\n      private var _gwaiCopy:Object = {};')
+        # Art copy slot, taken before the board renderer builds the card's slot, kept for the
+        # instance's whole life (hand, rows, graveyard, Medic) and freed when it is deleted.
+        source=once(source,'this._cardInstances[newInstance.instanceId] = newInstance;',
+            'this._cardInstances[newInstance.instanceId] = newInstance;\n         this.gwaiAssignCopy(newInstance);')
+        source=once(source,'delete this._cardInstances[cardInstance.instanceId];',
+            'delete this._cardInstances[cardInstance.instanceId];\n         delete this._gwaiCopy[cardInstance.instanceId];')
         # A card that goes back to a hand from a public list (graveyard, rows, weather) is known
         # to everyone; same rule as sim/gwentsim/known_hand.py.
         source=once(source,'var oldListID:* = cardInstance.inList;',
             'var oldListID:* = cardInstance.inList;\n         if(newListID == CARD_LIST_LOC_HAND && oldListID >= CARD_LIST_LOC_GRAVEYARD && oldListID <= CARD_LIST_LOC_WEATHERSLOT) this._gwaiKnown[cardInstance.instanceId] = true;\n         else delete this._gwaiKnown[cardInstance.instanceId];')
-        return add_methods(source,'''      public function gwaiKnownHand(side:int) : Array
+        return add_methods(source,'''      public function gwaiAssignCopy(card:CardInstance) : void
+      {
+         var used:Object = {}; var other:CardInstance;
+         for each(other in this._cardInstances)
+            if(other != card && other.owningPlayer == card.owningPlayer && other.templateId == card.templateId && this._gwaiCopy[other.instanceId] != null) used[this._gwaiCopy[other.instanceId]] = true;
+         var copy:int = 0;
+         while(used[copy]) ++copy;
+         this._gwaiCopy[card.instanceId] = copy;
+      }
+      public function gwaiCopyOrdinal(instanceId:int) : int
+      { var copy:Object = this._gwaiCopy[instanceId]; return copy == null ? -1 : int(copy); }
+      public function gwaiKnownHand(side:int) : Array
       {
          var out:Array = []; var hand:Vector.<CardInstance> = this.getCardInstanceList(CARD_LIST_LOC_HAND,side);
          for(var i:int = 0; i < hand.length; ++i) if(this._gwaiKnown[hand[i].instanceId]) out.push(hand[i].templateId);
@@ -165,6 +215,31 @@ def patch(name, source):
         source=once(source,'cardInstance.recalculatePowerPotential(cardManagerRef);\n            cardManagerRef.addCardInstanceToList(cardInstance,cardInstance.getOptimalTransaction().targetSlotID,cardInstance.getOptimalTransaction().targetPlayerID);',
             'var gwaiPlacement:Object = cardManagerRef.gwaiTakePlacement(this.listsPlayer,cardInstance.instanceId);\n            if(gwaiPlacement != null)\n            {\n               cardManagerRef.addCardInstanceToList(cardInstance,int(gwaiPlacement.row),int(gwaiPlacement.side));\n            }\n            else\n            {\n               cardInstance.recalculatePowerPotential(cardManagerRef);\n               cardManagerRef.addCardInstanceToList(cardInstance,cardInstance.getOptimalTransaction().targetSlotID,cardInstance.getOptimalTransaction().targetPlayerID);\n            }')
         return source
+    if name=='CardSlot':
+        source=once(source,'loadIcon("icons/gwint/" + cardTemplate.imageLoc + ".png");',
+            'loadIcon("icons/gwint/" + gwaiBondPicture(cardTemplate,this._instanceId) + ".png");')
+        return add_methods(source,'''      // Distinct art per Tight Bond copy, only while the mod is On for this match. A picture
+      // that differs from the stock definition (another mod changed it) is left alone.
+      // Copies of one card index take their art by copy slot; a slot without an instance
+      // (template only) keeps the stock picture.
+      private static const GWAI_BOND_ART:Object = %s;
+      private static const GWAI_COPY_ART:Object = %s;
+      public static function gwaiBondPicture(cardTemplate:CardTemplate, instanceId:int) : String
+      {
+         var flow:GwintGameFlowController = GwintGameFlowController.getInstance();
+         var settings:Object = flow != null ? flow.gwaiSettingsSnapshot() : null;
+         if(settings == null || settings.enabled !== true) return cardTemplate.imageLoc;
+         var art:Array = GWAI_BOND_ART[cardTemplate.index] as Array;
+         if(art != null) return cardTemplate.imageLoc == art[0] ? art[1] : cardTemplate.imageLoc;
+         art = GWAI_COPY_ART[cardTemplate.index] as Array;
+         if(art == null || cardTemplate.imageLoc != art[0] || instanceId < 0) return cardTemplate.imageLoc;
+         var manager:CardManager = CardManager.getInstance();
+         var copy:int = manager != null ? manager.gwaiCopyOrdinal(instanceId) : -1;
+         if(copy < 0) return cardTemplate.imageLoc;
+         var pictures:Array = art[1] as Array;
+         return pictures[copy %% pictures.length];
+      }
+''' % (bond_art_table(), copy_art_table()))
     if name=='CardLeaderInstance':
         for effect in ('CardEffect_Resurect_Enemy','CardEffect_Resurect'):
             anchor='case CardTemplate.'+effect+':\n               if(isAI && !cardManagerRef.cardEffectManager.randomResEnabled)'

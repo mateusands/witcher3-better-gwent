@@ -28,6 +28,14 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
   weather card its leader can pull from the deck. Lab: +5.4 points of NPC win share with
   Adaptive decks even when the player exchanges too
   (z 3.9).
+- **One artwork per card copy** (while the mod is On): the copies of Impera Brigade,
+  Nausicaa Cavalry Rider, Crinfrid Reavers, Poor Fucking Infantry and Catapult each show a
+  different picture, and so do the copies of Blue Stripes Commando and Siege Tower in one
+  deck (copies of the same card get different art; a fourth Blue Stripes repeats the first).
+  The artwork is the game's own: alternate card art that ships with The Witcher 3 but that
+  the vanilla card list never uses. Visual only (power, abilities and the card list are
+  unchanged, no card definition file is overridden); with the mod Off or removed, the stock
+  art returns. [See every copy side by side](docs/img/bond-card-art.png).
 
 ## NPC decks: Original, Adaptive, Strong
 

@@ -92,11 +92,12 @@ def main():
                 audit.write_text(exported)
             expected_native={'AIPlayerController':['gwaiCancelV8','gwaiShutdownV8','gwaiBeginV8','gwaiAllowedPass','gwaiNativeFallback','gwaiPumpV8','gwaiNote','gwaiPumpV8Step','gwaiNpcMulligan'],
                 'BasePlayerController':['gwaiObservedRoundStatus'],
-                'CardManager':['gwaiKnownHand','gwaiPublicHandCount','gwaiClearPlan','gwaiStorePlan','gwaiActivePlan','gwaiLeaderTarget','gwaiNurseChoice','gwaiTakePlacement'],
+                'CardManager':['gwaiAssignCopy','gwaiCopyOrdinal','gwaiKnownHand','gwaiPublicHandCount','gwaiClearPlan','gwaiStorePlan','gwaiActivePlan','gwaiLeaderTarget','gwaiNurseChoice','gwaiTakePlacement'],
                 'GwintGameFlowController':['gwaiRoundIndex','gwaiConfigure','gwaiSettingsReady','gwaiProfileForPlayer','gwaiSettingsSnapshot','gwaiApplyControllers','gwaiStopSearches'],
                 'GwintGameMenu':['gwaiConfigureMatch','gwaiStopMatch'],
                 'CardInstance':['updateEffectsApplied','onNurseEffectEnded'],
-                'CardLeaderInstance':['ApplyLeaderAbility','pickWeather']}
+                'CardLeaderInstance':['ApplyLeaderAbility','pickWeather'],
+                'CardSlot':['gwaiBondPicture','setupCardWithTemplate']}
             for name,methods in expected_native.items():
                 ffdec('-selectclass',PKG+'.'+name,'-export','script',tmp/name,dest/'gwint_game.swf')
                 exported=(tmp/name/'scripts'/package/(name+'.as')).read_text()
@@ -107,7 +108,9 @@ def main():
                 hooks={'AIPlayerController':['gwaiBeginV8','gwaiPumpV8','GwaiV8Execution.prepare','GwaiV8Capture.capture','GwaiV8Runner','GwaiV8Mulligan.chooseWithLeader'],
                     'GwintGameFlowController':['gwaiNpcMulligan'],
                     'CardInstance':['gwaiNurseChoice','gwaiTakePlacement'],
-                    'CardLeaderInstance':['gwaiLeaderTarget']}.get(name,[])
+                    'CardLeaderInstance':['gwaiLeaderTarget'],
+                    'CardSlot':['gwaiBondPicture(cardTemplate,this._instanceId)','gwaiCopyOrdinal','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
+                    'CardManager':['gwaiAssignCopy(newInstance)','delete this._gwaiCopy']}.get(name,[])
                 for hook in hooks:
                     if hook not in exported:raise RuntimeError('Compiled choice hook missing: '+name+'.'+hook)
             if args.with_recorder:
