@@ -131,7 +131,13 @@ internal class GwaiV8Reserve
         if(!state.leaderModeled(side)) return out;
         var effect:int = state.leaderEffect(side); var key:int = state.leaders[side]; var row:int = GwaiV8Position.leaderHornRow(effect);
         var value:Object = GwaiV8Reserve.describe(state.cards[key],[]); value.template = 0; value.power = 0; value.hero = false;
-        if(row > 0) { value.template = 1; value.rows = [row == 5 ? 0 : row == 4 ? 1 : 2]; value.horn = true; out.cards.push(value); }
+        if(row > 0)
+        {
+            value.template = 1; value.rows = [row == 5 ? 0 : row == 4 ? 1 : 2]; value.horn = true;
+            // A row Mushroom kept for later takes that row's modifier slot (mushroomReserve).
+            if(GwaiV8Reserve.blocked != null && GwaiV8Reserve.blocked.indexOf(value.rows[0]) >= 0) value.rows = [];
+            out.cards.push(value);
+        }
         else if(effect == 15) out.recoveries = 1;
         else if(effect == 16)
         {
@@ -148,6 +154,87 @@ internal class GwaiV8Reserve
             out.cards.push(value);
         }
         return out;
+    }
+    public static var blocked:Array = null;
+    // Python keeps a set of (frozenset active, frozenset occupied, units tuple) states.
+    public static function addState(following:Array, seen:Object, n:Object):void
+    {
+        var k:String = n.active.slice().sort(Array.NUMERIC).join(",")+"|"+n.occupied.slice().sort(Array.NUMERIC).join(",")+"|"+n.units.join(",");
+        if(!seen[k]) { seen[k] = true; following.push(n); }
+    }
+    // Held Mushroom + Berserker combinations after a normal clear (sim/mushroom_reserve.py): the
+    // best inherited ceiling over the Mushroom row choices; the plain reserve otherwise.
+    public static function mushroomReserve(state:Object):Number
+    {
+        var reference:Number = GwaiV8Reserve.reserve(state); var i:int; var j:int; var r:int;
+        var rowsOrder:Array = [5,4,3]; var flags:Object = {5:1,4:2,3:4};
+        var cards:Array = []; for(i = 0; i < state.hand.length; ++i) cards.push(state.cards[state.hand[i]]);
+        var morphs:Array = []; var shrooms:Array = []; var shroomKeys:Object = {};
+        for(i = 0; i < cards.length; ++i)
+        {
+            if(GwaiV8Position.has(cards[i],GwaiV8Const.CardEffect_Morph) && state.supported(cards[i])) morphs.push(cards[i]);
+            if(GwaiV8Position.only(cards[i].effects,GwaiV8Const.CardEffect_Mushroom) && state.supported(cards[i])) { shrooms.push(cards[i]); shroomKeys[cards[i].key] = true; }
+        }
+        if(morphs.length == 0 || shrooms.length == 0) return reference;
+        var relevant:Object = {};
+        for(i = 0; i < morphs.length; ++i) for(r = 0; r < 3; ++r) if(GwaiV8Position.isType(morphs[i],flags[rowsOrder[r]])) relevant[rowsOrder[r]] = true;
+        var states:Array = [{active:[],occupied:[],units:[]}]; var seen:Object = {};
+        for(i = 0; i < shrooms.length; ++i)
+        {
+            var card:Object = shrooms[i]; var choices:Array = [];
+            for(r = 0; r < 3; ++r) if(relevant[rowsOrder[r]] && GwaiV8Position.isType(card,flags[rowsOrder[r]])) choices.push(rowsOrder[r]);
+            var following:Array = []; seen = {};
+            for(j = 0; j < states.length; ++j)
+            {
+                var s:Object = states[j];
+                GwaiV8Reserve.addState(following,seen,s);
+                for(r = 0; r < choices.length; ++r)
+                {
+                    var row:int = choices[r];
+                    var active:Array = s.active.indexOf(row) >= 0 ? s.active : s.active.concat([row]);
+                    if(GwaiV8Position.isType(card,64)) { if(s.occupied.indexOf(row) < 0) GwaiV8Reserve.addState(following,seen,{active:active,occupied:s.occupied.concat([row]),units:s.units}); }
+                    else GwaiV8Reserve.addState(following,seen,{active:active,occupied:s.occupied,units:s.units.concat([card.key+":"+row])});
+                }
+            }
+            if(following.length > 4096) return reference;   // conservative bound for huge hands
+            states = following;
+        }
+        var best:Number = reference;
+        for(j = 0; j < states.length; ++j)
+        {
+            var st:Object = states[j]; if(st.active.length == 0) continue;
+            var view:Object = state.clone(); var hand:Array = [];
+            for(i = 0; i < view.hand.length; ++i)
+                if(!(shroomKeys[view.hand[i]] && GwaiV8Position.isType(view.cards[view.hand[i]],64))) hand.push(view.hand[i]);
+            view.hand = hand;
+            for(i = 0; i < st.units.length; ++i)
+            {
+                var pair:Array = st.units[i].split(":"); var unit:Object = GwaiV8Position.copyMap(view.cards[int(pair[0])]);
+                unit.types = (unit.types & ~7) | flags[int(pair[1])]; unit.effects = [0]; view.cards[unit.key] = unit;
+            }
+            for(i = 0; i < morphs.length; ++i)
+            {
+                var mask:int = 0;
+                for(r = 0; r < st.active.length; ++r) if(GwaiV8Position.isType(morphs[i],flags[st.active[r]])) mask |= flags[st.active[r]];
+                if(mask == 0) continue;
+                var bear:Object = GwaiV8Position.copyMap(state.catalog[morphs[i].targets[0]]);
+                bear.key = morphs[i].key; bear.owner = morphs[i].owner; bear.player = morphs[i].player; bear.row = 1; bear.applied = [];
+                bear.types = (bear.types & ~7) | mask; view.cards[bear.key] = bear;
+            }
+            for(i = 0; i < cards.length; ++i)
+                if(GwaiV8Position.isType(cards[i],64) && GwaiV8Position.has(cards[i],GwaiV8Const.CardEffect_Horn))
+                {
+                    var horn:Object = GwaiV8Position.copyMap(cards[i]);
+                    for(r = 0; r < st.occupied.length; ++r) horn.types &= ~flags[st.occupied[r]];
+                    view.cards[horn.key] = horn;
+                }
+            var blockedRows:Array = [];
+            for(r = 0; r < 3; ++r) if(st.occupied.indexOf(rowsOrder[r]) >= 0) blockedRows.push(r);
+            GwaiV8Reserve.blocked = blockedRows;
+            try { best = Math.max(best,GwaiV8Reserve.reserve(view)); }
+            finally { GwaiV8Reserve.blocked = null; }
+        }
+        return best;
     }
     public static function reserve(state:Object):Number
     {

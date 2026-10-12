@@ -23,7 +23,8 @@ function GwaiSettingsInitialize() : void
         cfg.SetRawConfigValueByStr("GwentAI", "GwaiEnabled", normalized);
         changed = true;
     }
-    if (difficulty != "0" && difficulty != "1" && difficulty != "2" && difficulty != "3")
+    // Three levels since 0.9.0: Easy, Normal, Hard. A saved Expert (3) becomes Hard.
+    if (difficulty != "0" && difficulty != "1" && difficulty != "2")
     {
         cfg.SetRawConfigValueByStr("GwentAI", "GwaiDifficulty", "2");
         changed = true;
@@ -85,11 +86,11 @@ function GwaiSettingsEnabled() : bool
 function GwaiSettingsDifficulty() : int
 {
     var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiDifficulty");
-    if (raw == "0" || raw == "1" || raw == "2" || raw == "3")
+    if (raw == "0" || raw == "1" || raw == "2")
     {
         return StringToInt(raw, 2);
     }
-    return 2;
+    return 2;   // Hard, also for an old saved Expert
 }
 
 // Effective value for a new match; the saved preference survives the main switch.

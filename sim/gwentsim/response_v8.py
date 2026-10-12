@@ -9,10 +9,41 @@ from .response_search import choose_response, secured, tie_match
 # Simulator-only experiment switches for A/B tests in the Lab (policy "response-v8:flag+flag").
 # Empty in normal use, so response-v8 behaves exactly as shipped.
 VARIANT = frozenset()
+# Seat of the NPC in a player-deck A/B (set by evaluate_pool.run_player): switches apply to that
+# seat only, so the Better AI stand-in for the player keeps playing the shipped AI. None = all seats.
+NPC_SEAT = None
+
+
+def flag(name, seat):
+    return name in VARIANT and (NPC_SEAT is None or seat == NPC_SEAT)
+
+
+def safe_lead_pass(position, context):
+    """Experiment "lead-pass": with a round already lost, an open round we lead may be passed
+    when, in every public hypothesis of the opponent's hand, even generous bounds cannot
+    overtake us (the cards we keep are worth more in the next round)."""
+    from .opponent_belief import hypotheses, opponent_view
+    from .sequence_search import overtaking_bounds
+    if context.opponent_passed or not context.own_losses or not position.hand or not secured(position, context):
+        return False
+    beliefs = hypotheses(position, context, 6)
+    if not beliefs:
+        return False
+    flipped = replace(context, own_losses=context.opponent_losses, opponent_losses=context.own_losses,
+                      own_faction=context.opponent_faction, opponent_faction=context.own_faction)
+    tie_for_them = flipped.wins_ties or tie_match(flipped)
+    for h in beliefs:
+        bounds = overtaking_bounds(opponent_view(position, h))
+        if bounds is None or (bounds[0] >= bounds[1] if tie_for_them else bounds[0] > bounds[1]):
+            return False
+    return True
 
 
 def choose_response_v8(position, context, profile):
     result = choose_response(position, context, profile)
+    if result.action is not None and flag('lead-pass', position.player) and safe_lead_pass(position, context):
+        return replace(result, action=None, value=result.pass_value, reason='pass_for_match_resources',
+                       revision='response-v8')
 
     # Blunder Fix #1: Overplay after opponent passed while round is secured.
     # In any round where the opponent has already passed and our score is winning,
@@ -158,7 +189,7 @@ def choose_response_v8(position, context, profile):
                 if not is_safe and not context.opponent_passed and len(position.hand) == 1 and deck_left >= 2:
                     is_safe = True
                 # Experiment: a recovered spy is worth its two draws in any open round.
-                if not is_safe and 'medic-spy-open' in VARIANT and not context.opponent_passed and deck_left >= 2:
+                if not is_safe and flag('medic-spy-open', position.player) and not context.opponent_passed and deck_left >= 2:
                     is_safe = True
                 if not is_safe and context.opponent_passed:
                     best_spy_cand = min(grave_spies, key=lambda k: (position.cards[k].power, k))
@@ -232,7 +263,7 @@ def choose_response_v8(position, context, profile):
     # row) is replaced by the best searched alternative that does, or that costs
     # nothing (spies, Decoy, resurrection to hand). Without one, pass when that cannot
     # lose the match; otherwise keep the original move.
-    if not context.opponent_passed and result.action is not None and 'no-waste-guard' not in VARIANT:
+    if not context.opponent_passed and result.action is not None and not flag('no-waste-guard', position.player):
         if wasted_move(position, result.action):
             for alternative in result.alternatives:
                 move = alternative_action(alternative['action'])
@@ -273,7 +304,7 @@ def wasted_move(position, action):
     own, other = position.player, 1 - position.player
     before_scores, after_scores = position.scores(), after.scores()
     gain = (after_scores[own] - after_scores[other]) - (before_scores[own] - before_scores[other])
-    if weather and 'weather-zero' in VARIANT:
+    if weather and flag('weather-zero', position.player):
         return gain <= 0   # experiment: weather that changes nothing now is also wasted
     return gain < 0 if weather else gain <= 0
 

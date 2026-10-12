@@ -10,13 +10,13 @@ from test_v8_as_position import payload
 from test_v8_as_leaders import with_leader
 from gwentsim.sequence_search import Context
 from gwentsim.response_search import choose_response
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def compare(state,context,level):
     script=core_javascript()+'\nvar data=JSON.parse(require("fs").readFileSync(0,"utf8"));var state=Object.assign(new GwaiV8Position(),data.state);'
     script+='\nvar before=JSON.stringify(state);var out=GwaiV8Response.choose(state,data.context,data.level);if(before!==JSON.stringify(state))throw new Error("input mutated");console.log(JSON.stringify(out));'
-    p=subprocess.run(['node','-e',script],input=json.dumps(dict(state=payload(state),context=asdict(context),level=level)),capture_output=True,text=True)
+    p=subprocess.run(['node',script_file(script)],input=json.dumps(dict(state=payload(state),context=asdict(context),level=level)),capture_output=True,text=True)
     assert p.returncode==0,p.stderr
     actual=json.loads(p.stdout); expected=json.loads(json.dumps(asdict(choose_response(state,context,level))))
     for field in ('value','pass_value'):assert actual.pop(field)==pytest.approx(expected.pop(field),abs=1e-12)

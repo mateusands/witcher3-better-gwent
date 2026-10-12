@@ -31,15 +31,14 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
   - a leader that pulls a weather card from the deck gets exactly that card.
 - **Synergy whole or not at all:** muster groups complete (a card that calls others, like
   Arachas Behemoth, comes with the cards it calls), tight bond with two or more copies,
-  medics capped at two, spies capped at three. Avallac'h, the neutral hero spy, fits most decks.
+  medics capped at two, spies capped at four. Avallac'h, the neutral hero spy, fits most decks.
 - **Never Olaf:** the original game's board can throw an error when Olaf's effect lands after
   he left the board, so the builder never adds him (Madman Lugos takes his place in Strong).
 
 **Adaptive** (internal mode name `balanced`) starts from the NPC's own deck, makes it legal under these rules, and swaps its
 weakest units for better eligible ones until its strength reaches the strength of the
 player's deck (the same measure the game uses for its extra NPC cards). The target follows the mod's
-difficulty: 85% of the player's deck strength on Easy, 95% on Medium, 100% on Hard and 110% on
-Expert. It is never weakened below the NPC's base deck. **Strong** builds the best deck the rules allow for the faction.
+difficulty: 85% of the player's deck strength on Easy, 100% on Normal and 110% on Hard. It is never weakened below the NPC's base deck. **Strong** builds the best deck the rules allow for the faction.
 Only the strength of the player's deck is used, never the player's hand.
 
 ## Which NPCs

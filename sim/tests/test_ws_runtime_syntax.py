@@ -64,7 +64,7 @@ def test_menu_wrappers_match_native_signatures_and_preserve_call_order():
     if(JSON.stringify(calls)!==JSON.stringify(['initialize',['native'],['native',100,7,'GwentAI'],'locks']))
         throw new Error(JSON.stringify(calls));
     ''' % (body(source, 'OnConfigUI'), body(source, 'OnShowOptionSubmenu'))
-    subprocess.run(['node', '-e', script], check=True, capture_output=True, text=True)
+    subprocess.run(['node', _js_file(script)], check=True, capture_output=True, text=True)
 
 
 def test_standard_reward_filter_still_rejects_mixed_and_special_rewards():
@@ -82,4 +82,13 @@ def test_standard_reward_filter_still_rejects_mixed_and_special_rewards():
     }
     current=reward();isGwentMode=false;if(check('generic_gwint_reward'))throw new Error('non-Gwent accepted');
     ''' % predicate
-    subprocess.run(['node', '-e', script], check=True, capture_output=True, text=True)
+    subprocess.run(['node', _js_file(script)], check=True, capture_output=True, text=True)
+
+
+def _js_file(script):
+    """Temporary file holding `script` (node -e hits the argument size limit)."""
+    import hashlib, tempfile
+    path = Path(tempfile.gettempdir()) / ('gwai-ws-%s.js' % hashlib.sha256(script.encode()).hexdigest()[:20])
+    if not path.exists():
+        path.write_text(script)
+    return str(path)

@@ -27,7 +27,7 @@ seat against the native AI in the same seat (win = 1, draw = 0.5).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/levels-dark.svg">
-  <img src="img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 57.5%, Expert 57.7% (native AI = 50%)" width="880">
+  <img src="img/levels-light.svg" alt="Better AI score share against the native AI: Easy 52.9%, Normal 57.6%, Hard 59.5% (native AI = 50%)" width="880">
 </picture>
 
 <picture>
@@ -78,7 +78,8 @@ I test every build in real matches with the mod installed; each match is recorde
 analysed (decision source, timing, errors). Problems I found in game and fixed so far:
 stalled matches, wager menu values, wasted Frost/Horn, round-1 overcommit, weaker NPC
 decks, Medic choosing a siege unit over a Spy, muster groups split by the Adaptive decks, and
-the NPC never exchanging opening cards (now it does, from Medium up).
+the NPC never exchanging opening cards (now it does, on Normal and Hard), repeated heroes in
+the NPC decks, and a 3 s thinking limit that cut Hard's opening searches.
 
 ## Running totals
 

@@ -18,7 +18,7 @@ plays Gwent exactly as before.
 ## Options
 
 - **Better Gwent AI**: On/Off. Off = the original game, wagers included.
-- **Difficulty**: Easy, Medium, Hard (default) or Expert, independent of the game difficulty.
+- **Difficulty**: Easy, Normal or Hard (default), independent of the game difficulty.
 - **NPC decks**: Original (default), Adaptive or Strong. Which existing cards an NPC brings,
   rebuilt in memory for each match; nothing is written to your save.
 - **AI plays for you**: the AI also plays your side (you still pick your deck and your opening
@@ -26,7 +26,7 @@ plays Gwent exactly as before.
 - **Gwent max bet**: Vanilla (10), 25, 50, 100 or 150, for ordinary money wagers only.
 - **Higher stakes, stronger opponent**: with a big wager, the NPC uses a stronger existing deck.
 
-From Medium up, the NPC exchanges up to two opening cards, as you can. Settings are read when
+On Normal and Hard, the NPC exchanges up to two opening cards, as you can. Settings are read when
 a Gwent match opens; to change them, finish the match and start a new one.
 
 ## Fair play

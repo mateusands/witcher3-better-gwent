@@ -92,7 +92,7 @@ def main():
                 audit.write_text(exported)
             expected_native={'AIPlayerController':['gwaiCancelV8','gwaiShutdownV8','gwaiBeginV8','gwaiAllowedPass','gwaiNativeFallback','gwaiPumpV8','gwaiNote','gwaiPumpV8Step','gwaiNpcMulligan'],
                 'BasePlayerController':['gwaiObservedRoundStatus'],
-                'CardManager':['gwaiPublicHandCount','gwaiClearPlan','gwaiStorePlan','gwaiActivePlan','gwaiLeaderTarget','gwaiNurseChoice','gwaiTakePlacement'],
+                'CardManager':['gwaiKnownHand','gwaiPublicHandCount','gwaiClearPlan','gwaiStorePlan','gwaiActivePlan','gwaiLeaderTarget','gwaiNurseChoice','gwaiTakePlacement'],
                 'GwintGameFlowController':['gwaiRoundIndex','gwaiConfigure','gwaiSettingsReady','gwaiProfileForPlayer','gwaiSettingsSnapshot','gwaiApplyControllers','gwaiStopSearches'],
                 'GwintGameMenu':['gwaiConfigureMatch','gwaiStopMatch'],
                 'CardInstance':['updateEffectsApplied','onNurseEffectEnded'],
@@ -104,7 +104,7 @@ def main():
                     if not re.search(r'function\s+(?:get\s+)?'+method+r'\s*\(',exported):
                         raise RuntimeError('Compiled native bridge missing: '+name+'.'+method)
                 (dest/'compiled-source'/(name+'.as')).write_text(exported)
-                hooks={'AIPlayerController':['gwaiBeginV8','gwaiPumpV8','GwaiV8Execution.prepare','GwaiV8Capture.capture','GwaiV8Runner','GwaiV8Mulligan.choose'],
+                hooks={'AIPlayerController':['gwaiBeginV8','gwaiPumpV8','GwaiV8Execution.prepare','GwaiV8Capture.capture','GwaiV8Runner','GwaiV8Mulligan.chooseWithLeader'],
                     'GwintGameFlowController':['gwaiNpcMulligan'],
                     'CardInstance':['gwaiNurseChoice','gwaiTakePlacement'],
                     'CardLeaderInstance':['gwaiLeaderTarget']}.get(name,[])

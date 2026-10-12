@@ -88,7 +88,7 @@ internal class GwaiV8Response
         var samples:int = level == 0 ? 2 : level == 3 ? 6 : 4;
         var beliefs:Array = GwaiV8Belief.hypotheses(position,context,samples);
         if(beliefs.length == 0) return GwaiV8Response.result(null,0,0,0,0,0,context.opponent_leader_available,"insufficient_public_catalog");
-        mean = GwaiV8Sequence.opponentAverage(position); budget = [512,2048,4096,8192][level];
+        mean = GwaiV8Sequence.opponentAverage(position); budget = [512,768,2048,8192][level];
         for(var i:int = 0; i < beliefs.length; ++i) unsupported += beliefs[i].unsupported;
         var passSum:Number = 0;
         try { for(i = 0; i < beliefs.length; ++i) passSum += response(position,beliefs[i],true).value; }

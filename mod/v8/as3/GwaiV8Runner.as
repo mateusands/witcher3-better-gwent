@@ -84,7 +84,7 @@ internal class GwaiV8Runner
             beliefs = GwaiV8Belief.hypotheses(position,context,level == 0 ? 2 : level == 3 ? 6 : 4);
             if(beliefs.length == 0)
             { finishRaw(GwaiV8Response.result(null,0,0,0,0,0,context.opponent_leader_available,"insufficient_public_catalog")); return; }
-            engine.mean = GwaiV8Sequence.opponentAverage(position); engine.budget = [512,2048,4096,8192][level];
+            engine.mean = GwaiV8Sequence.opponentAverage(position); engine.budget = [512,768,2048,8192][level];
             for(i = 0; i < beliefs.length; ++i) engine.unsupported += beliefs[i].unsupported;
             phase = "passes"; return;
         }

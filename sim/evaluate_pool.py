@@ -71,15 +71,22 @@ def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
     import gwentsim.response_v8 as v8
     from evaluate_mulligan import exchange_hook
     hook = ExitStack()
+    # Experiment switches change the NPC only; the stand-in player keeps the shipped AI.
+    v8.NPC_SEAT = npc_seat
     if 'player-mulligan' in v8.VARIANT:
         # As in the game, the player may exchange up to two opening cards (same evaluated rule),
         # for the native and the Better AI NPC alike.
         hook.enter_context(exchange_hook(1 - npc_seat, 'evaluated', seed + 7919, []))
-    if npc_policy != 'vanilla' and v8.VARIANT & {'mulligan', 'mulligan-structural', 'mulligan-leader'}:
+    if npc_policy != 'vanilla' and v8.VARIANT & {'mulligan', 'base-mulligan', 'mulligan-structural', 'mulligan-leader',
+                                                 'mulligan-combined', 'mulligan-full'}:
         # A/B "response-v8:mulligan": the Better AI NPC exchanges up to two opening cards (the
         # native NPC never does); own hand and remaining own-deck counts only.
+        # "base-mulligan" is the shipped exchange (since 0.9.0 the leader's weather goes first:
+        # "combined") as part of the scene of both A/B arms; "mulligan" alone is the earlier one.
         variant = ('structural' if 'mulligan-structural' in v8.VARIANT else
-                   'leader' if 'mulligan-leader' in v8.VARIANT else 'evaluated')
+                   'leader' if 'mulligan-leader' in v8.VARIANT else
+                   'full' if 'mulligan-full' in v8.VARIANT else
+                   'combined' if v8.VARIANT & {'mulligan-combined', 'base-mulligan'} else 'evaluated')
         hook.enter_context(exchange_hook(npc_seat, variant, seed, []))
     with hook:
         recorder, flow = run_match(match.templates.values(), decks, match.card_values, SeededRandom(seed),

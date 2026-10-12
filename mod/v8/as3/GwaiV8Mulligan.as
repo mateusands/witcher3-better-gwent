@@ -127,7 +127,22 @@ internal class GwaiV8Mulligan
                 out.cards[card.key] = horn;
             }
         }
-        return out.reserve()+GwaiV8Mulligan.spyAdjustment(out);
+        // The plain reserve, as in the Lab's mulligan (Mushroom rows are enumerated above).
+        return GwaiV8Reserve.reserve(out)+GwaiV8Mulligan.spyAdjustment(out);
+    }
+    // A leader that pulls a weather card from the deck (Frost 13, Fog 12, Rain 11): that weather
+    // in hand goes back first (Lab: proven gain); otherwise the evaluated exchange.
+    public static const LEADER_PICK:Object = {13:23,12:24,11:25};
+    public static function chooseWithLeader(state:GwaiV8Position, leaderEffect:int):int
+    {
+        var weather:Object = LEADER_PICK[leaderEffect];
+        if(weather != null)
+            for(var i:int = 0; i < state.hand.length; ++i)
+            {
+                var card:Object = state.cards[state.hand[i]];
+                if(card.effects.length > 0 && card.effects[0] == weather) return state.hand[i];
+            }
+        return GwaiV8Mulligan.choose(state);
     }
     // Greedy: one positive expected-value exchange, recomputed after the real draw.
     // Returns the hand key to exchange, or -1 to keep the hand.

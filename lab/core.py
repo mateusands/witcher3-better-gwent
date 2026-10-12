@@ -319,6 +319,7 @@ def run_payload(payload):
     policy, _, flags = payload.get('policy', 'response-v8').partition(':')
     import gwentsim.response_v8 as v8
     v8.VARIANT = frozenset(f for f in flags.split('+') if f)
+    v8.NPC_SEAT = None   # run_player sets it for player-deck tasks
     payload = dict(payload, policy=policy)
     if payload.get('weights') and payload.get('kind') not in ('tune-eval',):
         return _with_weights(payload)

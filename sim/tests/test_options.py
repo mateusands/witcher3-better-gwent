@@ -90,7 +90,9 @@ def test_menu_labels_resolve_through_compiled_key_hash_table():
         assert 'option_' + var.attrib['displayName'] in resolved
     for option in xml.findall('.//Option'):
         assert 'preset_value_' + option.attrib['displayName'] in resolved
-    assert [int(e.attrib['value']) for e in xml.findall('.//Var[@id="GwaiDifficulty"]//Entry')] == [int(d) for d in Difficulty]
+    # Three levels in the menu; Difficulty.EXPERT exists for the simulator only.
+    assert [int(e.attrib['value']) for e in xml.findall('.//Var[@id="GwaiDifficulty"]//Entry')] == [
+        int(d) for d in Difficulty if d != Difficulty.EXPERT]
 
 
 def test_autoplay_uses_selected_profile_on_both_sides_and_survives_main_switch():

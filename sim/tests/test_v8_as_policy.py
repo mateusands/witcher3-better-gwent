@@ -11,13 +11,13 @@ from gwentsim.sequence_search import Context
 from gwentsim.position import Action
 from gwentsim.response_search import ResponseResult
 import gwentsim.response_v8 as reference
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def compare(state,context,level=2,base=None):
     script=core_javascript()+'\nvar data=JSON.parse(require("fs").readFileSync(0,"utf8"));var state=Object.assign(new GwaiV8Position(),data.state);'
     script+='\nvar before=JSON.stringify(state);var baseBefore=JSON.stringify(data.base);var out=data.base==null?GwaiV8Policy.choose(state,data.context,data.level):GwaiV8Policy.guards(state,data.context,data.base);if(before!==JSON.stringify(state)||baseBefore!==JSON.stringify(data.base))throw new Error("input mutated");console.log(JSON.stringify(out));'
-    process=subprocess.run(['node','-e',script],input=json.dumps(dict(state=payload(state),context=asdict(context),level=level,base=None if base is None else asdict(base))),capture_output=True,text=True)
+    process=subprocess.run(['node',script_file(script)],input=json.dumps(dict(state=payload(state),context=asdict(context),level=level,base=None if base is None else asdict(base))),capture_output=True,text=True)
     assert process.returncode==0,process.stderr
     actual=json.loads(process.stdout);expected=json.loads(json.dumps(asdict(reference.choose_response_v8(state,context,level))))
     for field in ('value','pass_value'):assert actual.pop(field)==pytest.approx(expected.pop(field),abs=1e-12)

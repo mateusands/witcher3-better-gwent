@@ -26,8 +26,8 @@ from . import constants as C
 MIN_UNITS, MAX_UNITS = 22, 26
 # Balanced: target strength as a share of the player's deck strength, by mod difficulty
 # (0 Easy, 1 Medium, 2 Hard, 3 Expert).
-BALANCED_TARGET = (0.85, 0.95, 1.0, 1.1)
-MAX_SPIES, MAX_MEDICS = 3, 2
+BALANCED_TARGET = (0.85, 1.0, 1.1, 1.1)   # Easy, Normal, Hard (Expert: simulator only)
+MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (Lab round 3: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'
 # Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
 # lands after he has left the board (seen in the Lab with Adaptive Skellige decks, 2026-10-12);
@@ -88,6 +88,14 @@ def unit_value(t, names, horn_row=None):
     if horn_row and unit_row(t) == horn_row and not t.is_type(C.CardType_Hero):
         value *= 1.15
     return value
+
+
+def hero_identity(t, names):
+    """Heroes are unique: one copy, and the GOG bonus version (geraltGOG, ciriGOG) is the same
+    character as the base card. None for other cards."""
+    if not t.is_type(C.CardType_Hero):
+        return None
+    return names.get(t.index, str(t.index)).replace('GOG', '')
 
 
 def packages(templates, faction, names):
@@ -171,12 +179,17 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
     horn_row = LEADER_HORN_ROW.get(leader_effect(templates, leader))
     chosen, spies, medics = [], 0, 0
     keep_set = set(keep)
+    heroes = set()                           # a hero only once, GOG versions included
     for t in sorted((templates[i] for i in keep_set), key=lambda t: t.index):
+        hero = hero_identity(t, names)
+        if hero is not None and hero in heroes:
+            continue
+        heroes.add(hero)
         chosen.append(t); spies += is_spy(t); medics += t.has_effect(C.CardEffect_Nurse)
     ranked = []
     for kind, cards in packages(templates, faction, names):
         cards = [c for c in cards if c.index not in keep_set]
-        if not cards:
+        if not cards or any(hero_identity(c, names) in heroes for c in cards if c.is_type(C.CardType_Hero)):
             continue
         if kind == 'bond' and len(cards) < 2:
             kind = 'single'                  # a lone bond card is just a unit
@@ -191,7 +204,10 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
         s = sum(is_spy(c) for c in cards); m = sum(c.has_effect(C.CardEffect_Nurse) for c in cards)
         if spies + s > MAX_SPIES or medics + m > MAX_MEDICS:
             continue
+        if any(hero_identity(c, names) in heroes for c in cards if c.is_type(C.CardType_Hero)):
+            continue
         chosen += cards; spies += s; medics += m
+        heroes.update(hero_identity(c, names) for c in cards if c.is_type(C.CardType_Hero))
         if len(chosen) >= count:
             break
     return chosen
@@ -228,7 +244,13 @@ def balanced_deck(templates, deck, names, target, steps=None):
                      key=lambda t: t.index)
     copies = defaultdict(int)
     kept = []
+    heroes = set()
     for t in current:                                   # at most three copies, as in native decks
+        hero = hero_identity(t, names)
+        if hero is not None:                            # a hero only once (native decks repeat some)
+            if hero in heroes:
+                continue
+            heroes.add(hero)
         copies[t.index] += 1
         if copies[t.index] <= 3:
             kept.append(t)
@@ -254,11 +276,15 @@ def balanced_deck(templates, deck, names, target, steps=None):
             if not any(t.index in present for t in cards):
                 pool.append(cards)
         else:
-            pool += [[t] for t in cards if t.index not in present]
+            pool += [[t] for t in cards if t.index not in present
+                     and (hero_identity(t, names) is None or hero_identity(t, names) not in heroes)]
     pool.sort(key=lambda cards: (-sum(map(value, cards)) / len(cards), cards[0].index))
 
     def fits(new, without=()):
         group = [u for u in current if not any(u is w for w in without)] + list(new)
+        group_heroes = [hero_identity(u, names) for u in group if u.is_type(C.CardType_Hero)]
+        if len(set(group_heroes)) != len(group_heroes):
+            return False
         return sum(map(is_spy, group)) <= MAX_SPIES and sum(
             u.has_effect(C.CardEffect_Nurse) and not u.is_type(C.CardType_Hero) for u in group) <= MAX_MEDICS
 
@@ -347,13 +373,20 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
     mode, _, flags = (mode or 'original').partition(':')
     if mode == 'original':
         return deck
-    if mode == 'strong':
-        cards = strong_deck(templates, deck, names)
-    elif mode in ('balanced', 'adaptive'):   # "Adaptive" in the menu and docs
-        target = deck_strength(templates, player_cards or []) * BALANCED_TARGET[difficulty]
-        cards = balanced_deck(templates, deck, names, target)
-    else:
-        raise ValueError('unknown NPC deck mode %s' % mode)
+    global MAX_SPIES
+    saved = MAX_SPIES
+    if 'spies4' in flags.split('+'):
+        MAX_SPIES = 4                         # experiment: one more spy allowed
+    try:
+        if mode == 'strong':
+            cards = strong_deck(templates, deck, names)
+        elif mode in ('balanced', 'adaptive'):   # "Adaptive" in the menu and docs
+            target = deck_strength(templates, player_cards or []) * BALANCED_TARGET[difficulty]
+            cards = balanced_deck(templates, deck, names, target)
+        else:
+            raise ValueError('unknown NPC deck mode %s' % mode)
+    finally:
+        MAX_SPIES = saved
     if 'decoy3' in flags.split('+') and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
         cards = with_decoys(templates, cards, 3)
     # The chosen deck replaces the native extra-card mechanism for this match.
@@ -387,6 +420,12 @@ def audit(templates, cards, leader):
                        and templates[i].faction == templates[t.index].faction]
             if missing:
                 problems.append('muster %d without %s' % (t.index, missing))
+    from blunder_hunter import card_names
+    names = card_names()
+    hero_names = [hero_identity(t, names) for t in units if t.is_type(C.CardType_Hero)]
+    for hero in sorted(set(hero_names)):
+        if hero_names.count(hero) > 1:
+            problems.append('hero %s more than once' % hero)
     if len(set(cards)) != len(cards):
         for i in set(cards):
             limit = 3   # native NPC decks already hold up to three copies of a unit

@@ -14,7 +14,7 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
 ## Features
 
 - **Options > Mods > Better Gwent AI**, with an On/Off switch (Off = vanilla game).
-- Easy, Medium, **Hard (default)** and Expert, independent of the game difficulty.
+- Easy, Normal and **Hard (default)**, independent of the game difficulty.
 - Optional **AI plays for you** (Off by default), using the selected difficulty.
 - Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
 - Optional stronger existing NPC deck variants at higher stakes (Off by default).
@@ -24,8 +24,9 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
 - **NPC decks: Original (default) / Adaptive / Strong**: which existing cards an NPC brings,
   rebuilt in memory for each match, safe for saves. Adaptive is checked in game; Strong is
   checked in the simulator.
-- **The NPC exchanges up to two opening cards** (Medium and above), as you can. Lab: +5.4
-  points of NPC win share on Expert with Adaptive decks even when the player exchanges too
+- **The NPC exchanges up to two opening cards** (Normal and Hard), as you can, and first the
+  weather card its leader can pull from the deck. Lab: +5.4 points of NPC win share with
+  Adaptive decks even when the player exchanges too
   (z 3.9).
 
 ## NPC decks: Original, Adaptive, Strong
@@ -42,7 +43,7 @@ regardless of your deck because of an inverted check. This option chooses what t
 - **Adaptive:** the same idea done fully. The NPC keeps its faction, leader and heroes; its
   whole deck is made legal and playable, and its weakest units are swapped for better cards
   of its faction until it matches the strength of *your* deck at that match: 85% on Easy,
-  95% on Medium, 100% on Hard, 110% on Expert. A fair fight at every stage of the game.
+  100% on Normal, 110% on Hard. A fair fight at every stage of the game.
 - **Strong:** the best deck the NPC's faction allows under the same rules.
 
 Every deck is built like a seasoned player builds one: a playable kit of special cards
@@ -55,16 +56,16 @@ Measured in the simulator (same decks and luck; the player side is played by Bet
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-dark.svg">
-  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Expert, Better AI vs native AI: Original 39-40%, Adaptive 65-71%, Strong 76-78% with Better AI" width="880">
+  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 39-40%, Adaptive 65-71%, Strong 76-78% with Better AI" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-mine-dark.svg">
-  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Expert, Better AI vs native AI: Original 22-25%, Adaptive 39-53%, Strong 52-56% with Better AI" width="880">
+  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 25-37%, Adaptive 37-53%, Strong 52-55% with Better AI" width="880">
 </picture>
 
-Against my own real decks (240 games per cell), Adaptive goes from 39% on Easy to 53% on
-Expert, an even fight, and Strong stays hard but winnable at 52-56% on every level.
+Against my own real decks (140 games per cell), Adaptive goes from 37% on Easy to 53% on
+Hard, an even fight, and Strong stays hard but winnable at 52-55% on every level.
 
 Nothing is written to your save and no card is edited: the NPC's deck is rebuilt in memory
 for that match only. Turn the option or the mod Off and the next match uses the native deck.
@@ -74,7 +75,7 @@ Details: [docs/NPC_DECKS.md](docs/NPC_DECKS.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/challenge-dark.svg">
-  <img src="docs/img/challenge-light.svg" alt="Choosing your challenge: dial 1 AI difficulty Easy to Expert, dial 2 NPC decks Original, Adaptive, Strong; combinations from the original game to maximum challenge" width="880">
+  <img src="docs/img/challenge-light.svg" alt="Choosing your challenge: dial 1 AI difficulty Easy to Hard, dial 2 NPC decks Original, Adaptive, Strong; combinations from the original game to maximum challenge" width="880">
 </picture>
 
 <details>
@@ -82,15 +83,15 @@ Details: [docs/NPC_DECKS.md](docs/NPC_DECKS.md).
 
 You set the challenge with two independent dials:
 
-1. **AI difficulty (Easy, Medium, Hard, Expert): how well the NPC thinks.** It sets how deeply
-   the AI analyses its moves; on Expert it thinks longer and makes fewer mistakes.
+1. **AI difficulty (Easy, Normal, Hard): how well the NPC thinks.** It sets how deeply the AI
+   analyses its moves; on Hard it thinks longest and makes the fewest mistakes.
 2. **NPC decks (Original, Adaptive, Strong): which cards the NPC plays.**
    - **Original:** the game's deck, with the extra-card rule repaired. The NPC only gets the few
      extra cards the game lists for it (4.4 on average, none for 14 of 51 NPCs), so against a
      strong deck it stays weaker.
    - **Adaptive:** the NPC gets more and better cards than in Original, but balanced: its deck
      is rebuilt to follow the strength of yours, and the difficulty sets the target, from 85%
-     of your deck's strength on Easy to 110% on Expert.
+     of your deck's strength on Easy to 110% on Hard.
    - **Strong:** the best deck the NPC's faction allows.
 
 Two wager options come with it, both part of Better AI: a higher maximum bet for common Gwent
@@ -103,9 +104,9 @@ Combinations, from light to heavy:
 
 - **The original game:** mod Off.
 - **Just a smarter opponent:** Hard with Original decks.
-- **A fair fight all game long:** Hard or Expert with Adaptive decks.
-- **Maximum challenge:** Expert with Strong decks and stronger stakes On. Against my own real
-  decks the NPC wins about half of the matches (54% on Expert): very hard, still winnable.
+- **A fair fight all game long:** Normal or Hard with Adaptive decks.
+- **Maximum challenge:** Hard with Strong decks and stronger stakes On. Against my own real
+  decks the NPC wins about half of the matches (55% on Hard): very hard, still winnable.
 
 </details>
 
@@ -131,7 +132,7 @@ its own hand and which of its own cards are left in its deck, never their order.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/levels-dark.svg">
-  <img src="docs/img/levels-light.svg" alt="Better AI score share against the native AI: Easy 55.1%, Medium 57.4%, Hard 57.5%, Expert 57.7% (native AI = 50%)" width="880">
+  <img src="docs/img/levels-light.svg" alt="Better AI score share against the native AI: Easy 52.9%, Normal 57.6%, Hard 59.5% (native AI = 50%)" width="880">
 </picture>
 
 <picture>
@@ -161,17 +162,17 @@ levels 1–14 always enters the NPC deck, even against a weak early-game player 
 
 **With Better Gwent AI On, the intended rule applies at every level and every difficulty**:
 each extra card uses its real requirement (base 145–230 by level; +80 on Easy, −80 on
-Hard and Expert). The highest optional stronger-stakes stage still gives every extra
+Hard). The highest optional stronger-stakes stage still gives every extra
 card. With the mod Off the game is untouched. No card or deck definition is added,
 removed or edited.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/requirements-dark.svg">
-  <img src="docs/img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better AI On, Hard/Expert reaches all extras at 160, Medium at 240, Easy at 320" width="880">
+  <img src="docs/img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better AI On, Hard reaches all extras at 160, Normal at 240, Easy at 320" width="880">
 </picture>
 
-Our own recorded player decks measured 214–284, so Hard and Expert NPCs keep every extra
-card against a normal deck; the fix mainly makes the early game and Easy/Medium fair.
+Our own recorded player decks measured 214–284, so Hard NPCs keep every extra card against a
+normal deck; the fix mainly makes the early game and Easy/Normal fair.
 
 ## Research behind it
 

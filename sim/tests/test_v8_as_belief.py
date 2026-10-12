@@ -11,13 +11,13 @@ from test_position import capture
 from test_v8_as_position import payload
 from gwentsim.sequence_search import Context
 from gwentsim.opponent_belief import public_seed, hypotheses, opponent_view
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def run(inputs, expression):
     script=core_javascript()+'\nvar inputs=JSON.parse(require("fs").readFileSync(0,"utf8"));'
     script+='\nconsole.log(JSON.stringify(inputs.map(data => '+expression+')));'
-    process=subprocess.run(['node','-e',script],input=json.dumps(inputs),capture_output=True,text=True)
+    process=subprocess.run(['node',script_file(script)],input=json.dumps(inputs),capture_output=True,text=True)
     assert process.returncode==0,process.stderr
     return json.loads(process.stdout)
 
@@ -56,9 +56,10 @@ def test_seed_increment_has_no_53bit_integer_rounding():
         assert sum(w << (32*i) for i,w in enumerate(words))==sum(w << (32*i) for i,w in enumerate(case[0]))+case[1]
 
 
+@pytest.mark.parametrize('known',[False,True])
 @pytest.mark.parametrize('faction',range(1,6))
 @pytest.mark.parametrize('hand_count',[0,1,5,99])
-def test_public_seed_sampling_and_opponent_view_match(board,faction,hand_count):
+def test_public_seed_sampling_and_opponent_view_match(board,faction,hand_count,known):
     for n in range(12):
         flags=[9,10,12,137,16,32,71][n%7]
         effects=(23,) if flags==16 else (27,) if flags==71 else (42,) if n%5==0 else ()
@@ -69,6 +70,10 @@ def test_public_seed_sampling_and_opponent_view_match(board,faction,hand_count):
     revealed.templateRef.factionIdx=faction
     state=capture(board);state.counts={2:2,5:1}
     context=Context(1,0,1,False,hand_count,3,faction,True,False)
+    if known:
+        # Cards seen going back to the opponent's hand (Decoy): fixed in every hypothesis.
+        eligible=[t for t,c in sorted(state.catalog.items()) if c.faction in (0,faction) and t!=revealed.templateId]
+        context=replace(context,opponent_known=tuple(eligible[:2])+(eligible[0],))
     sample=dict(state=payload(state),context=asdict(context))
     expression='(() => {var state=Object.assign(new GwaiV8Position(),data.state); var before=JSON.stringify(state); var hs=GwaiV8Belief.hypotheses(state,data.context,6); var out={seed:GwaiV8Belief.publicSeed(state,data.context),hypotheses:hs,views:hs.map(h=>GwaiV8Belief.opponentView(state,h))}; if(before!==JSON.stringify(state))throw new Error("input mutated");return out;})()'
     actual=run([sample],expression)[0]
@@ -79,3 +84,5 @@ def test_public_seed_sampling_and_opponent_view_match(board,faction,hand_count):
     assert actual['views']==json.loads(json.dumps([payload(opponent_view(state,h)) for h in expected]))
     for h in expected:
         assert all(c.template!=revealed.templateId for c in h.hand)
+        fixed=context.opponent_known[:hand_count]
+        assert [c.template for c in h.hand[:len(fixed)]]==list(fixed)

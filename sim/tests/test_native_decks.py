@@ -24,15 +24,27 @@ def test_native_xml_adapter_matches_all_recorded_opponent_definitions():
     # (fewer NPC dynamic cards than vanilla); fixed in gwai_betting.ws on 2026-10-11.
     MOD_THRESHOLD_BUG={'g127.json','g128.json'}
     # g132-g134: played with the NPC decks option on Adaptive (e.g. ScoiaHard:3 step 251, built by the first
-    # in-game table, before muster groups were kept whole): not a native deck. g135: Adaptive on Hard,
-    # exactly the simulator's ScoiaEasy:3 deck (muster fix and NPC opening exchange installed).
-    NPC_DECK_OPTION={'g132.json','g133.json','g134.json','g135.json'}
+    # in-game table, before muster groups were kept whole): not a native deck.
+    NPC_DECK_OPTION={'g132.json','g133.json','g134.json'}
+    # g135-g147: decks built before heroes were made unique (Geralt + Geralt GOG) and before the
+    # three-level targets (85/100/110%).
+    NPC_DECK_OPTION|={'g%d.json'%g for g in range(135,148)}
+    from gwentsim.npc_balance import apply_mode
+    from blunder_hunter import card_names
+    names=card_names()
     for path in corpus:
         if path.name in MOD_THRESHOLD_BUG|NPC_DECK_OPTION:continue
-        recorded=load_match(path).decks[1]
+        match=load_match(path);recorded=match.decks[1]
         # From g130 on, the installed mod repairs the extra-card requirements (Better AI On).
-        assert any(shape(native.build(name,difficulty,repaired=repaired))==shape(recorded)
-                   for name in native.npc_names() for difficulty in (1,2,3) for repaired in (False,True)),path.name
+        if any(shape(native.build(name,difficulty,repaired=repaired))==shape(recorded)
+               for name in native.npc_names() for difficulty in (1,2,3) for repaired in (False,True)):continue
+        # Otherwise the NPC decks option (Adaptive/Strong) built it: the simulator's deck for the
+        # recorded player deck at one of the four levels.
+        player=match.decks[0].card_indices
+        assert any(sorted(apply_mode(match.templates,native.build(name,difficulty,repaired=True),names,mode,player,level).card_indices)
+                   ==sorted(recorded.card_indices)
+                   for name in native.npc_names() for difficulty in (1,2,3) for mode in ('balanced','strong')
+                   for level in (0,1,2,3)),path.name
 
 
 def test_high_stakes_preserves_defined_cards_and_only_enables_valid_level_fifteen():

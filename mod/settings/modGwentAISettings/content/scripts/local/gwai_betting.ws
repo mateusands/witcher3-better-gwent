@@ -175,8 +175,7 @@ function GenerateDifficultyData()
     wrappedMethod();
     if (GwaiSettingsEnabled())
     {
-        // Vanilla has three deck variants; Hard and Expert share the hardest
-        // variant. Their V8 search budgets remain separate in AI dispatch.
+        // Vanilla has three deck variants: Easy, Normal and Hard use variants 1, 2 and 3.
         modDifficulty = GwaiSettingsDifficulty();
         difficulty = Min(modDifficulty + 1, 3);
         balanceOffset = 0;

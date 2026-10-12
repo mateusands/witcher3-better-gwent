@@ -80,8 +80,10 @@ def test_script_strength_bonuses_match_simulator():
 def test_script_difficulty_targets_match_simulator():
     text = (SCRIPTS / 'gwai_npc_decks.ws').read_text()
     factors = dict((int(d), float(f)) for d, f in re.findall(r'if \(difficulty == (\d)\) \{ factor = ([\d.]+); \}', text))
-    factors.setdefault(2, 1.0)
-    assert tuple(factors[d] for d in range(4)) == nb.BALANCED_TARGET
+    factors.setdefault(1, 1.0)   # Normal keeps the script's default factor
+    # The mod has three levels (Easy, Normal, Hard); the simulator's Expert is Hard's target.
+    assert tuple(factors[d] for d in range(3)) == nb.BALANCED_TARGET[:3]
+    assert nb.BALANCED_TARGET[3] == nb.BALANCED_TARGET[2]
 
 
 def test_scripts_read_struct_fields_from_variables():

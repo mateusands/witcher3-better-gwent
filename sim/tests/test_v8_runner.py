@@ -13,14 +13,14 @@ from test_v8_as_position import payload
 from test_v8_as_leaders import with_leader
 from gwentsim.sequence_search import Context, choose_sequence
 from gwentsim.response_v8 import choose_response_v8
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def execute(state, context, level, code):
     script = core_javascript() + '\nvar data=JSON.parse(require("fs").readFileSync(0,"utf8"));'
     script += 'var state=Object.assign(new GwaiV8Position(),data.state);var before=JSON.stringify(state);'
     script += code + '\nif(before!==JSON.stringify(state))throw new Error("input mutated");'
-    process = subprocess.run(['node', '-e', script], input=json.dumps(dict(state=payload(state), context=asdict(context), level=level)), capture_output=True, text=True)
+    process = subprocess.run(['node', script_file(script)], input=json.dumps(dict(state=payload(state), context=asdict(context), level=level)), capture_output=True, text=True)
     assert process.returncode == 0, process.stderr
     return json.loads(process.stdout)
 

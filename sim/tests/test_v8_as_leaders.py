@@ -9,7 +9,7 @@ from test_position import capture
 from test_v8_as_position import payload, ROOT
 from gwentsim.position import Card, Action
 from gwentsim import constants as C
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def with_leader(state, effect):
@@ -27,7 +27,7 @@ def parity(state, moves=None):
     for move in moves:
         script += '\nout.states.push(state.apply(' + json.dumps(asdict(move)) + '));'
     script += '\nif(before!==JSON.stringify(state)) throw new Error("source mutated"); console.log(JSON.stringify(out));'
-    completed = subprocess.run(['node', '-e', script], capture_output=True, text=True)
+    completed = subprocess.run(['node', script_file(script)], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
     result = json.loads(completed.stdout)
     assert result['leaders'] == json.loads(json.dumps([asdict(a) for a in state.leader_actions()]))

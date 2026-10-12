@@ -2,6 +2,9 @@
 // Never invokes the opponent's native currentRoundStatus/canBeUsed getters.
 internal class GwaiV8Context
 {
+    // Cards publicly known to be in the opponent's hand (back from the board, e.g. by Decoy).
+    // Off until a Lab A/B proves the gain; the list then stays empty, exactly as before.
+    public static const USE_KNOWN_HAND:Boolean = false;
     public static function capture(manager:Object,flow:Object,state:Object):Object
     {
         var own:int = state.player; var other:int = 1-own; var losses:Array = [0,0];
@@ -20,6 +23,7 @@ internal class GwaiV8Context
             // Same meaning as the Python controller: only a leader the model cannot search blocks
             // passing / keeps the generic credit. Using leader_ready here forbade every pass while
             // a modeled leader was unused (in-game round-one overcommit, in-game match g126).
-            own_leader_available:state.leaderUnmodeled(own),opponent_leader_available:state.leaderUnmodeled(other)};
+            own_leader_available:state.leaderUnmodeled(own),opponent_leader_available:state.leaderUnmodeled(other),
+            opponent_known:GwaiV8Context.USE_KNOWN_HAND ? manager.gwaiKnownHand(other) : []};
     }
 }

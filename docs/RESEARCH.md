@@ -99,6 +99,9 @@ information and searches its own moves and the opponent's replies against those 
 - **Weather that changes nothing, three Decoys against spy factions**
   - What changed: Count a weather card that changes no score as wasted; NPC decks carry three Decoys against Nilfgaard and Northern Kingdoms player decks (spies)
   - Outcome: Dropped: no measurable effect (z below 1)
+- **Lab rounds 2 and 3 (October 2026)**
+  - What changed: The leader's weather card goes back first in the opening exchange; Skellige cards (Mardroeme, Berserkers, Clan Dimun Pirate, Kambi) in the search; up to four spies in the NPC decks; three levels (512 / 768 / 2,048 nodes: 52.9 / 57.6 / 59.5%, more nodes added nothing)
+  - Outcome: Kept, each proven in the Lab. Dropped: passing a safe lead after a lost round and never playing a weather card that changes nothing (both proven worse), remembering cards back in the player's hand (no effect)
 - **In-game fixes**
   - What changed: Stalls, wasted Frost/Horn, round-1 overcommit, Medic choosing a Spy when out of cards, NPC extra-card requirements
   - Outcome: Kept

@@ -42,3 +42,13 @@ def test_safe_spy_then_pass_preserves_resources_for_the_decisive_round():
     spy=results[1][2][0]
     assert tuple(spy['scores'])==(16,21)
     assert spy['candidate']['action']==spy['reference']['action']
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def earlier_model(monkeypatch):
+    # Pinned behaviour of the reviewed V6-era deal: the plain model without Skellige cards.
+    import gwentsim.response_v8 as v8
+    monkeypatch.setattr(v8, 'VARIANT', frozenset({'no-skellige'}))

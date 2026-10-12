@@ -163,7 +163,7 @@ internal class GwaiV8Sequence
     public static function profile(level:int):Object
     {
         if(level < 0 || level > 3) throw new Error("invalid V8 difficulty");
-        return {label:["Easy","Medium","Hard","Expert"][level],search_depth:[1,2,2,3][level],beam_width:[4,8,12,16][level]};
+        return {label:["Easy","Normal","Hard","Expert"][level],search_depth:[1,2,2,3][level],beam_width:[4,8,8,16][level]};
     }
     public static function cachedReserve(state:Object,cache:Object):Number
     {

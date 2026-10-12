@@ -14,7 +14,7 @@ from build_recorder import edit_classes,RANDOM_TAGS
 from v8_recorder_patch import patch_restart
 from v8_runtime_patch import patch,NATIVE_CLASSES
 from v8_ai_patch import patch_ai
-from v8_as_test import javascript
+from v8_as_test import javascript, script_file
 
 NATIVE=ROOT/'game/vanilla/as/scripts/red/game/witcher3/menus/gwint'
 
@@ -107,7 +107,7 @@ def test_ws_restart_receiver_resets_only_record_identity_and_chunk_count():
     ws=(ROOT/'mod/recorder/modGwentAIRecorder/content/scripts/local/gwai_recorder.ws').read_text()
     body=re.search(r'event OnGwaiStart\(\)\s*\{([^}]+)\}',ws)[1]
     script='var gwaiGameSet=true,gwaiRecv=12,gwaiGame=100;'+body+'console.log(JSON.stringify([gwaiGameSet,gwaiRecv,gwaiGame]));'
-    result=subprocess.run(['node','-e',script],capture_output=True,text=True,check=True)
+    result=subprocess.run(['node',script_file(script)],capture_output=True,text=True,check=True)
     assert json.loads(result.stdout)==[False,0,100]
 
 
@@ -150,7 +150,7 @@ def test_close_flushes_pending_record_and_is_idempotent(previous):
     CardManager.gwaiEnd("close");
     console.log(JSON.stringify([calls,count,calls.length,CardManager.gwaiBuf,CardManager.gwaiEnded]));
     '''.replace('PREVIOUS',json.dumps(previous))
-    process=subprocess.run(['node','-e',script],capture_output=True,text=True,check=True)
+    process=subprocess.run(['node',script_file(script)],capture_output=True,text=True,check=True)
     calls,count,after,buffer,ended=json.loads(process.stdout)
     assert count==after and buffer=='' and ended
     chunks=[args for name,args in calls if name=='OnGwaiRec']

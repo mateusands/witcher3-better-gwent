@@ -9,7 +9,7 @@ from gwentsim import constants as C
 from gwentsim.position import Action,UnsupportedPosition
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def payload(position):
@@ -26,7 +26,7 @@ def execute(position,actions=(),suffix=''):
         script+='\nout.states.push(state.applyCard('+json.dumps(asdict(action))+'));'
     script+='\nif(before !== JSON.stringify(state)) throw new Error("source mutated");'
     script+=suffix+'\nconsole.log(JSON.stringify(out));'
-    result=subprocess.run(['node','-e',script],capture_output=True,text=True)
+    result=subprocess.run(['node',script_file(script)],capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     return json.loads(result.stdout)
 
@@ -99,20 +99,22 @@ def test_duplicate_weather_clear_and_half_weather(board):
     compare(state,[Action(duplicate.instanceId,9),Action(clear.instanceId,9)])
 
 
-def test_random_medic_and_death_effect_explicitly_unsupported(board):
+def test_random_medic_unsupported_and_scorched_death_summon_just_dies(board):
     m=card(board,5,1,C.CardType_Creature|C.CardType_Melee,(C.CardEffect_Nurse,))
     s=card(board,0,1,C.CardType_Spell,(C.CardEffect_Scorch,))
     victim=card(board,9,5,C.CardType_Creature|C.CardType_Melee,(C.CardEffect_SuicideSummon,),player=1)
     state=capture(board);state.random_recovery=True
     assert not state.supported(state.cards[m.instanceId])
-    with pytest.raises(UnsupportedPosition):state.apply(Action(s.instanceId))
+    # The native engine spawns a death summon only at the board clear (Skellige model).
+    after=state.apply(Action(s.instanceId))
+    assert victim.instanceId in after.grave[1]
     suffix='''
     out.randomMedicSupported=state.supported(state.cards[%d]);
-    try {state.applyCard(%s);throw new Error("death accepted");}
-    catch(error) {if(!(error instanceof GwaiV8Unsupported)) throw error; out.deathRejected=true;}
+    out.after=state.applyCard(%s);
     '''%(m.instanceId,json.dumps(asdict(Action(s.instanceId))))
     out=execute(state,suffix=suffix)
-    assert not out['randomMedicSupported'] and out['deathRejected']
+    assert not out['randomMedicSupported']
+    assert out['after']==json.loads(json.dumps(payload(after)))
 
 
 def test_capture_never_reads_opponent_hand_deck_or_leader_private_usability(board):

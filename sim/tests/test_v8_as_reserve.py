@@ -10,13 +10,13 @@ from test_position import capture
 from test_v8_as_position import payload
 from test_v8_as_leaders import with_leader
 from gwentsim.future_value import ReserveCard, supported_reserve_power
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def run(inputs, expression):
     script = core_javascript() + '\nvar inputs=JSON.parse(require("fs").readFileSync(0,"utf8"));'
     script += '\nconsole.log(JSON.stringify(inputs.map(data => ' + expression + ')));'
-    process = subprocess.run(['node','-e',script],input=json.dumps(inputs),capture_output=True,text=True)
+    process = subprocess.run(['node',script_file(script)],input=json.dumps(inputs),capture_output=True,text=True)
     assert process.returncode == 0, process.stderr
     return json.loads(process.stdout)
 

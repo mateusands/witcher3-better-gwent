@@ -67,3 +67,12 @@ def javascript(source):
 def core_javascript():
     files=['GwaiV8Const','GwaiV8Position','GwaiV8Capture','GwaiV8Reserve','GwaiV8Mulligan','GwaiV8Sequence','GwaiV8Random','GwaiV8Hash','GwaiV8Belief','GwaiV8Response','GwaiV8Policy','GwaiV8Context','GwaiV8Execution','GwaiV8SequenceTask','GwaiV8Runner']
     return 'function int(v) { return v|0; } function uint(v) { return v>>>0; }\n'+javascript('\n'.join((ROOT/f'mod/v8/as3/{name}.as').read_text() for name in files))
+
+
+def script_file(script):
+    """Path of a temporary file holding `script` (node -e hits the argument size limit)."""
+    import hashlib, tempfile
+    path = Path(tempfile.gettempdir()) / ('gwai-as3-%s.js' % hashlib.sha256(script.encode()).hexdigest()[:20])
+    if not path.exists():
+        path.write_text(script)
+    return str(path)

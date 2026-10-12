@@ -12,13 +12,13 @@ from test_v8_as_leaders import with_leader
 from gwentsim import constants as C
 from gwentsim.position import Action
 from gwentsim.sequence_search import Context, utility, public_opponent_average, faction_carry, overtaking_bounds, choose_sequence
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 def run(samples, expression):
     script = core_javascript()+'\nvar samples=JSON.parse(require("fs").readFileSync(0,"utf8"));'
     script += '\nconsole.log(JSON.stringify(samples.map(data => {var state=Object.assign(new GwaiV8Position(),data.state); var before=JSON.stringify(state); var out='+expression+'; if(before!==JSON.stringify(state))throw new Error("input mutated"); return out;})));'
-    process = subprocess.run(['node','-e',script],input=json.dumps(samples),capture_output=True,text=True)
+    process = subprocess.run(['node',script_file(script)],input=json.dumps(samples),capture_output=True,text=True)
     assert process.returncode == 0, process.stderr
     return json.loads(process.stdout)
 

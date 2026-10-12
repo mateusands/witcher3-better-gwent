@@ -17,9 +17,6 @@
                     <Option id="2" displayName="gwai_hard">
                         <Entry varId="GwaiDifficulty" value="2"/>
                     </Option>
-                    <Option id="3" displayName="gwai_expert">
-                        <Entry varId="GwaiDifficulty" value="3"/>
-                    </Option>
                 </OptionsArray>
             </Var>
             <Var id="GwaiNpcDecks" displayName="gwai_npc_decks" displayType="OPTIONS" tags="indent">

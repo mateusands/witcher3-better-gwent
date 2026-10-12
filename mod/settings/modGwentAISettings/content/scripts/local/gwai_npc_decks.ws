@@ -108,8 +108,7 @@ function GwaiNpcDeckTarget() : float
     var difficulty : int = GwaiSettingsDifficulty();
     var player : SDeckDefinition;
     if (difficulty == 0) { factor = 0.85; }
-    if (difficulty == 1) { factor = 0.95; }
-    if (difficulty == 3) { factor = 1.1; }
+    if (difficulty == 2) { factor = 1.1; }
     // The 5.01 compiler reads struct fields only from a variable, not from a call's result.
     player = theGame.GetGwintManager().GetCurrentPlayerDeck();
     return (float)GwaiDeckStrength(player.cards) * factor;

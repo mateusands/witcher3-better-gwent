@@ -36,8 +36,18 @@ def patch(name, source):
       { return this._gwaiObservedRoundStatus; }
 ''')
     if name=='CardManager':
-        source=once(source,'protected static var _instance:CardManager;','protected static var _instance:CardManager;\n      private var _gwaiPlans:Object = {0:null,1:null};')
-        return add_methods(source,'''      public function gwaiPublicHandCount(side:int) : int
+        source=once(source,'protected static var _instance:CardManager;','protected static var _instance:CardManager;\n      private var _gwaiPlans:Object = {0:null,1:null};\n      private var _gwaiKnown:Object = {};')
+        # A card that goes back to a hand from a public list (graveyard, rows, weather) is known
+        # to everyone; same rule as sim/gwentsim/known_hand.py.
+        source=once(source,'var oldListID:* = cardInstance.inList;',
+            'var oldListID:* = cardInstance.inList;\n         if(newListID == CARD_LIST_LOC_HAND && oldListID >= CARD_LIST_LOC_GRAVEYARD && oldListID <= CARD_LIST_LOC_WEATHERSLOT) this._gwaiKnown[cardInstance.instanceId] = true;\n         else delete this._gwaiKnown[cardInstance.instanceId];')
+        return add_methods(source,'''      public function gwaiKnownHand(side:int) : Array
+      {
+         var out:Array = []; var hand:Vector.<CardInstance> = this.getCardInstanceList(CARD_LIST_LOC_HAND,side);
+         for(var i:int = 0; i < hand.length; ++i) if(this._gwaiKnown[hand[i].instanceId]) out.push(hand[i].templateId);
+         out.sort(Array.NUMERIC); return out;
+      }
+      public function gwaiPublicHandCount(side:int) : int
       { return this.getCardInstanceList(CARD_LIST_LOC_HAND,side).length; }
       public function gwaiClearPlan(side:int) : void
       { this._gwaiPlans[side] = null; }
@@ -94,7 +104,7 @@ def patch(name, source):
          // First valid packet captures this menu's match intent; later edits wait.
          if(this._gwaiMatchSettings != null || this.gameStarted || data == null || data.version !== 1) return false;
          var level:int = 2;
-         if(data.difficulty === 0 || data.difficulty === 1 || data.difficulty === 2 || data.difficulty === 3) level = int(data.difficulty);
+         if(data.difficulty === 0 || data.difficulty === 1 || data.difficulty === 2) level = int(data.difficulty);   // Expert (3) is Hard
          var enabled:Boolean = data.enabled === true;
          this._gwaiMatchSettings = {enabled:enabled,difficulty:level,autoplay:enabled && data.autoplay === true};
          return true;

@@ -23,6 +23,8 @@ class Context:
     opponent_faction:int
     own_leader_available:bool=False
     opponent_leader_available:bool=False
+    # Templates publicly known to be in the opponent's hand (returned by Decoy etc.).
+    opponent_known:tuple=()
 
     @property
     def wins_ties(self):

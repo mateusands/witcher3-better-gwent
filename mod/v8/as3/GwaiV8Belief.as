@@ -17,7 +17,11 @@ internal class GwaiV8Belief
         {
             var pair:Array = key.split(":"); board.push([[int(pair[0]),int(pair[1])],state.board[key]]);
         }
-        board.sort(boardOrder); return [state.player,context,state.hand,cards,counts,board];
+        // Same seed as before when nothing is known (the Python reference drops the empty field).
+        var fields:Object = context;
+        if(context.opponent_known != null && context.opponent_known.length == 0)
+        { fields = GwaiV8Position.copyMap(context); delete fields.opponent_known; }
+        board.sort(boardOrder); return [state.player,fields,state.hand,cards,counts,board];
     }
     public static function publicSeed(state:Object,context:Object):Array
     {
@@ -64,7 +68,13 @@ internal class GwaiV8Belief
             var cap:int = GwaiV8Position.isType(card,128) ? 1 : 3;
             for(var copy:int = 0; copy < Math.max(0,cap-int(seen[template])); ++copy) pool.push(template);
         }
-        if(pool.length < context.opponent_hand_count) return [];
+        // Publicly known hand cards are in every hypothesis; only the other slots are sampled.
+        var known:Array = [];
+        if(context.opponent_known != null)
+            for(i = 0; i < context.opponent_known.length && known.length < context.opponent_hand_count; ++i)
+                if(state.catalog[context.opponent_known[i]] != null) known.push(int(context.opponent_known[i]));
+        for(i = 0; i < known.length; ++i) { var at:int = pool.indexOf(known[i]); if(at >= 0) pool.splice(at,1); }
+        if(pool.length < context.opponent_hand_count-known.length) return [];
         var seed:Array = GwaiV8Belief.publicSeed(state,context); var out:Array = [];
         for(var index:int = 0; index < samples; ++index)
         {
@@ -72,7 +82,7 @@ internal class GwaiV8Belief
             var unsupported:int = 0; var prior:int = index%3;
             for(var slot:int = 0; slot < context.opponent_hand_count; ++slot)
             {
-                template = GwaiV8Belief.draw(state,remaining,prior,random); card = GwaiV8Position.copyMap(state.catalog[template]);
+                template = slot < known.length ? known[slot] : GwaiV8Belief.draw(state,remaining,prior,random); card = GwaiV8Position.copyMap(state.catalog[template]);
                 card.key = -200000000-index*1000-slot; card.owner = other; card.player = other; card.row = 1; card.applied = [];
                 selected.push(card); if(!state.supported(card)) ++unsupported;
             }

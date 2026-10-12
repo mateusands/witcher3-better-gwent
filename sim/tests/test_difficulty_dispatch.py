@@ -62,7 +62,7 @@ def cases():
     }
     process.stdout.write(JSON.stringify(result));
     ''' % (json.dumps(BASE), generate, requirement)
-    completed = subprocess.run(['node', '-e', script], text=True, capture_output=True, check=True)
+    completed = subprocess.run(['node', _js_file(script)], text=True, capture_output=True, check=True)
     return json.loads(completed.stdout)
 
 
@@ -108,7 +108,7 @@ def test_actual_flash_deck_gate_at_every_threshold(cases, level):
                            'var added=[];gate.call(deck,%d,added);out.push(added);') % (threshold, index, strength)
                 expected.append([index] if strength >= threshold else [])
     script += 'console.log(JSON.stringify(out));'
-    result = subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True)
+    result = subprocess.run(['node', _js_file(script)], capture_output=True, text=True, check=True)
     assert json.loads(result.stdout) == expected
 
 
@@ -148,3 +148,12 @@ def test_both_side_profile_contract_ignores_native(difficulty, native):
     inactive, writes = normalize_settings(raw)
     assert not writes
     assert inactive.requested_profile is None and inactive.requested_player_profile is None
+
+
+def _js_file(script):
+    """Temporary file holding `script` (node -e hits the argument size limit)."""
+    import hashlib, tempfile
+    path = Path(tempfile.gettempdir()) / ('gwai-ws-%s.js' % hashlib.sha256(script.encode()).hexdigest()[:20])
+    if not path.exists():
+        path.write_text(script)
+    return str(path)

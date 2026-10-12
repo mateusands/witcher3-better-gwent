@@ -89,7 +89,39 @@ internal class GwaiV8Position
             }
         return out;
     }
+    // Every entry equals value (Python: set(effects) == {value}).
+    public static function only(effects:Array, value:int):Boolean
+    {
+        if(effects.length == 0) return false;
+        for(var i:int = 0; i < effects.length; ++i) if(effects[i] != value) return false;
+        return true;
+    }
+    public static function withoutNone(effects:Array):Array
+    {
+        var out:Array = []; for(var i:int = 0; i < effects.length; ++i) if(effects[i] != 0) out.push(effects[i]); return out;
+    }
+    // Skellige cards (sim/skellige_position.py over mushroom_position.py, checked against the
+    // native engine): Scorch unit, death-summon unit, Mushroom source, Morph unit.
     public function supported(card:Object):Boolean
+    {
+        if(GwaiV8Position.isType(card,8) && !GwaiV8Position.isType(card,256))
+        {
+            var rest:Array = GwaiV8Position.withoutNone(card.effects);
+            if(GwaiV8Position.only(rest,GwaiV8Const.CardEffect_Scorch)) return true;
+            if(GwaiV8Position.only(rest,GwaiV8Const.CardEffect_SuicideSummon)) return card.targets.length == 1 && catalog[card.targets[0]] != null;
+        }
+        if(GwaiV8Position.only(card.effects,GwaiV8Const.CardEffect_Mushroom)) return GwaiV8Position.isType(card,8) || GwaiV8Position.isType(card,64);
+        if(GwaiV8Position.only(card.effects,GwaiV8Const.CardEffect_Morph))
+        {
+            if(!GwaiV8Position.isType(card,8) || card.targets.length != 1) return false;
+            var target:Object = catalog[card.targets[0]];
+            return target != null && GwaiV8Position.isType(target,8) && !GwaiV8Position.isType(card,128) && !GwaiV8Position.isType(target,128)
+                && GwaiV8Position.subset(target.effects,[GwaiV8Const.CardEffect_None,GwaiV8Const.CardEffect_ImproveNeighbours,GwaiV8Const.CardEffect_SameTypeMorale])
+                && (card.types & 7) == (target.types & 7);
+        }
+        return baseSupported(card);
+    }
+    public function baseSupported(card:Object):Boolean
     {
         if(GwaiV8Position.has(card,GwaiV8Const.CardEffect_Nurse) && random_recovery && !GwaiV8Position.isType(card,128)) return false;
         if(GwaiV8Position.isType(card,8)) return GwaiV8Position.subset(card.effects,[GwaiV8Const.CardEffect_None,GwaiV8Const.CardEffect_ImproveNeighbours,GwaiV8Const.CardEffect_SameTypeMorale,GwaiV8Const.CardEffect_Horn,GwaiV8Const.CardEffect_SummonClones,GwaiV8Const.CardEffect_Draw2,GwaiV8Const.CardEffect_MeleeScorch,GwaiV8Const.CardEffect_RangedScorch,GwaiV8Const.CardEffect_Siege_Scorch,GwaiV8Const.CardEffect_Nurse]);
@@ -247,6 +279,58 @@ internal class GwaiV8Position
         }
         if(GwaiV8Position.has(card,GwaiV8Const.CardEffect_Nurse)) recover(side,chain);
         else if(chain.length > 0) throw new Error("chain on non-Medic");
+        // Mushroom source transforms its row's Berserkers; a Berserker placed on a row that
+        // already has a Mushroom (unit or modifier) transforms at once.
+        var placedCard:Object = cards[key];
+        if(GwaiV8Position.has(placedCard,GwaiV8Const.CardEffect_Mushroom)) transformRow(side,row);
+        else if(GwaiV8Position.has(placedCard,GwaiV8Const.CardEffect_Morph))
+        {
+            var near:Array = board[GwaiV8Position.slot(side,row)].concat(board[GwaiV8Position.slot(side,row+3)]);
+            for(var k:int = 0; k < near.length; ++k)
+                if(near[k] != key && GwaiV8Position.has(cards[near[k]],GwaiV8Const.CardEffect_Mushroom)) { transform(key); break; }
+        }
+        // A unit with Scorch (Clan Dimun Pirate): placed, then the normal global Scorch.
+        if(GwaiV8Position.isType(cards[key],8) && GwaiV8Position.has(cards[key],GwaiV8Const.CardEffect_Scorch)) scorch();
+    }
+    public function transform(key:int):void
+    {
+        var card:Object = cards[key];
+        if(!GwaiV8Position.has(card,GwaiV8Const.CardEffect_Morph)) return;
+        if(!supported(card)) throw new GwaiV8Unsupported("unmodeled Mushroom transformation target");
+        var current:Object = GwaiV8Position.copyMap(catalog[card.targets[0]]);
+        current.key = key; current.owner = card.owner; current.player = card.player; current.row = card.row;
+        current.applied = card.applied.slice(); current.banished_on_clear = card.banished_on_clear;
+        cards[key] = current;
+        var side:int = current.player; var row:int = current.row; var loc:String = GwaiV8Position.slot(side,row); var i:int;
+        var sources:Array = effects[loc];
+        for(i = 0; i < sources.length; ++i)
+            if(sources[i] != key && cards[key].applied.indexOf(sources[i]) < 0) addEffect(key,sources[i]);
+        var list:Array = board[loc];
+        if(GwaiV8Position.has(current,GwaiV8Const.CardEffect_ImproveNeighbours))
+        {
+            for(i = 0; i < list.length; ++i)
+            {
+                var unit:Object = cards[list[i]];
+                if(list[i] != key && !GwaiV8Position.isType(unit,128) && !GwaiV8Position.has(unit,GwaiV8Const.CardEffect_UnsummonDummy) && unit.applied.indexOf(key) < 0) addEffect(list[i],key);
+            }
+            if(effects[loc].indexOf(key) < 0) effects[loc] = effects[loc].concat([key]);
+        }
+        if(GwaiV8Position.has(current,GwaiV8Const.CardEffect_SameTypeMorale))
+            for(i = 0; i < list.length; ++i)
+            {
+                var other:Object = cards[list[i]];
+                if(list[i] != key && !GwaiV8Position.isType(other,128) && current.targets.indexOf(other.template) >= 0)
+                {
+                    if(other.applied.indexOf(key) < 0) addEffect(list[i],key);
+                    if(cards[key].applied.indexOf(list[i]) < 0) addEffect(key,list[i]);
+                }
+            }
+    }
+    public function transformRow(side:int, row:int):void
+    {
+        var list:Array = board[GwaiV8Position.slot(side,row)].slice();
+        for(var i:int = 0; i < list.length; ++i)
+            if(GwaiV8Position.has(cards[list[i]],GwaiV8Const.CardEffect_Morph)) transform(list[i]);
     }
     public function recover(side:int, chain:Array):void
     {
@@ -276,13 +360,19 @@ internal class GwaiV8Position
             }
         var targets:Array = [];
         for(i = 0; i < eligible.length; ++i) if(power(eligible[i]) == maximum) targets.push(eligible[i]);
-        for(i = 0; i < targets.length; ++i)
-            if(GwaiV8Position.has(cards[targets[i]],GwaiV8Const.CardEffect_SuicideSummon) || GwaiV8Position.has(cards[targets[i]],GwaiV8Const.CardEffect_Morph) || GwaiV8Position.has(cards[targets[i]],GwaiV8Const.CardEffect_Mushroom))
-                throw new GwaiV8Unsupported("death summons");
+        // A death summon fires only when the native engine clears the board; Morph/Mushroom
+        // sources just die.
         for(i = 0; i < targets.length; ++i) removeFromBoard(targets[i]);
     }
     public function placeModifier(card:Object, loc:int, side:int):void
     {
+        if(GwaiV8Position.has(card,GwaiV8Const.CardEffect_Mushroom))
+        {
+            // Mushroom changes templates; it is not a power modifier attached to every unit.
+            var shroom:Object = GwaiV8Position.copyMap(card); shroom.row = loc; shroom.player = side; shroom.applied = [];
+            cards[card.key] = shroom; board[GwaiV8Position.slot(side,loc)] = board[GwaiV8Position.slot(side,loc)].concat([card.key]);
+            transformRow(side,loc-3); return;
+        }
         var row:int = loc-3; var placed:Object = GwaiV8Position.copyMap(card);
         placed.row = loc; placed.player = side; placed.applied = []; cards[card.key] = placed;
         board[GwaiV8Position.slot(side,loc)] = board[GwaiV8Position.slot(side,loc)].concat([card.key]);
@@ -328,7 +418,7 @@ internal class GwaiV8Position
                 }
     }
     public function reserve():Number
-    { return GwaiV8Reserve.reserve(this); }
+    { return GwaiV8Reserve.mushroomReserve(this); }
     public function recoveryRelevant():Boolean
     {
         var effect:int = leaderModeled(player) ? leaderEffect(player) : -1;

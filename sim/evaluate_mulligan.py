@@ -60,9 +60,29 @@ def exchange_hook(seat,variant,seed,audit):
                 audit.append(dict(turn=turn,variant=variant,source=key,sourceTemplate=template))
             flow.hooks.record('S','ai_mulligan')
             return
+        if variant in ('combined','full'):
+            from gwentsim.npc_balance import LEADER_PICK
+            king=cm.getCardTemplate(cm.playerDeckDefinitions[seat].selectedKingIndex)
+            weather=LEADER_PICK.get(king.getFirstEffect())
         for turn in range(2):
             state=Position.from_manager(cm,seat)
             if not state.hand or not sum(state.counts.values()):break
+            if variant in ('combined','full'):
+                # The weather card the leader can pull from the deck goes back first; "full" then
+                # returns a Muster copy another hand card calls from the deck; otherwise the
+                # evaluated exchange.
+                key=next((k for k in state.hand if weather is not None and state.cards[k].effects[:1]==(weather,)),None)
+                if key is None and variant=='full':
+                    from structural_mulligan import choose_structural_mulligan
+                    key=choose_structural_mulligan(state).source
+                decision=choose_mulligan(state) if key is None else None
+                key=decision.source if key is None else key
+                entry=dict(turn=turn,variant=variant,source=key,leaderWeather=decision is None)
+                if key is None:audit.append(entry);break
+                source=cm.getCardInstance(key);template=source.templateId
+                if cm.mulliganCard(source) is None:raise RuntimeError('native exchange failed')
+                entry.update(sourceTemplate=template);audit.append(entry)
+                continue
             if variant=='structural':
                 from structural_mulligan import choose_structural_mulligan
                 decision=choose_structural_mulligan(state)

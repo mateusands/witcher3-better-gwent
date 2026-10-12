@@ -30,6 +30,8 @@ THEMES = {
 }
 WIDTH = 880
 PROFILES = ['easy', 'medium', 'hard', 'expert']
+# The mod's levels since 0.9.0: profile "medium" is shown as Normal; Expert is simulator-only.
+LEVEL_NAMES = {'easy': 'Easy', 'medium': 'Normal', 'hard': 'Hard', 'expert': 'Expert'}
 STYLE_LABELS = [('early', 'Early-game decks'), ('random', 'Random decks'), ('recorded', 'My real decks'),
                 ('power', 'Power decks'), ('synergy', 'Synergy decks'), ('all', 'All player decks')]
 
@@ -142,8 +144,28 @@ def kpis(t, tiles):
     return card(132, t, ''.join(body))
 
 
+def ladder_levels(levels_db, ladder_db):
+    """Easy / Normal / Hard as shipped: Easy profile 512 nodes, Medium search with 768 nodes,
+    Medium search with 2,048 nodes; same pool matchups and seeds for all three."""
+    out = defaultdict(lambda: [0.0, 0])
+    for path, pick in ((levels_db, {('easy', ''): 'easy', ('medium', ''): 'hard'}),
+                       (ladder_db, {('medium', 'nodes768'): 'medium'})):
+        db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
+        for params, payload, result in db.execute(
+                "SELECT j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
+                "WHERE t.status='done' AND j.kind='benchmark'"):
+            params, p, r = json.loads(params), json.loads(payload), json.loads(result)
+            level = pick.get((params['profile'], params['policy'].partition(':')[2]))
+            if p.get('source') != 'pool' or level is None:
+                continue
+            for s in r['seats']:
+                out[level][0] += score(s['won'], s['winner'])
+                out[level][1] += 1
+    return out
+
+
 def levels_chart(t, levels):
-    rows = [(p.capitalize(), levels[p]) for p in PROFILES if levels[p][1]]
+    rows = [(LEVEL_NAMES[p], levels[p]) for p in PROFILES if levels[p][1]]
     x0, x1, top = 110, WIDTH - 150, 76
     h, gap = 22, 14
     bottom = top + len(rows) * (h + gap) - gap + 8
@@ -206,7 +228,7 @@ def rounds_chart(t, rounds):
 
 def requirement_curve(strengths):
     """Extra NPC cards that enter, summed over every native NPC deck, by player deck strength:
-    vanilla (inverted check) and Better AI On per deck variant (Easy 1, Medium 2, Hard/Expert 3)."""
+    vanilla (inverted check) and Better AI On per deck variant (Easy 1, Normal 2, Hard 3)."""
     sys.path.insert(0, str(ROOT / 'sim'))
     from evaluate_pool import setup, XML
     from gwentsim.native_decks import NativeDecks
@@ -241,7 +263,7 @@ def requirements_chart(t, strengths, curves, total):
         body.append(text(xs(st), bottom + 18, st, t['ink2'], 11, anchor='middle'))
     body.append(text((x0 + x1) / 2, bottom + 36, "Strength of the player's deck", t['ink2'], 11, anchor='middle'))
     body.append(text(20, top - 14, 'Extra NPC cards (of %d)' % total, t['ink2'], 11))
-    series = [(1, 'Easy', t['s3']), (2, 'Medium', t['s2']), (3, 'Hard / Expert', t['s1'])]
+    series = [(1, 'Easy', t['s3']), (2, 'Normal', t['s2']), (3, 'Hard', t['s1'])]
     labels = [(curves['vanilla'][-1], 'Vanilla (bug)', t['ink2'])]
     for variant, name, colour in series:
         pts = ' '.join('%.1f,%.1f' % (xs(st), ys(n)) for st, n in zip(strengths, curves[variant]))
@@ -323,8 +345,13 @@ def deck_mode_rows(dbs, style_filter):
                 "SELECT j.params, t.payload, t.result, j.name FROM tasks t JOIN jobs j ON j.id=t.job_id "
                 "WHERE t.status='done' AND j.kind='benchmark' AND j.status != 'superseded'"):
             params, p, r = json.loads(params), json.loads(payload), json.loads(result)
-            if p.get('source') != 'player' or params.get('policy') != 'response-v8' or params.get('weights'):
+            policy, _, flags = params.get('policy', '').partition(':')
+            # The shipped AI, alone or in the fair scene (player-/base- switches only).
+            if p.get('source') != 'player' or policy != 'response-v8' or params.get('weights') or any(
+                    not f.startswith(('player-', 'base-')) for f in flags.split('+') if f):
                 continue
+            if ':' in (params.get('npc_decks') or ''):
+                continue                              # deck-mode experiments (spies4, decoy3)
             if style_filter and styles[p['pair']] != style_filter:
                 continue
             s = r['seats'][0]
@@ -339,15 +366,15 @@ INTENSITY = {'light': ('#cde2fb', '#86b6ef', '#3987e5', '#1c5cab'),
              'dark': ('#184f95', '#256abf', '#3987e5', '#86b6ef')}
 PRESETS = [('The original game', 'Mod Off', 'The game exactly as shipped.', 1),
            ('A smarter opponent', 'Hard · Original decks', 'Same NPC decks, better decisions.', 2),
-           ('A fair fight', 'Hard or Expert · Adaptive', "The NPC's deck follows yours all game.", 3),
-           ('Maximum challenge', 'Expert · Strong · stakes On', 'NPC wins about half vs my decks.', 4)]
+           ('A fair fight', 'Normal or Hard · Adaptive', "The NPC's deck follows yours all game.", 3),
+           ('Maximum challenge', 'Hard · Strong · stakes On', 'The strongest NPC the rules allow.', 4)]
 
 
 def challenge_card(t, theme):
     """Static infographic: the two difficulty dials and four combinations from light to heavy."""
     ramp = INTENSITY[theme]
     body = []
-    dials = [('AI difficulty', 'how well the NPC thinks', ['Easy', 'Medium', 'Hard', 'Expert']),
+    dials = [('AI difficulty', 'how well the NPC thinks', ['Easy', 'Normal', 'Hard']),
              ('NPC decks', 'which cards the NPC plays: few extras, balanced to yours, best', ['Original', 'Adaptive', 'Strong'])]
     col = (WIDTH - 56) / 2
     for i, (name, note, steps) in enumerate(dials):
@@ -433,11 +460,12 @@ def ab_rows(dbs):
             policy, _, variant = params.get('policy', 'response-v8').partition(':')
             decks, _, flags = (params.get('npc_decks') or 'original').partition(':')
             s = r['seats'][0]
-            groups[variant or flags, params['profile'], decks][p['pair'], p['seed'], p['swap']] = score(s['won'], s['winner'])
+            label = '+'.join(f for f in (variant, flags) if f)   # policy and deck-mode switches
+            groups[label, params['profile'], decks][p['pair'], p['seed'], p['swap']] = score(s['won'], s['winner'])
     out = {}
     for (label, level, decks), runs in groups.items():
-        # Flags starting with "player-" set the scene (both arms); the others are tested.
-        context = '+'.join(f for f in label.split('+') if f.startswith('player-'))
+        # Flags starting with "player-" or "base-" set the scene (both arms); the others are tested.
+        context = '+'.join(f for f in label.split('+') if f.startswith(('player-', 'base-')))
         if label == context:
             continue
         base = groups.get((context, level, decks), {})
@@ -459,10 +487,15 @@ def main():
     parser.add_argument('--records', default=str(ROOT / 'game/records'))
     parser.add_argument('--evaluations', default=str(ROOT / 'game/evaluations'))
     parser.add_argument('--out', default=str(ROOT / 'docs/img'))
+    parser.add_argument('--levels-ladder', nargs=2, metavar=('LEVELS_DB', 'LADDER_DB'),
+                        help="the mod's three levels from the fresh level benchmark and the node ladder")
+    parser.add_argument('--ab', nargs='*', default=None, help='databases for the A/B chart (default: --battery)')
     parser.add_argument('--battery', nargs='*', default=None,
                         help='databases for the deck-mode and A/B charts (default: all databases)')
     args = parser.parse_args()
     levels, styles, rounds = collect(args.dbs)
+    if args.levels_ladder:
+        levels = ladder_levels(*args.levels_ladder)
     totals = [report.lab_totals(p) for p in args.dbs]
     lab_matches = sum(x['matches'] for x in totals)
     cpu_hours = sum(x['cpuSeconds'] for x in totals) / 3600
@@ -500,7 +533,7 @@ def main():
     for key, title, flt in (('deck-modes', 'NPC deck modes against player-style decks', None),
                             ('deck-modes-mine', 'NPC deck modes against my own real decks', 'recorded')):
         agg = deck_mode_rows(args.battery or args.dbs, flt)
-        rows = [('%s · %s' % (prof.capitalize(), names[mode]), '%s games' % format(agg[prof, mode][2], ','),
+        rows = [('%s · %s' % (LEVEL_NAMES[prof], names[mode]), '%s games' % format(agg[prof, mode][2], ','),
                  100 * agg[prof, mode][0] / agg[prof, mode][2], 100 * agg[prof, mode][1] / agg[prof, mode][2])
                 for prof in ('easy', 'medium', 'hard', 'expert') for mode in ('original', 'balanced', 'strong') if agg[prof, mode][2]]
         if rows:
@@ -509,20 +542,28 @@ def main():
                     t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and luck.',
                     rows))
             print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
-    ab = ab_rows(args.battery or args.dbs)
+    ab = ab_rows(args.ab or args.battery or args.dbs)
     if ab:
         labels = {'weather-zero': ('Weather that changes nothing', 'counted as a wasted card'),
                   'mulligan': ('NPC exchanges opening cards', 'up to two, evaluated'),
                   'mulligan-structural': ('NPC exchanges muster copies', 'structural only'),
                   'mulligan-leader': ("NPC returns its leader's weather", 'only that card'),
-                  'decoy3': ('3 Decoys vs spy factions', 'Nilfgaard / Northern Kingdoms')}
+                  'decoy3': ('3 Decoys vs spy factions', 'Nilfgaard / Northern Kingdoms'),
+                  'mulligan-combined': ("NPC exchange: leader's weather first", 'then evaluated'),
+                  'known-hand': ('NPC remembers cards back in your hand', 'Decoy and similar'),
+                  'lead-pass': ('NPC passes a safe lead after a lost round', 'keeps cards for the last round'),
+                  'budget-half': ('Half the search nodes', 'less thinking time'),
+                  'skellige': ('Skellige cards in the search', 'Mardroeme, Berserkers, Pirate, Kambi'),
+                  'mulligan-full': ('Exchange: leader weather, Muster copy, evaluated', ''),
+                  'spies4': ('NPC decks with up to 4 spies', 'instead of 3'),
+                  'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
-        scenes = {'player-mulligan': 'player exchanges too'}
+        scenes = {'player-mulligan': 'player exchanges too', 'base-mulligan': 'on top of the NPC exchange'}
 
         def name(label):
             flags = label.split('+')
-            tested = '+'.join(f for f in flags if not f.startswith('player-'))
-            scene = [scenes.get(f, f) for f in flags if f.startswith('player-')]
+            tested = '+'.join(f for f in flags if not f.startswith(('player-', 'base-')))
+            scene = [scenes.get(f, f) for f in flags if f.startswith(('player-', 'base-'))]
             return labels.get(tested, (tested, ''))[0] + (' (%s)' % ', '.join(scene) if scene else '')
         rows = [(name(k[0]), '%s · %s · %s games' % (k[1].capitalize(), decks[k[2]],
                  format(v[2], ',')), v[0], v[1]) for k, v in sorted(ab.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2]))]

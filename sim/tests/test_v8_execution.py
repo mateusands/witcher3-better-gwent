@@ -9,12 +9,12 @@ from test_position import capture
 from test_v8_as_position import payload
 from test_v8_runtime_context import method,NATIVE
 from gwentsim.position import Action
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 from v8_runtime_patch import patch
 
 
 def run(script):
-    p=subprocess.run(['node','-e',script],capture_output=True,text=True)
+    p=subprocess.run(['node',script_file(script)],capture_output=True,text=True)
     assert p.returncode==0,p.stderr
     return json.loads(p.stdout)
 

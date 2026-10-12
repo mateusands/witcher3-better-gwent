@@ -19,7 +19,7 @@ from gwentsim.position import Position
 from gwentsim.rng import SeededRandom
 from mulligan_policy import choose_mulligan, exchanged, initial_hand_potential
 from test_v8_as_position import payload
-from v8_as_test import core_javascript
+from v8_as_test import core_javascript, script_file
 
 
 class Dealt(Exception):
@@ -70,7 +70,7 @@ console.log(JSON.stringify(inputs.map(data => {
   if(JSON.stringify(state) !== before) throw new Error("source mutated");
   return out;
 })));'''
-    process = subprocess.run(['node', '-e', script], input=json.dumps([payload(s) for s in states]),
+    process = subprocess.run(['node', script_file(script)], input=json.dumps([payload(s) for s in states]),
                              capture_output=True, text=True)
     assert process.returncode == 0, process.stderr
     return json.loads(process.stdout)
@@ -93,3 +93,36 @@ def test_opening_exchange_matches_simulator():
         chosen += expected.source is not None
     # The corpus must exercise both outcomes.
     assert 0 < chosen < len(states)
+
+
+def test_leader_weather_first_matches_simulator():
+    """GwaiV8Mulligan.chooseWithLeader = evaluate_mulligan's "combined" exchange."""
+    from gwentsim.npc_balance import LEADER_PICK
+    from evaluate_pool import player_setup, setup
+    templates = setup()['match'].templates
+    # NPCs whose leader pulls a weather card from the deck; several deals each.
+    pullers = [i for i, (npc, _) in enumerate(player_setup())
+               if templates[npc.deck.selected_king_index].get_first_effect() in LEADER_PICK][:16]
+    cases = [(pair, seed, False, mode) for mode in ('balanced', 'strong') for pair in pullers
+             for seed in (21, 22, 23)]
+    states = opening_positions(cases)
+    leaders = [s.leader_effect(s.player) for s in states]
+    script = core_javascript() + '\nvar inputs=JSON.parse(require("fs").readFileSync(0,"utf8"));'
+    script += ('\nconsole.log(JSON.stringify(inputs.map(d => GwaiV8Mulligan.chooseWithLeader('
+               'Object.assign(new GwaiV8Position(), d.state), d.leader))));')
+    process = subprocess.run(['node', script_file(script)], input=json.dumps(
+        [dict(state=payload(s), leader=-1 if e is None else e) for s, e in zip(states, leaders)]),
+        capture_output=True, text=True)
+    assert process.returncode == 0, process.stderr
+    actual = json.loads(process.stdout)
+    pulled = 0
+    for state, effect, choice in zip(states, leaders, actual):
+        weather = LEADER_PICK.get(effect)
+        key = next((k for k in state.hand if weather is not None and state.cards[k].effects[:1] == (weather,)), None)
+        if key is None:
+            decision = choose_mulligan(state)
+            key = -1 if decision.source is None else decision.source
+        else:
+            pulled += 1
+        assert choice == key
+    assert pulled > 0

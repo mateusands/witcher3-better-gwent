@@ -27,8 +27,11 @@ class Profile:
 
 PROFILES = {
     Difficulty.EASY: Profile(Difficulty.EASY, 'Easy', 1, 4, 0.15),
-    Difficulty.MEDIUM: Profile(Difficulty.MEDIUM, 'Medium', 2, 8, 0.05),
-    Difficulty.HARD: Profile(Difficulty.HARD, 'Hard', 2, 12, 0.0),
+    # The mod has three levels since 0.9.0 (Lab ladder: 512/768/2,048 nodes give 52.9/57.6/59.5%;
+    # more nodes add nothing). Hard uses the former Medium search with 2,048 nodes; EXPERT is
+    # kept for the simulator only.
+    Difficulty.MEDIUM: Profile(Difficulty.MEDIUM, 'Normal', 2, 8, 0.05),
+    Difficulty.HARD: Profile(Difficulty.HARD, 'Hard', 2, 8, 0.0),
     Difficulty.EXPERT: Profile(Difficulty.EXPERT, 'Expert', 3, 16, 0.0),
 }
 

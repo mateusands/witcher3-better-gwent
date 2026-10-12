@@ -85,6 +85,7 @@ def patch_ai(source):
       }
       // Opening exchange (Medium and above), proven in the Lab: up to two own cards go back to
       // the deck, chosen from the own remaining composition only (never the shuffled order).
+      // A weather card the leader can pull from the deck goes back first.
       // Same steps as CardManager.mulliganCard, without its hero-drawn sound, which would tell
       // the player what the NPC drew.
       public function gwaiNpcMulligan() : void
@@ -99,7 +100,8 @@ def patch_ai(source):
             for(var turn:int = 0; turn < 2; ++turn)
             {
                var state:GwaiV8Position = GwaiV8Capture.capture(manager,this.playerID);
-               var key:int = GwaiV8Mulligan.choose(state);
+               var leader:CardLeaderInstance = manager.getCardLeader(this.playerID);
+               var key:int = GwaiV8Mulligan.chooseWithLeader(state,leader == null ? -1 : leader.templateRef.getFirstEffect());
                if(key < 0) break;
                var card:CardInstance = manager.getCardInstance(key);
                if(card == null || manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,this.playerID).indexOf(card) < 0)
@@ -176,11 +178,11 @@ def patch_ai(source):
          }
          return false;
       }
-      // Per-difficulty thinking limit (ms): Easy, Medium, Hard, Expert. When reached, the best
+      // Per-difficulty thinking limit (ms): Easy, Normal, Hard (Expert: no longer offered). When reached, the best
       // evaluated root move is played (v8_timeout_partial); only an empty search hands over.
       private function gwaiTimeLimit() : int
       {
-         return [2000,3000,5000,8000][Math.max(0,Math.min(3,this._gwaiLevel))];
+         return [2000,4000,6000,8000][Math.max(0,Math.min(3,this._gwaiLevel))];
       }
       // Recorded with every decision so in-game speed can be measured per difficulty.
       private function gwaiDecisionStats() : String

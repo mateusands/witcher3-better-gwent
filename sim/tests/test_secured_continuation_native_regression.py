@@ -33,3 +33,13 @@ def test_safe_spy_recovery_is_retained_without_new_cards_or_decks():
     assert len(changes)==1
     assert tuple(changes[0]['scores'])==(20,21)
     assert changes[0]['candidate']['action'] is None
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def earlier_model(monkeypatch):
+    # Pinned behaviour of the reviewed V6-era deal: the plain model without Skellige cards.
+    import gwentsim.response_v8 as v8
+    monkeypatch.setattr(v8, 'VARIANT', frozenset({'no-skellige'}))

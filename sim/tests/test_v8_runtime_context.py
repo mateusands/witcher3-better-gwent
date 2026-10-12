@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/"tools"))
 
 import pytest
 from gwentsim.sequence_search import Context
-from v8_as_test import core_javascript, close_brace, strip_types
+from v8_as_test import core_javascript, close_brace, strip_types, script_file
 from v8_runtime_patch import patch, NATIVE_CLASSES
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -27,7 +27,7 @@ def method(source,name,accessor=''):
 
 
 def execute(script):
-    result=subprocess.run(['node','-e',script],capture_output=True,text=True)
+    result=subprocess.run(['node',script_file(script)],capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     return json.loads(result.stdout)
 
@@ -64,6 +64,7 @@ def test_native_match_snapshot_and_both_side_profile_contract(enabled,autoplay,l
     script+='var accepted=configure.call(flow,'+data+');var first=snapshot.call(flow);first.difficulty=99;'
     script+='var rejected=configure.call(flow,{version:1,enabled:true,difficulty:3,autoplay:true});'
     script+='console.log(JSON.stringify([accepted,rejected,snapshot.call(flow),profile.call(flow,0),profile.call(flow,1),profile.call(flow,2)]));'
+    level=min(level,2)   # an old Expert (3) plays as Hard
     expected=dict(enabled=enabled,difficulty=level,autoplay=enabled and autoplay)
     assert execute(script)==[True,False,expected,level if enabled and autoplay else -1,level if enabled else -1,-1]
 
@@ -80,7 +81,8 @@ def test_enabled_profiles_for_both_sides_never_consult_native_difficulty(level):
     script+='configure.call(flow,{version:1,enabled:true,autoplay:true,difficulty:'+str(level)+'});'
     script+='out.push([0,1].map(side=>GwaiV8Sequence.profile(profile.call(flow,side))));}'
     script+='console.log(JSON.stringify(out));'
-    expected=dict(label=['Easy','Medium','Hard','Expert'][level],search_depth=[1,2,2,3][level],beam_width=[4,8,12,16][level])
+    level=min(level,2)   # an old Expert (3) plays as Hard
+    expected=dict(label=['Easy','Normal','Hard'][level],search_depth=[1,2,2][level],beam_width=[4,8,8][level])
     assert execute(script)==[[expected,expected]]*4
 
 
@@ -101,7 +103,7 @@ def test_fair_context_uses_only_public_status_count_results_and_leaders(side,win
     ''' % (side,json.dumps(winners))
     losses=[sum(w!=s for w in winners) for s in (0,1)]
     expected=Context(len(winners),losses[side],losses[1-side],True,7,[3,2][side],[3,2][1-side],side==1,side!=1)
-    assert execute(script)==asdict(expected)
+    assert execute(script)==json.loads(json.dumps(asdict(expected)))
 
 
 def test_native_anchors_and_ws_packet_channel_are_connected():

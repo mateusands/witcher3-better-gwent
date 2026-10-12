@@ -69,7 +69,12 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
         if key not in reserve_cache:reserve_cache[key]=state.reserve()
         return reserve_cache[key]
     nodes=0;unsupported=sum(h.unsupported for h in beliefs);exhausted=False
-    budget=(512,2048,4096,8192)[int(difficulty)]
+    budget=(512,768,2048,8192)[int(difficulty)]
+    from . import response_v8
+    if response_v8.flag('budget-half',position.player):budget//=2  # experiment: thinking time vs strength
+    for f in response_v8.VARIANT:
+        # Experiment "nodesN": this node budget, e.g. nodes1024 (difficulty ladder study).
+        if f.startswith('nodes') and f[5:].isdigit() and response_v8.flag(f,position.player):budget=int(f[5:])
     def charge():
         nonlocal nodes
         if nodes>=budget:raise SearchBudgetReached()

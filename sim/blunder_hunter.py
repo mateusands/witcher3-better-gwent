@@ -5,7 +5,7 @@ For a simulated match the candidate (V8) LOST or drew against the native AI, eve
 decision is retried with up to MAX_ALTERNATIVES alternatives that V8's own search ranked
 (plus a pass). Each option (the chosen move too) is replayed with the real game over
 CONTINUATIONS luck streams that start right after the judged decision: everything before it
-is identical, only later draws/coin flips vary. A decision is reported only when an
+is identical; after it, both remaining decks are reshuffled and later luck varies. A decision is reported only when an
 alternative's mean result beats the chosen move's mean by MIN_REGRET, so a lucky draw after
 an equal move is not mistaken for a blunder.
 
@@ -46,7 +46,14 @@ class BranchRandom(SeededRandom):
 
     def branch(self, decision, k):
         import random as _random
+        from gwentsim.gwint.card_manager import CardManager
         self._r = _random.Random('%s/%s/%s' % (self.seed, decision, k))
+        # The deck order is fixed at the deal: without a reshuffle, every continuation of a
+        # match played by V8 on both sides would be the same game. Reshuffle what is left in
+        # both decks (hands and board stay), so continuations sample the hidden future.
+        cm = CardManager.getInstance()
+        for p in (0, 1):
+            self._r.shuffle(cm.playerDeckDefinitions[p].cardIndicesInDeck)
 
 
 @lru_cache(maxsize=1)

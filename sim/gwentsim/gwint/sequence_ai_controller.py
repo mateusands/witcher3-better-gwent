@@ -1,4 +1,5 @@
 """Simulator-only original sequence controller with unchanged native execution."""
+from dataclasses import replace
 from .. import constants as C
 from ..position import Position
 from ..sequence_search import Context,choose_sequence
@@ -7,6 +8,7 @@ from .tactical_ai_controller import TacticalPlanningAIPlayerController
 from .card_manager import CardManager
 from .small import CardTransaction
 from .ai_player_controller import TACTIC_PASS,TACTIC_MAXIMIZE_WIN
+from .. import known_hand  # noqa: F401  (tracks cards returned to a hand from the board)
 from .base_player_controller import ROUND_PLAYER_STATUS_DONE
 
 
@@ -29,6 +31,12 @@ class SequenceAIPlayerController(TacticalPlanningAIPlayerController):
         if leader:
             for name in ('candidateResurrectTarget','candidateWeatherTemplate'):leader.__dict__.pop(name,None)
         position=Position.from_manager(cm,own)
+        from .. import response_v8
+        # Shipped since 0.9.0 (the game's AS3 model plays the Skellige cards); "no-skellige"
+        # restores the earlier model for comparisons.
+        if not response_v8.flag('no-skellige',own):
+            from skellige_position import SkelligePosition
+            position=SkelligePosition(**position.__dict__)
         context=Context(self.gameFlowControllerRef.currentRound,
             sum(r.played and r.winningPlayer!=own for r in cm.roundResults),
             sum(r.played and r.winningPlayer!=other for r in cm.roundResults),
@@ -38,6 +46,11 @@ class SequenceAIPlayerController(TacticalPlanningAIPlayerController):
             # Only leaders the model cannot search block passing / keep the
             # generic credit; modeled leaders are explicit actions and reserve.
             position.leader_unmodeled(own),position.leader_unmodeled(other))
+        from .. import response_v8
+        if response_v8.flag('known-hand',own):
+            from ..known_hand import known_templates
+            known=known_templates(cm,other)
+            if known:context=replace(context,opponent_known=known)
         # An unsupported native recovery/leader choice remains executable. Search
         # must not replace it by pretending its effect does not exist.
         native_leader=source is not None and source.instanceId==position.leaders.get(own)
@@ -66,7 +79,9 @@ class SequenceAIPlayerController(TacticalPlanningAIPlayerController):
                 return
             tx.targetSlotID=action.slot
             tx.targetPlayerID=other if card.templateRef.isType(C.CardType_Spy) else own
-            if card.templateRef.isType(C.CardType_Weather) or card.templateRef.hasEffect(C.CardEffect_Scorch):tx.targetPlayerID=-1
+            # Spell Scorch only: a unit with Scorch (Clan Dimun Pirate) is placed on its own row.
+            if card.templateRef.isType(C.CardType_Weather) or (card.templateRef.hasEffect(C.CardEffect_Scorch)
+                    and not card.templateRef.isType(C.CardType_Creature)):tx.targetPlayerID=-1
             if action.target!=-1:tx.targetCardInstanceRef=cm.getCardInstance(action.target)
             if action.chain:card.candidateRecoveryPlan=action.chain
             after=position.apply(action);old_scores=position.scores();new_scores=after.scores()
