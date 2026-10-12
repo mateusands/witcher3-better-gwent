@@ -44,6 +44,9 @@
 /sim/gwentsim/gwint/match.py
 /sim/gwentsim/gwint/small.py
 
+# NPC deck table generated from the game's deck definitions (tools/build_npc_decks.py).
+/mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws
+
 # Built mod packages contain the modified game interface file.
 *.bundle
 *.store

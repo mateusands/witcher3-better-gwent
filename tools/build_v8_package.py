@@ -62,6 +62,8 @@ def main():
     inputs={str(source.relative_to(ROOT)):sha(source),'tools/build_v8_package.py':sha(Path(__file__))}
     for path in ['mod/settings/modGwentAISettings/content/scripts/local/gwai_settings.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_betting.ws',
+        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks.ws',
+        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws',
         'mod/recorder/modGwentAIRecorder/content/scripts/local/gwai_recorder.ws']:
         shutil.copyfile(ROOT/path,scripts/Path(path).name);inputs[path]=sha(ROOT/path)
     labels=ROOT/'mod/settings/menu/labels.en.json'

@@ -45,13 +45,32 @@ def exchange_hook(seat,variant,seed,audit):
         original(flow)
         if variant=='none':return
         cm=flow.cardManager;local=random.Random(seed*1009+seat)
+        if variant=='leader':
+            # A leader that pulls a weather card from the deck: that weather in the opening hand
+            # goes back to the deck (the leader can still pull it), freeing a hand slot.
+            from gwentsim.npc_balance import LEADER_PICK
+            king=cm.getCardTemplate(cm.playerDeckDefinitions[seat].selectedKingIndex)
+            weather=LEADER_PICK.get(king.getFirstEffect())
+            for turn in range(2):
+                state=Position.from_manager(cm,seat)
+                key=next((k for k in state.hand if weather is not None and state.cards[k].effects[:1]==(weather,)),None)
+                if key is None or not sum(state.counts.values()):break
+                source=cm.getCardInstance(key);template=source.templateId
+                if cm.mulliganCard(source) is None:raise RuntimeError('native exchange failed')
+                audit.append(dict(turn=turn,variant=variant,source=key,sourceTemplate=template))
+            flow.hooks.record('S','ai_mulligan')
+            return
         for turn in range(2):
             state=Position.from_manager(cm,seat)
             if not state.hand or not sum(state.counts.values()):break
-            decision=choose_mulligan(state)
-            key=decision.source if variant=='evaluated' else local.choice(state.hand)
-            entry=dict(turn=turn,variant=variant,beforePotential=decision.before,
-                projected=decision.audit() if variant=='evaluated' else None,source=key)
+            if variant=='structural':
+                from structural_mulligan import choose_structural_mulligan
+                decision=choose_structural_mulligan(state)
+            else:
+                decision=choose_mulligan(state)
+            key=decision.source if variant in('evaluated','structural') else local.choice(state.hand)
+            entry=dict(turn=turn,variant=variant,beforePotential=getattr(decision,'before',None),
+                projected=decision.audit() if variant in('evaluated','structural') else None,source=key)
             if key is None:audit.append(entry);break
             source=cm.getCardInstance(key);before_count=len(state.hand)
             template=source.templateId

@@ -89,21 +89,36 @@ def unit_value(t, names, horn_row=None):
 def packages(templates, faction, names):
     """Units of the faction plus neutrals, grouped so synergies stay whole.
 
-    Muster: cards sharing summon targets form one package. Tight bond: copies with the same
-    name stem (e.g. blue_stripes, blue_stripes2) form one package. Everything else is single."""
+    Muster: cards whose summon targets overlap form one package (Arachas Behemoth calls the
+    Arachas, so all four are one package). Tight bond: copies with the same name stem (e.g.
+    blue_stripes, blue_stripes2) form one package. Everything else is single."""
     pool = [t for t in templates.values() if t.index < 1000 and t.faction in (faction, C.FactionId_Neutral)
             and t.is_type(C.CardType_Creature)]
     groups = defaultdict(list)
-    for t in pool:
-        name = names.get(t.index, str(t.index))
+    musters = []                                         # [set of summon targets, cards]
+    for t in sorted(pool, key=lambda t: t.index):
         if t.has_effect(C.CardEffect_SummonClones) and t.summon_flags:
-            key = ('muster', tuple(sorted(t.summon_flags)))
-        elif t.has_effect(C.CardEffect_SameTypeMorale):
+            flags, cards = set(t.summon_flags), [t]
+            for group in [g for g in musters if g[0] & flags]:
+                musters.remove(group)
+                flags |= group[0]
+                cards += group[1]
+            musters.append([flags, cards])
+    for flags, cards in musters:                         # plain cards a muster calls (Roach)
+        cards += [t for t in pool if t.index in flags and t not in cards]
+    in_muster = {t.index for _, cards in musters for t in cards}
+    for t in sorted(pool, key=lambda t: t.index):
+        if t.index in in_muster:
+            continue
+        name = names.get(t.index, str(t.index))
+        if t.has_effect(C.CardEffect_SameTypeMorale):
             key = ('bond', name.rstrip('0123456789'))
         else:
             key = ('single', t.index)
         groups[key].append(t)
-    return [(key[0], sorted(cards, key=lambda c: c.index)) for key, cards in groups.items()]
+    result = [(key[0], sorted(cards, key=lambda c: c.index)) for key, cards in groups.items()]
+    result += [('muster', sorted(cards, key=lambda c: c.index)) for _, cards in musters]
+    return result
 
 
 def leader_effect(templates, leader):
@@ -187,7 +202,18 @@ def strong_deck(templates, deck, names):
     return sorted(t.index for t in units) + kit
 
 
-def balanced_deck(templates, deck, names, target):
+def balanced_steps(templates, deck, names):
+    """Every deck balanced_deck can return for this NPC deck, as (strength checked, cards).
+
+    balanced_deck only uses its target to decide when to stop, so for any target the result is
+    the cards of the first step whose checked strength reaches it, else the last step. The game
+    uses this table instead of running the builder (see tools/build_npc_decks.py)."""
+    steps = []
+    balanced_deck(templates, deck, names, float('inf'), steps)
+    return steps
+
+
+def balanced_deck(templates, deck, names, target, steps=None):
     """The NPC's own units made legal (caps, 22+ units), then the weakest swapped for better
     eligible ones until the deck's strength reaches the player's (never weakened below)."""
     leader = deck.selected_king_index
@@ -208,45 +234,114 @@ def balanced_deck(templates, deck, names, target):
         extra = sorted((t for t in current if test(t)), key=lambda t: (value(t), t.index))
         for t in extra[:max(0, len(extra) - cap)]:
             current.remove(t)
+    groups = packages(templates, faction, names)
+    muster_of = {t.index: cards for kind, cards in groups if kind == 'muster' for t in cards}
     present = {t.index for t in current}
-    pool = [t for kind, cards in packages(templates, faction, names) for t in cards if t.index not in present]
-    pool.sort(key=lambda t: (-value(t), t.index))
+    # A muster card without its group (e.g. Arachas Behemoth without Arachas) gets its group.
+    for index in sorted(present):
+        for t in muster_of.get(index, ()):
+            if t.index not in present:
+                current.append(t); present.add(t.index)
+    # Candidates are whole packages: a muster group enters complete or not at all, other
+    # cards one by one (as before).
+    pool = []
+    for kind, cards in groups:
+        if kind == 'muster':
+            if not any(t.index in present for t in cards):
+                pool.append(cards)
+        else:
+            pool += [[t] for t in cards if t.index not in present]
+    pool.sort(key=lambda cards: (-sum(map(value, cards)) / len(cards), cards[0].index))
 
-    def fits(t, without=None):
-        group = [u for u in current if u is not without] + [t]
+    def fits(new, without=()):
+        group = [u for u in current if not any(u is w for w in without)] + list(new)
         return sum(map(is_spy, group)) <= MAX_SPIES and sum(
             u.has_effect(C.CardEffect_Nurse) and not u.is_type(C.CardType_Hero) for u in group) <= MAX_MEDICS
+
+    def removable():
+        # Heroes stay; muster members stay too, so no group is broken.
+        return sorted((u for u in current if not u.is_type(C.CardType_Hero) and u.index not in muster_of),
+                      key=lambda u: (value(u), u.index))
 
     kit, _ = special_kit(templates, faction, leader, current, names)
 
     def cards():
         return sorted(t.index for t in current) + kit
-    while len(current) < MIN_UNITS and pool:
-        t = pool.pop(0)
-        if fits(t):
-            current.append(t)
-    for t in list(pool):
-        if deck_strength(templates, cards()) >= target:
+    for new in list(pool):
+        if len(current) >= MIN_UNITS:
             break
-        weakest = min((u for u in current if not u.is_type(C.CardType_Hero)), key=lambda u: (value(u), u.index),
-                      default=None)
-        if weakest is None or value(t) <= value(weakest):
+        if fits(new):
+            current.extend(new); pool.remove(new)
+
+    def reached():
+        strength = deck_strength(templates, cards())
+        if steps is not None:
+            final, _ = special_kit(templates, faction, leader, current, names)
+            snapshot = sorted(t.index for t in current) + final
+            if not steps or steps[-1][1] != snapshot:
+                steps.append((strength, snapshot))
+        return strength >= target
+    for new in list(pool):
+        if reached():
             break
-        if fits(t, without=weakest):
-            current.remove(weakest); current.append(t)
-    for t in list(pool):                                # still short: add units, up to MAX_UNITS
-        if deck_strength(templates, cards()) >= target or len(current) >= MAX_UNITS:
+        out = removable()[:len(new)]
+        if len(out) < len(new) or sum(map(value, new)) / len(new) <= max(map(value, out)):
+            if len(new) == 1:
+                break
+            continue
+        if fits(new, without=out):
+            for u in out:
+                current.remove(u)
+            current.extend(new); pool.remove(new)
+    for new in list(pool):                              # still short: add units, up to MAX_UNITS
+        if reached() or len(current) >= MAX_UNITS:
             break
-        if t not in current and fits(t):
-            current.append(t)
+        if len(current) + len(new) <= MAX_UNITS + (2 if len(new) > 1 else 0) and fits(new):
+            current.extend(new); pool.remove(new)
     kit, _ = special_kit(templates, faction, leader, current, names)
+    if steps is not None:
+        reached()
     return cards()
 
 
+SPY_FACTIONS = (C.FactionId_Nilfgaard, C.FactionId_Northern_Kingdom)
+
+
+def deck_faction(templates, cards):
+    """Faction of a deck from its non-neutral cards (public: the leader shows it in game)."""
+    counts = defaultdict(int)
+    for i in cards:
+        if templates[i].faction != C.FactionId_Neutral:
+            counts[templates[i].faction] += 1
+    return max(counts, key=lambda f: (counts[f], -f)) if counts else C.FactionId_Neutral
+
+
+def with_decoys(templates, cards, count):
+    """Experiment "decoy3": at least `count` Decoys, within the 8 special cards (a second Horn
+    makes room first)."""
+    cards = list(cards)
+    decoy = next((i for i in cards if templates[i].get_first_effect() == C.CardEffect_UnsummonDummy), None)
+    if decoy is None:
+        return cards
+    while sum(templates[i].get_first_effect() == C.CardEffect_UnsummonDummy for i in cards) < count:
+        specials = [i for i in cards if not templates[i].is_type(C.CardType_Creature)]
+        if len(specials) >= 8:
+            horns = [i for i in specials if templates[i].get_first_effect() == C.CardEffect_Horn]
+            if len(horns) < 2:
+                break
+            cards.remove(horns[-1])
+        cards.append(decoy)
+    return cards
+
+
 def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
-    """DeckDefinition for the NPC under an option mode ('original', 'balanced', 'strong')."""
+    """DeckDefinition for the NPC under an option mode ('original', 'balanced', 'strong').
+
+    "<mode>:decoy3" (experiment) gives the NPC 3 Decoys against a Nilfgaard or Northern Kingdoms
+    player deck, the factions with the most spies."""
     from dataclasses import replace
-    if mode in (None, 'original'):
+    mode, _, flags = (mode or 'original').partition(':')
+    if mode == 'original':
         return deck
     if mode == 'strong':
         cards = strong_deck(templates, deck, names)
@@ -255,6 +350,8 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
         cards = balanced_deck(templates, deck, names, target)
     else:
         raise ValueError('unknown NPC deck mode %s' % mode)
+    if 'decoy3' in flags.split('+') and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
+        cards = with_decoys(templates, cards, 3)
     # The chosen deck replaces the native extra-card mechanism for this match.
     return replace(deck, card_indices=list(cards), dynamic_card_requirements=[], dynamic_cards=[])
 
@@ -279,6 +376,13 @@ def audit(templates, cards, leader):
         problems.append('Clear Weather card with a clearing leader')
     if leader_effect(templates, leader) in LEADER_HORN_ROW and sum(t.has_effect(C.CardEffect_Horn) for t in specials) > 1:
         problems.append('more than one Horn with a Horn leader')
+    present = set(cards)
+    for t in units:
+        if t.has_effect(C.CardEffect_SummonClones) and t.summon_flags:
+            missing = [i for i in t.summon_flags if i in templates and i not in present
+                       and templates[i].faction == templates[t.index].faction]
+            if missing:
+                problems.append('muster %d without %s' % (t.index, missing))
     if len(set(cards)) != len(cards):
         for i in set(cards):
             limit = 3   # native NPC decks already hold up to three copies of a unit

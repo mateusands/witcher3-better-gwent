@@ -16,6 +16,7 @@ anything into the game.
 
 ```sh
 python3 tools/build_settings.py                  # menu labels -> *.w3strings
+python3 tools/build_npc_decks.py                 # NPC deck table (needs the local vanilla XML)
 python3 tools/build_v8_core.py --with-recorder   # V8 AI + match recorder into the Gwent interface
 python3 tools/build_v8_package.py                # -> dist/BetterGwentAI-V8-5.01-test.zip
 ```

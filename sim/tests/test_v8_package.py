@@ -66,9 +66,11 @@ def test_settings_receiver_and_close_channels_are_shipped_together(shipping):
     assert 'SetFlashObject("gwai.match.settings", packet)' in settings
     assert 'SetFlashBool("gwai.match.stop", true)' in betting
     for name in ('OnGwaiRec','OnGwaiEnd','OnGwaiStart'):assert 'event '+name+'(' in recorder
+    assert 'function GetCurrentAIDeck()' in files[prefix+'gwai_npc_decks.ws'].decode()
+    assert 'function GwaiNpcDeckTable(' in files[prefix+'gwai_npc_decks_data.ws'].decode()
     menu=ET.fromstring(files['bin/config/r4game/user_config_matrix/pc/modGwentAI.xml'])
     ids={node.attrib['id'] for node in menu.findall('.//VisibleVars/Var')}
-    assert ids=={'GwaiEnabled','GwaiDifficulty','GwaiAutoPlay','GwaiMaxBet','GwaiStakesStronger'}
+    assert ids=={'GwaiEnabled','GwaiDifficulty','GwaiNpcDecks','GwaiAutoPlay','GwaiMaxBet','GwaiStakesStronger'}
     assert not any('filelist' in name for name in files)
     labels=build(json.loads((ROOT/'mod/settings/menu/labels.en.json').read_text()))
     for language in LANGUAGES:assert files['Mods/modBetterGwentAI/content/'+language+'.w3strings']==labels

@@ -1,6 +1,7 @@
-# NPC deck option (in development)
+# NPC deck option
 
-A planned menu option, **NPC decks: Original / Adaptive / Strong**, Original by default.
+Menu option **NPC decks: Original / Adaptive / Strong** (Options > Mods > Better Gwent AI),
+Original by default.
 It only changes *which existing cards* an NPC brings to a match, and only while Better
 Gwent AI is On.
 
@@ -28,7 +29,8 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
   - a leader that doubles a row leaves one Horn for the other rows, and that row's units
     are preferred;
   - a leader that pulls a weather card from the deck gets exactly that card.
-- **Synergy whole or not at all:** muster groups complete, tight bond with two or more copies,
+- **Synergy whole or not at all:** muster groups complete (a card that calls others, like
+  Arachas Behemoth, comes with the cards it calls), tight bond with two or more copies,
   medics capped at two, spies capped at three. Avallac'h, the neutral hero spy, fits most decks.
 
 **Adaptive** (internal mode name `balanced`) starts from the NPC's own deck, makes it legal under these rules, and swaps its
@@ -51,4 +53,21 @@ Every Gwent opponent, including quest and tournament players, except the tutoria
   Target: Adaptive close to an even match, Strong above it.
 - In game: switch the option on and off in the same save and confirm the native deck returns.
 
-Code: `sim/gwentsim/npc_balance.py` (the in-game version will use decks precomputed from it).
+## In the game
+
+- `gwai_npc_decks.ws` wraps `CR4GwintManager.GetCurrentAIDeck`. With Better AI Off, the option
+  on Original, or the tutorial match, the native deck is returned untouched.
+- The decks are not built in the game: `tools/build_npc_decks.py` writes a table
+  (`gwai_npc_decks_data.ws`) for every native NPC deck variant (150 variants of 50 NPC decks; the tutorial deck is listed but never replaced): the Strong deck,
+  and every deck Adaptive can produce, each with the strength the builder checked. Adaptive's
+  target only decides when the builder stops, so the game takes the first deck that reaches
+  the target. The target comes from the player's selected deck (the game's strength measure,
+  computed in the script) times the difficulty share.
+- The chosen deck gets a deck name with no extra cards, so the native extra-card levels do not
+  add to it (as in the simulator).
+- `sim/tests/test_npc_deck_table.py` checks that the table gives the simulator's deck for every
+  NPC deck variant and target, and that the script's strength bonuses and difficulty shares
+  match the simulator.
+
+Code: `sim/gwentsim/npc_balance.py` (builder), `tools/build_npc_decks.py` (table),
+`mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks.ws` (game).

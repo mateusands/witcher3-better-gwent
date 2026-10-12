@@ -14,5 +14,9 @@
   "preset_value_gwai_bet_50": "50",
   "preset_value_gwai_bet_100": "100",
   "preset_value_gwai_bet_150": "150",
-  "option_gwai_stakes_stronger": "Higher stakes, stronger opponent"
+  "option_gwai_stakes_stronger": "Higher stakes, stronger opponent",
+  "option_gwai_npc_decks": "NPC decks",
+  "preset_value_gwai_npc_decks_original": "Original",
+  "preset_value_gwai_npc_decks_adaptive": "Adaptive",
+  "preset_value_gwai_npc_decks_strong": "Strong"
 }

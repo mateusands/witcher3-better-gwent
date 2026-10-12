@@ -75,7 +75,9 @@ def describe(position, action):
 def match_setup(spec):
     if spec['source'] == 'player':
         from evaluate_pool import setup, player_seats
-        seats, _ = player_seats(spec['pair'], spec['swap'])
+        profile = spec.get('profile', 2)
+        profile = profile if isinstance(profile, int) else ('easy', 'medium', 'hard', 'expert').index(profile)
+        seats, _ = player_seats(spec['pair'], spec['swap'], spec.get('npc_decks'), profile)
         return setup()['match'], [seats[0].for_player(0), seats[1].for_player(1)], [d.name for d in seats]
     if spec['source'] == 'pool':
         from evaluate_pool import setup

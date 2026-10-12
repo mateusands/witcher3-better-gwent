@@ -22,6 +22,13 @@
                     </Option>
                 </OptionsArray>
             </Var>
+            <Var id="GwaiNpcDecks" displayName="gwai_npc_decks" displayType="OPTIONS" tags="indent">
+                <OptionsArray>
+                    <Option id="0" displayName="gwai_npc_decks_original"><Entry varId="GwaiNpcDecks" value="0"/></Option>
+                    <Option id="1" displayName="gwai_npc_decks_adaptive"><Entry varId="GwaiNpcDecks" value="1"/></Option>
+                    <Option id="2" displayName="gwai_npc_decks_strong"><Entry varId="GwaiNpcDecks" value="2"/></Option>
+                </OptionsArray>
+            </Var>
             <Var id="GwaiAutoPlay" displayName="gwai_autoplay" displayType="TOGGLE" tags="indent"/>
             <Var id="GwaiMaxBet" displayName="gwai_max_bet" displayType="OPTIONS" tags="indent">
                 <OptionsArray>

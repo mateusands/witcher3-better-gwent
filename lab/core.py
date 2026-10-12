@@ -140,7 +140,8 @@ def hunt_payloads(params):
         from evaluate_pool import player_setup
         pairs = len(player_setup())
         return [dict(kind='hunt', source='player', pair=pair, seed=seed, swap=swap, seat=0 if swap else 1,
-                     policy=params['policy'], profile=params['profile'])
+                     policy=params['policy'], profile=params['profile'],
+                     **({'npc_decks': params['npc_decks']} if params.get('npc_decks') else {}))
                 for pair in range(min(pairs, params.get('pairs') or pairs))
                 for seed in params['seeds'] for swap in (False, True)]
     from evaluate_pool import setup

@@ -20,8 +20,8 @@ The repository is private and work in progress: there is no release yet.
 - Optional stronger existing NPC deck variants at higher stakes (Off by default).
 - **Better AI Off = the original game**, wagers included; the wager options are locked
   while it is Off.
-- **NPC decks: Original (default) / Adaptive / Strong** (in development): which existing cards
-  an NPC brings, rebuilt in memory for each match, safe for saves.
+- **NPC decks: Original (default) / Adaptive / Strong**: which existing cards an NPC brings,
+  rebuilt in memory for each match, safe for saves (in the test build; in-game check pending).
 
 ## NPC decks: Original, Adaptive, Strong
 
@@ -191,6 +191,7 @@ PyPy is installed separately (`uv python install pypy3.11`) and is not part of t
 
 ```sh
 python3 tools/build_settings.py                     # menu labels -> *.w3strings
+python3 tools/build_npc_decks.py                    # NPC deck table (needs the local vanilla XML)
 python3 tools/build_v8_core.py --with-recorder      # compile V8 into the Gwent interface
 python3 tools/build_v8_package.py                   # -> dist/BetterGwentAI-V8-5.01-test.zip
 python3 -m pytest sim/tests -q                      # test suite

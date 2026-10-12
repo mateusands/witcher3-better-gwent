@@ -8,6 +8,7 @@ function GwaiSettingsInitialize() : void
     var autoplay : string = cfg.GetRawConfigValueByStr("GwentAI", "GwaiAutoPlay");
     var maxBet : string = cfg.GetRawConfigValueByStr("GwentAI", "GwaiMaxBet");
     var stakesStronger : string = cfg.GetRawConfigValueByStr("GwentAI", "GwaiStakesStronger");
+    var npcDecks : string = cfg.GetRawConfigValueByStr("GwentAI", "GwaiNpcDecks");
     var normalized : string;
     var changed : bool;
 
@@ -63,6 +64,12 @@ function GwaiSettingsInitialize() : void
         cfg.SetRawConfigValueByStr("GwentAI", "GwaiStakesStronger", normalized);
         changed = true;
     }
+    // NPC decks: 0 Original (default), 1 Adaptive, 2 Strong.
+    if (npcDecks != "0" && npcDecks != "1" && npcDecks != "2")
+    {
+        cfg.SetRawConfigValueByStr("GwentAI", "GwaiNpcDecks", "0");
+        changed = true;
+    }
     if (changed)
     {
         theGame.SaveUserSettings();
@@ -116,6 +123,10 @@ function GwaiSettingsRefreshControlLocks() : void
     dataArray = m_flashValueStorage.CreateTempFlashArray();
     dataObject = m_flashValueStorage.CreateTempFlashObject();
     dataObject.SetMemberFlashUInt("tag", NameToFlashUInt('GwaiDifficulty'));
+    dataObject.SetMemberFlashBool("disabled", !GwaiSettingsEnabled());
+    dataArray.PushBackFlashObject(dataObject);
+    dataObject = m_flashValueStorage.CreateTempFlashObject();
+    dataObject.SetMemberFlashUInt("tag", NameToFlashUInt('GwaiNpcDecks'));
     dataObject.SetMemberFlashBool("disabled", !GwaiSettingsEnabled());
     dataArray.PushBackFlashObject(dataObject);
     dataObject = m_flashValueStorage.CreateTempFlashObject();

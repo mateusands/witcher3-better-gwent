@@ -8,8 +8,8 @@ import struct
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_ID = 2117400001  # Separate from Gwent Players Map's 2117300001+ range.
-LANGUAGES = ('ar', 'br', 'cn', 'cz', 'de', 'en', 'es', 'esmx', 'fr', 'hu', 'it', 'jp', 'kr', 'pl', 'ru', 'tr', 'zh')
+BASE_ID = 2117500001  # Separate from Gwent Players Map (2117300001+) and Witcher Upgrade Gear Map (2117400001+).
+LANGUAGES = ('ar', 'br', 'cn', 'cz', 'de', 'en', 'es', 'esmx', 'fr', 'hu', 'it', 'jp', 'kr', 'pl', 'ru', 'tr', 'ua', 'zh')
 
 
 def cint(value):
