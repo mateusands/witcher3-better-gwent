@@ -60,6 +60,8 @@ def self_harm(before,after,action):
     own power and stays searchable. The ISMCTS kernel keeps its own guard, which allows
     a Medic follow-up."""
     if inert_discard(before,after,action):return True
+    from . import response_v8
+    if response_v8.flag('allow-self-harm',before.player):return False  # Lab switch: the rule before g151
     card=before.cards[action.source]
     if action.source==(before.leaders or {}).get(before.player) or not card.has(C.CardEffect_Scorch) \
             or card.is_type(C.CardType_Creature):

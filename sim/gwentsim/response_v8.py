@@ -274,7 +274,8 @@ def choose_response_v8(position, context, profile):
             # leader then gives away only our own points, in-game match g151) or when
             # the search itself values passing above the wasted move.
             empty_after = not [k for k in position.hand if k != result.action.source]
-            if context.own_losses == 0 or empty_after or result.pass_value > result.value:
+            if context.own_losses == 0 or (not flag('allow-self-harm', position.player)
+                                           and (empty_after or result.pass_value > result.value)):
                 return replace(result, action=None, value=result.pass_value,
                                reason='pass_for_match_resources', revision='response-v8')
 

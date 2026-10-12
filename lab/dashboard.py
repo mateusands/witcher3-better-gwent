@@ -523,19 +523,24 @@ def main():
     lab_matches = sum(x['matches'] for x in totals)
     cpu_hours = sum(x['cpuSeconds'] for x in totals) / 3600
     earlier = report.evaluation_matches(args.evaluations) if Path(args.evaluations).exists() else 0
-    recordings = len([p for p in Path(args.records).glob('g[0-9]*.json') if re.fullmatch(r'g\d+\.json', p.name)])
+    complete = {p.stem for p in Path(args.records).glob('g[0-9]*.json') if re.fullmatch(r'g\d+\.json', p.name)}
+    recordings = len(complete)
+    # Recordings cut short (match not closed) stay in records/broken; count each match once.
+    partial = len({m.group(0) for p in (Path(args.records) / 'broken').glob('g*')
+                   for m in [re.match(r'g\d+', p.name)] if m} - complete)
+    recorded_note = '%d complete, %d cut short' % (recordings, partial) if partial else 'complete matches'
     findings = sum(rounds.values())
     better, native, games = styles['all']
     edge = 100 * (better - native) / native if native else 0
     tiles = [('{:,}'.format(lab_matches + earlier), 'Simulated matches', 'Lab + earlier evaluations'),
              ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
-             (str(recordings), 'In-game matches', 'recorded and analysed'),
+             (str(recordings + partial), 'Recorded matches', recorded_note),
              (str(findings), 'Mistakes found', 'by the blunder hunter'),
              ('%+.0f%%' % edge, 'More NPC wins', 'vs native AI, player decks')]
     totals_tiles = [('{:,}'.format(lab_matches), 'Lab matches', 'Gwent AI Lab'),
                     ('{:,}'.format(earlier), 'Earlier matches', 'V1-V8 evaluations'),
                     ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
-                    (str(recordings), 'In-game matches', 'recorded and analysed'),
+                    (str(recordings + partial), 'Recorded matches', recorded_note),
                     (str(findings), 'Mistakes found', 'by the blunder hunter')]
     strengths = list(range(80, 321, 20))
     curves, total = requirement_curve(strengths)
