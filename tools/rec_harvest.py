@@ -11,6 +11,7 @@
 #   game/records/raw/gNNN.txt      raw [GwaiRec] lines of the match
 #   game/records/broken/gNNN-*.txt raw lines of a match that cannot be parsed (crash, etc.)
 # Every run that changes the settings first copies them to backups/settings/ (last 20 kept).
+from pathlib import Path
 import glob, json, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +37,16 @@ def log(msg):
 
 
 def game_running():
-    return subprocess.run(['pgrep', '-x', 'witcher3.exe'], capture_output=True).returncode == 0
+    # Under Proton the process name is not "witcher3.exe" (pgrep -x missed the running game and
+    # the harvest ran during matches): look at each process's real executable path instead.
+    for cmdline in Path('/proc').glob('[0-9]*/cmdline'):
+        try:
+            argv0 = cmdline.read_bytes().split(b'\0', 1)[0].decode('utf-8', 'replace')
+        except OSError:
+            continue
+        if argv0.replace('\\', '/').lower().endswith('/witcher3.exe'):
+            return True
+    return False
 
 
 def split_section(text):

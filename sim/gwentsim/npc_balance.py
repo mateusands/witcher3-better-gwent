@@ -27,6 +27,7 @@ MIN_UNITS, MAX_UNITS = 22, 26
 # Balanced: target strength as a share of the player's deck strength, by mod difficulty
 # (0 Easy, 1 Medium, 2 Hard, 3 Expert).
 BALANCED_TARGET = (0.85, 1.0, 1.1, 1.1)   # Easy, Normal, Hard (Expert: simulator only)
+KIT_CAP, STRONG_UNITS = 8, 24
 MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (Lab round 3: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'
 # Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
@@ -171,7 +172,21 @@ def special_kit(templates, faction, leader, units, names):
     kit += [specials[C.CardEffect_UnsummonDummy]] * (3 if spies >= 2 else 2) if C.CardEffect_UnsummonDummy in specials else []
     if C.CardEffect_Scorch in specials:
         kit.append(specials[C.CardEffect_Scorch])
-    return kit[:8], has_weather
+    kit = kit[:8]
+    if KIT_CAP < 8:
+        # Experiment "kitN" (lean decks, as in hand-built archetype decks): keep the weather the
+        # leader pulls, then Scorch, a Horn, a Decoy, Clear Weather, the rest in kit order.
+        order = [picked, C.CardEffect_Scorch, C.CardEffect_Horn, C.CardEffect_UnsummonDummy, C.CardEffect_ClearSky]
+        seen = set()
+        ranked = []
+        for position, k in enumerate(kit):                # copies of a card share its index
+            e = templates[k].get_first_effect()
+            first = e not in seen
+            seen.add(e)
+            ranked.append((order.index(e) if e in order and first else len(order), position, k))
+        kit = [k for _, _, k in sorted(sorted(ranked)[:KIT_CAP], key=lambda r: r[1])]
+        has_weather = any(templates[k].is_type(C.CardType_Weather) for k in kit)
+    return kit, has_weather
 
 
 def choose_units(templates, faction, leader, names, keep=(), count=24):
@@ -216,8 +231,9 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
 def strong_deck(templates, deck, names):
     leader = deck.selected_king_index
     faction = templates[leader].faction
-    heroes = [i for i in deck.card_indices if templates[i].is_type(C.CardType_Hero)]
-    units = choose_units(templates, faction, leader, names, keep=heroes)
+    heroes = [i for i in deck.card_indices if templates[i].is_type(C.CardType_Hero)
+              and names.get(i) not in EXCLUDED]
+    units = choose_units(templates, faction, leader, names, keep=heroes, count=STRONG_UNITS)
     kit, _ = special_kit(templates, faction, leader, units, names)
     return sorted(t.index for t in units) + kit
 
@@ -246,6 +262,8 @@ def balanced_deck(templates, deck, names, target, steps=None):
     kept = []
     heroes = set()
     for t in current:                                   # at most three copies, as in native decks
+        if names.get(t.index) in EXCLUDED:
+            continue
         hero = hero_identity(t, names)
         if hero is not None:                            # a hero only once (native decks repeat some)
             if hero in heroes:
@@ -373,10 +391,19 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
     mode, _, flags = (mode or 'original').partition(':')
     if mode == 'original':
         return deck
-    global MAX_SPIES
-    saved = MAX_SPIES
-    if 'spies4' in flags.split('+'):
-        MAX_SPIES = 4                         # experiment: one more spy allowed
+    global MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED
+    saved = MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED
+    switches = set(flags.split('+'))
+    if 'spies4' in switches:
+        MAX_SPIES = 4                         # experiment: one more spy allowed (shipped since)
+    if 'kit4' in switches:
+        KIT_CAP = 4                           # experiments from hand-built archetype decks
+    if 'kit2' in switches:
+        KIT_CAP = 2
+    if 'units22' in switches:
+        STRONG_UNITS = 22
+    if 'notriss' in switches:
+        EXCLUDED = EXCLUDED | {'triss'}
     try:
         if mode == 'strong':
             cards = strong_deck(templates, deck, names)
@@ -386,7 +413,7 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
         else:
             raise ValueError('unknown NPC deck mode %s' % mode)
     finally:
-        MAX_SPIES = saved
+        MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED = saved
     if 'decoy3' in flags.split('+') and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
         cards = with_decoys(templates, cards, 3)
     # The chosen deck replaces the native extra-card mechanism for this match.

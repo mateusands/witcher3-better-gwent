@@ -117,6 +117,12 @@ def rebuild(path, on_decision=None, stop_at=None, branch=None):
             rec = state['rec']; emit_notes(rec)
             index = len(rec.events); recorded = events[index]
             if recorded['k'] != 'A' or int(recorded['player']) != self.playerID:
+                cm = CardManager.getInstance(); leader = cm.getCardLeader(self.playerID)
+                if not cm.getCardInstanceList(1, self.playerID) and not (leader and leader.canBeUsed):
+                    # Nothing left to play: the game passes without recording a decision.
+                    self._decidedCardTransaction = None; self.attitude = TACTIC_PASS
+                    self.on_choose_move = lambda *args: None
+                    return
                 raise RuntimeError('event %d: expected an NPC decision, recorded %s' % (index, recorded))
             position, context = capture(self)
             if on_decision is not None:
@@ -146,6 +152,17 @@ def rebuild(path, on_decision=None, stop_at=None, branch=None):
                     t.targetCardInstanceRef = cm.getCardInstance(tx['target'][1])
                 t.powerChangeResult = tx['powerChange']; t.strategicValue = tx['strategic']
                 self._decidedCardTransaction = t
+                # The recorded Medic choices of this play (C nurse events before the next decision).
+                chain = []
+                for later in events[index + 1:]:
+                    if later['k'] == 'A' or (later['k'] == 'H' and int(later['player']) != self.playerID):
+                        break
+                    if later['k'] == 'C' and later['choice'] == 'nurse':
+                        target = cm.getCardInstance(int(later['arg']))
+                        row = next((r for r, flag in ((5, 1), (4, 2), (3, 4)) if target.templateRef.typeArray & flag), 5)
+                        chain.append((target.instanceId, row))
+                if chain:
+                    t.sourceCardInstanceRef.candidateRecoveryPlan = tuple(chain)
             self.on_choose_move = lambda *args: rec._emit(dict(recorded))
 
     original_mulligan = gfc.GwintGameFlowController.state_begin_Mulligan

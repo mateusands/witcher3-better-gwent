@@ -556,6 +556,13 @@ def main():
                   'skellige': ('Skellige cards in the search', 'Mardroeme, Berserkers, Pirate, Kambi'),
                   'mulligan-full': ('Exchange: leader weather, Muster copy, evaluated', ''),
                   'spies4': ('NPC decks with up to 4 spies', 'instead of 3'),
+                  'kit4': ('NPC decks with at most 4 special cards', 'instead of 8'),
+                  'kit2': ('NPC decks with at most 2 special cards', 'instead of 8'),
+                  'units22': ('Strong NPC decks with 22 units', 'instead of 24'),
+                  'notriss': ('No Triss in NPC decks', ''),
+                  'kit4+units22+notriss': ('Lean NPC decks', '4 specials, 22 units, no Triss'),
+                  'scorch-prior': ('NPC expects your Scorch', 'in every other sampled hand'),
+                  'reserve35': ('NPC values kept cards more', 'passes a led round sooner'),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
         scenes = {'player-mulligan': 'player exchanges too', 'base-mulligan': 'on top of the NPC exchange'}

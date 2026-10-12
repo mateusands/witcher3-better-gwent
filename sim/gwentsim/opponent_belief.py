@@ -68,8 +68,18 @@ def hypotheses(position,context,samples=4,*,rng=None):
                     (3 if creature else 1) if prior=='unit-heavy' else (1 if creature else 3))
             slot=random.choices(range(len(remaining)),weights=weights,k=1)[0]
             return remaining.pop(slot)
+        # Experiment "scorch-prior": players almost always carry Scorch, so every other sampled
+        # hand holds one (when the public catalog still allows a copy).
+        forced=[]
+        if index%2==1 and context.opponent_hand_count>len(known):
+            from . import response_v8
+            if response_v8.flag('scorch-prior',position.player):
+                scorch=min((t for t in remaining if position.catalog[t].has(C.CardEffect_Scorch)
+                            and not position.catalog[t].is_type(C.CardType_Creature)),default=None)
+                if scorch is not None:
+                    remaining.remove(scorch);forced=[scorch]
         for slot in range(context.opponent_hand_count):
-            template=known[slot] if slot<len(known) else draw()
+            template=known[slot] if slot<len(known) else forced.pop() if forced else draw()
             selected.append(replace(position.catalog[template],
                 key=-200000000-index*1000-slot,owner=other,player=other,row=1,applied=()))
         # A generic sixteen-card remainder is another explicit prior, not the

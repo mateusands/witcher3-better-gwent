@@ -126,6 +126,10 @@ class ResponseV8AIPlayerController(SequenceAIPlayerController):
         from ..response_v8 import choose_response_v8
         from .. import tuning
         tuning.use_seat(self.playerID)
+        from .. import response_v8
+        if response_v8.flag('reserve35',self.playerID):
+            # Experiment: value kept resources more, so a led round is passed sooner.
+            tuning.ACTIVE=dict(tuning.ACTIVE,reserve_weight=0.35)
         try:
             return choose_response_v8(position,context,self.search_profile)
         finally:
