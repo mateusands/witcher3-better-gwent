@@ -36,8 +36,10 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
   drawn, Geralt or Ciri in about one deck in four, never Triss; the game stores three variants
   per NPC and picks one per match. When those heroes cannot reach the target strength, every
   hero is allowed again, so a strong player deck still meets the strongest deck the rules allow.
-  Test, 12 October 2026: no measurable change for Adaptive (-0.9 Normal, +0.9 Hard, z 0.6).
-  Strong keeps every hero (the same rule there cost about 5 points).
+  Tests, 12 October 2026: with the AI as shipped, faction heroes alone cost Adaptive 10.4
+  points on Normal and 12.3 on Hard (z -7.6 and -8.9) against this version, which allows every
+  hero when needed, so the fallback is essential. Strong keeps every hero (the faction-hero
+  rule cost it about 5 points).
 - **Weather:** at most two types, never one that hits the deck's own strong rows (a deck
   built on siege units carries no Torrential Rain); Skellige's weather-resistant leader is
   the exception.

@@ -71,12 +71,12 @@ Measured in the simulator (same decks and luck; the player side is played by Bet
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-dark.svg">
-  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 39-40%, Adaptive 65-71%, Strong 76-78% with Better AI" width="880">
+  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 35-40%, Adaptive 64-74%, Strong 68-71% with Better AI" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-mine-dark.svg">
-  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 25-37%, Adaptive 37-53%, Strong 52-55% with Better AI" width="880">
+  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 29-35%, Adaptive 61-71%, Strong 60-66% with Better AI" width="880">
 </picture>
 
 Against my own real decks (140 games per cell), Adaptive goes from 37% on Easy to 53% on

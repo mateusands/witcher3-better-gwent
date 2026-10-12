@@ -104,13 +104,13 @@ information and searches its own moves and the opponent's replies against those 
   - Outcome: Kept, each proven in the Lab. Dropped: passing a safe lead after a lost round and never playing a weather card that changes nothing (both proven worse), remembering cards back in the player's hand (no effect)
 - **Tests, 12 October 2026: NPC deck shape and heroes**
   - What changed: Lean NPC decks (Strong: 22 units and at most 4 special cards, no Triss; Adaptive: at most 2 special cards); Adaptive heroes that fit the faction, varied per match; the NPC picturing Scorch in the player's hand
-  - Outcome: Lean decks kept (Strong +15.0 Hard, +15.9 Normal; Adaptive +4.4 Hard, +8.2 Normal; confirmed with new luck). Adaptive heroes kept (no measurable change); the same rule for Strong dropped (about -5). Picturing Scorch dropped (no measurable effect)
+  - Outcome: Lean decks kept (Strong +15.0 Hard, +15.9 Normal; Adaptive +4.4 Hard, +8.2 Normal; confirmed with new luck). Adaptive heroes kept with a fallback that allows every hero when the faction's heroes cannot reach the target (without it: -10.4 Normal, -12.3 Hard); the same rule for Strong dropped (about -5). Picturing Scorch dropped (no measurable effect)
 - **In-game fixes**
   - What changed: Stalls, wasted Frost/Horn, round-1 overcommit, Medic choosing a Spy when out of cards, NPC extra-card requirements
   - Outcome: Kept
 - **No self-harm (in-game match g151)**
   - What changed: A Scorch that would destroy only the NPC's own units is never played; a wasted Frost/Horn with nothing better becomes a pass even after a lost round, when the hand would be empty afterwards or the search values passing higher
-  - Outcome: Kept as a fix. In a 60-game V8 sample (Hard, Adaptive decks) the Scorch rule changed 12 of 1,582 decisions and the pass rule 6; not yet measured in the Lab
+  - Outcome: Kept. Test, 12 October 2026: the old rule was worse in every cell (Adaptive -1.1 Normal, z -3.0; Original -1.6 Normal, z -3.8; Adaptive -1.0 Hard; Strong -0.4 Normal, -0.6 Hard)
 
 Every change is measured on the same decks and luck as the version before it, and kept
 only when it does not make the AI weaker. Details and numbers: [TESTING.md](TESTING.md).

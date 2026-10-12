@@ -568,7 +568,7 @@ def main():
             for theme, t in THEMES.items():
                 (out / ('%s-%s.svg' % (key, theme))).write_text(grouped_chart(
                     t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and '
-                    'luck. NPC decks as built in 0.9.0, before the lean decks of 12 October 2026.',
+                    'luck. NPC decks as shipped (test, 12 October 2026).',
                     rows))
             print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
     ab = ab_rows(args.ab or args.battery or args.dbs)
@@ -596,6 +596,8 @@ def main():
                   'scorch-pool+scorch-prior': ('NPC expects your Scorch', 'in its guesses, half the hands hold one'),
                   'v090': ('0.9.0 NPC deck shape', '8 specials, 24 Strong units, Triss'),
                   'heroes': ('Faction heroes, varied per match', "2-3 of the faction's, Geralt/Ciri 1 in 4"),
+                  'allow-self-harm': ('Old rule: NPC may hurt its own score', 'self-only Scorch, wasted leader'),
+                  'strictheroes': ('Adaptive faction heroes without the fallback', 'vs every hero allowed when short'),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
         def tested(label):
