@@ -1,6 +1,6 @@
-# Better Gwent AI settings sources
+# Better Gwent settings sources
 
-Sources for **Options > Mods > Better Gwent AI** and the game-side scripts:
+Sources for **Options > Mods > Better Gwent** and the game-side scripts:
 
 - `menu/modGwentAI.xml`: main switch, difficulty, NPC decks, player AI, common wager maximum
   and stakes-dependent NPC strength.

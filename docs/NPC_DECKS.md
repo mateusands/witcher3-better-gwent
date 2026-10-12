@@ -1,6 +1,6 @@
 # NPC deck option
 
-Menu option **NPC decks: Original / Adaptive / Strong** (Options > Mods > Better Gwent AI),
+Menu option **NPC decks: Original / Adaptive / Strong** (Options > Mods > Better Gwent),
 Original by default.
 It only changes *which existing cards* an NPC brings to a match, and only while Better
 Gwent AI is On.

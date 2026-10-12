@@ -18,9 +18,9 @@ anything into the game.
 python3 tools/build_settings.py                  # menu labels (18 languages) -> *.w3strings
 python3 tools/build_npc_decks.py                 # NPC deck table (needs the local vanilla XML)
 python3 tools/build_v8_core.py                   # V8 AI into the Gwent interface
-python3 tools/build_v8_package.py release        # -> dist/BetterGwentAI-<version>.zip
+python3 tools/build_v8_package.py release        # -> dist/BetterGwent-<version>.zip
 python3 tools/build_v8_core.py --with-recorder   # V8 AI + match recorder
-python3 tools/build_v8_package.py recorder       # -> dist/BetterGwentAI-<version>-recorder.zip
+python3 tools/build_v8_package.py recorder       # -> dist/BetterGwent-<version>-recorder.zip
 ```
 
 `tools/extract_vanilla.py` copies the two Gwent interface files the build patches

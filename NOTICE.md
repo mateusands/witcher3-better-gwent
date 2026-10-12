@@ -1,6 +1,6 @@
 # Rights and unofficial status
 
-Better Gwent AI is an unofficial fan modification for The Witcher 3: Wild Hunt.
+Better Gwent is an unofficial fan modification for The Witcher 3: Wild Hunt.
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
 The project is intended as a free mod for use with a lawfully obtained copy of the game.
 

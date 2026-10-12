@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Package the mod, offline only.
 
-  release   the mod alone (core SWF, no recorder): BetterGwentAI-<version>.zip
+  release   the mod alone (core SWF, no recorder): BetterGwent-<version>.zip
   recorder  the same mod plus the match recorder, for people who help with development:
-            BetterGwentAI-<version>-recorder.zip (same folder name; it replaces the release)
+            BetterGwent-<version>-recorder.zip (same folder name; it replaces the release)
 """
 import argparse
 import hashlib
@@ -55,7 +55,7 @@ def main():
     parser.add_argument('variant',choices=sorted(VARIANTS))
     variant=parser.parse_args().variant
     build_dir,readme_name,suffix=VARIANTS[variant]
-    name='BetterGwentAI-'+VERSION+suffix
+    name='BetterGwent-'+VERSION+suffix
     compiled=ROOT/'game/port-v8'/build_dir
     proof=json.loads((compiled/'manifest.json').read_text())
     if proof['status']!='core_compiled' or not all(proof.get(k) for k in ['decisionHookConnected','autoplayControllerConnected','explicitChoiceHooksCompiled']):
@@ -68,7 +68,7 @@ def main():
     if sha(compiled/'deck_builder.swf')!=proof.get('deckBuilderSha256'):raise ValueError('compiled deck builder digest mismatch')
     stage=ROOT/'dist'/name
     if stage.exists():shutil.rmtree(stage)
-    content=stage/'Mods/modBetterGwentAI/content';content.mkdir(parents=True)
+    content=stage/'Mods/modBetterGwent/content';content.mkdir(parents=True)
     inputs={'tools/build_v8_package.py':sha(Path(__file__))}
     packed,expected=[],[]
     for path,stem in RESOURCES.items():

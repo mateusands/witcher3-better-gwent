@@ -1,19 +1,22 @@
-# Better Gwent AI
+# Better Gwent
 
-An unofficial mod for The Witcher 3: Wild Hunt (**Steam patch 5.01**)
-that replaces the Gwent opponent's decisions with a stronger AI, without changing any card,
-ability or rule. NPC decks stay exactly as in the game unless you choose otherwise, and
-everything returns to vanilla when the mod is turned Off.
+Smarter opponents and fair decks, from White Orchard to the endgame. An unofficial mod for
+The Witcher 3: Wild Hunt (**Steam patch 5.01**) that gives Gwent a stronger opponent AI with
+three difficulty levels, NPC decks that can follow the strength of yours, better wagers and the
+game's own unused card art, without changing any card, ability or rule. Everything returns to
+vanilla when the mod is turned Off, and it can be installed or removed at any time.
 
-> **Not magic, not a miracle.** The AI can still make mistakes. Better Gwent AI only
-> improves how it decides, through math, search and a lot of testing.
+> **Not magic, not a miracle.** The AI can still make mistakes. Better Gwent only
+> improves how it decides and what it brings, through math, search and a lot of testing.
+
+*Formerly "Better Gwent AI": the AI is now one feature among several.*
 
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
 **Status: 0.9.0 beta.** Installation: [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Features
 
-- **Options > Mods > Better Gwent AI**, with an On/Off switch (Off = vanilla game).
+- **Options > Mods > Better Gwent**, with an On/Off switch (Off = vanilla game).
 - Easy, Normal and **Hard (default)**, independent of the game difficulty.
 - Optional **AI plays for you** (Off by default), using the selected difficulty.
 - Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
@@ -172,7 +175,7 @@ The vanilla `GetDifficulty` function has its size check inverted: it only return
 requirement for **level 15**, and **levels 1–14 always return 0**. So every extra card of
 levels 1–14 always enters the NPC deck, even against a weak early-game player deck.
 
-**With Better Gwent AI On, the intended rule applies at every level and every difficulty**:
+**With Better Gwent On, the intended rule applies at every level and every difficulty**:
 each extra card uses its real requirement (base 145–230 by level; +80 on Easy, −80 on
 Hard). The highest optional stronger-stakes stage still gives every extra
 card. With the mod Off the game is untouched. No card or deck definition is added,
@@ -212,9 +215,9 @@ PyPy is installed separately (`uv python install pypy3.11`) and is not part of t
 python3 tools/build_settings.py                     # menu labels -> *.w3strings
 python3 tools/build_npc_decks.py                    # NPC deck table (needs the local vanilla XML)
 python3 tools/build_v8_core.py                      # compile V8 into the Gwent interface
-python3 tools/build_v8_package.py release           # -> dist/BetterGwentAI-<version>.zip
+python3 tools/build_v8_package.py release           # -> dist/BetterGwent-<version>.zip
 python3 tools/build_v8_core.py --with-recorder      # same, plus the match recorder
-python3 tools/build_v8_package.py recorder          # -> dist/BetterGwentAI-<version>-recorder.zip
+python3 tools/build_v8_package.py recorder          # -> dist/BetterGwent-<version>-recorder.zip
 python3 -m pytest sim/tests -q                      # test suite
 ```
 

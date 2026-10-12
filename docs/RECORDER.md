@@ -1,4 +1,4 @@
-# Better Gwent AI 0.9.0 beta — recorder edition
+# Better Gwent 0.9.0 beta — recorder edition
 
 This is the same mod as the normal download, plus a **match recorder**. Install it only if you
 want to help with development: your recorded matches show where the AI still makes mistakes.
@@ -18,7 +18,7 @@ Everyone else should use the normal download.
 
 The same steps as the normal download (see the main installation notes): extract into the game
 folder, register `modGwentAI.xml;` in the filelists if they exist, start the game. It uses the
-same `Mods/modBetterGwentAI` folder as the normal edition. Delete that folder before switching
+same `Mods/modBetterGwent` folder as the normal edition. Delete that folder before switching
 from one edition to the other, so no file of the other edition stays behind.
 
 ## Sharing records
@@ -33,4 +33,4 @@ one JSON per match.
 Close the game and delete the `[GwaiRec]` section from the settings file (or keep it; the game
 ignores it). Uninstall the mod as described in the main installation notes.
 
-Source: https://github.com/mateusands/witcher3-better-gwent-ai
+Source: https://github.com/mateusands/witcher3-better-gwent

@@ -1,4 +1,4 @@
-# Research behind Better Gwent AI
+# Research behind Better Gwent
 
 What I studied, what the AI and its tests are built on, what I tried and what I dropped.
 Papers are cited as references; the software tools are listed with their licenses.

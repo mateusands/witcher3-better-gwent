@@ -18,7 +18,7 @@ from build_settings import LANGUAGES,VERSION,build,language_labels
 
 @pytest.fixture(scope='module',params=['release','recorder'])
 def shipping(request):
-    archive=ROOT/('dist/BetterGwentAI-%s%s.zip' % (VERSION,'-recorder' if request.param=='recorder' else ''))
+    archive=ROOT/('dist/BetterGwent-%s%s.zip' % (VERSION,'-recorder' if request.param=='recorder' else ''))
     if not archive.exists():pytest.skip('Build the SWF and run tools/build_v8_package.py %s first' % request.param)
     with zipfile.ZipFile(archive) as z:
         assert z.testzip() is None
@@ -38,11 +38,11 @@ def test_archive_hashes_exact_contents_and_explicit_runtime_status(shipping):
     for path,digest in manifest['packageInputs'].items():
         assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest()==digest
     assert not any(Path(name).suffix in ('.py','.as','.exe','.sh') for name in files)
-    assert {name.split('/')[1] for name in files if name.startswith('Mods/')}=={'modBetterGwentAI'}
+    assert {name.split('/')[1] for name in files if name.startswith('Mods/')}=={'modBetterGwent'}
 
 
 def test_both_interface_resources_round_trip_compiled_swf_and_native_trailer(shipping):
-    files,manifest=shipping;prefix='Mods/modBetterGwentAI/content/'
+    files,manifest=shipping;prefix='Mods/modBetterGwent/content/'
     blob=files[prefix+'blob0.bundle'];meta=files[prefix+'metadata.store']
     stems={'gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf':'gwint_game',
            'gameplay\\gui_new\\swf\\gwint\\deck_builder.redswf':'deck_builder'}
@@ -70,7 +70,7 @@ def test_both_interface_resources_round_trip_compiled_swf_and_native_trailer(shi
 
 
 def test_settings_receiver_and_close_channels_are_shipped_together(shipping):
-    files,manifest=shipping;prefix='Mods/modBetterGwentAI/content/scripts/local/'
+    files,manifest=shipping;prefix='Mods/modBetterGwent/content/scripts/local/'
     settings=files[prefix+'gwai_settings.ws'].decode()
     betting=files[prefix+'gwai_betting.ws'].decode()
     assert 'SetFlashObject("gwai.match.settings", packet)' in settings
@@ -87,5 +87,5 @@ def test_settings_receiver_and_close_channels_are_shipped_together(shipping):
     assert ids=={'GwaiEnabled','GwaiDifficulty','GwaiNpcDecks','GwaiAutoPlay','GwaiMaxBet','GwaiStakesStronger'}
     assert not any('filelist' in name for name in files)
     for language in LANGUAGES:
-        assert files['Mods/modBetterGwentAI/content/'+language+'.w3strings']==build(language_labels(language))
-    assert files['Mods/modBetterGwentAI/content/br.w3strings']!=files['Mods/modBetterGwentAI/content/en.w3strings']
+        assert files['Mods/modBetterGwent/content/'+language+'.w3strings']==build(language_labels(language))
+    assert files['Mods/modBetterGwent/content/br.w3strings']!=files['Mods/modBetterGwent/content/en.w3strings']

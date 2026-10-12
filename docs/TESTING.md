@@ -1,4 +1,4 @@
-# How Better Gwent AI is tested
+# How Better Gwent is tested
 
 The AI is measured in a local simulator that reproduces the game's Gwent rules, then
 checked in real matches inside the game.

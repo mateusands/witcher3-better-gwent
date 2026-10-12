@@ -1,4 +1,4 @@
-# Better Gwent AI 0.9.0 beta — installation
+# Better Gwent 0.9.0 beta — installation
 
 A stronger Gwent opponent for The Witcher 3, game patch 5.01 (tested on Steam; GOG untested).
 The mod changes how the NPCs play Gwent; it adds no cards and changes no card. With the mod switched Off the game
@@ -8,16 +8,18 @@ plays Gwent exactly as before.
 
 1. Close the game.
 2. Extract the archive into the game folder (the one with `bin` and `content`). It adds:
-   - `Mods/modBetterGwentAI`
+   - `Mods/modBetterGwent`
    - `bin/config/r4game/user_config_matrix/pc/modGwentAI.xml`
 3. If `bin/config/r4game/user_config_matrix/pc/dx11filelist.txt` and `dx12filelist.txt` exist,
    add the line `modGwentAI.xml;` to both (once). A mod manager may do this for you.
+   **Updating from "Better Gwent AI" (0.9.0 and earlier):** delete the old `Mods/modBetterGwentAI`
+   folder first; two copies would load the same scripts twice. Your settings are kept.
 4. Start the game; the scripts compile on the first launch.
-5. Open **Options > Mods > Better Gwent AI** and switch it On.
+5. Open **Options > Mods > Better Gwent** and switch it On.
 
 ## Options
 
-- **Better Gwent AI**: On/Off. Off = the original game, wagers included.
+- **Better Gwent**: On/Off. Off = the original game, wagers included.
 - **Difficulty**: Easy, Normal or Hard (default), independent of the game difficulty.
 - **NPC decks**: Original (default), Adaptive or Strong. Which existing cards an NPC brings,
   rebuilt in memory for each match; nothing is written to your save.
@@ -45,7 +47,7 @@ already played, and its own hand and deck.
 
 ## Uninstall
 
-Close the game and delete `Mods/modBetterGwentAI`, `modGwentAI.xml` and its lines in the
+Close the game and delete `Mods/modBetterGwent`, `modGwentAI.xml` and its lines in the
 filelists. Saves stay valid: the mod adds no items, quests or cards. Money won in wagers stays
 yours.
 The per-copy card art (Tight Bond cards, Blue Stripes Commando, Siege Tower), in matches and in
@@ -60,4 +62,4 @@ card again).
   when his effect lands after he left the board. This is in the original game; NPC decks
   built by the mod never use Olaf.
 
-Source and development: https://github.com/mateusands/witcher3-better-gwent-ai
+Source and development: https://github.com/mateusands/witcher3-better-gwent

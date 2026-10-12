@@ -1,7 +1,7 @@
 {
   "panel_mods": "Mods",
-  "panel_gwentai": "Better Gwent AI",
-  "option_gwai_enabled": "Better Gwent AI",
+  "panel_gwentai": "Better Gwent",
+  "option_gwai_enabled": "Better Gwent",
   "option_gwai_difficulty": "Difficulty",
   "preset_value_gwai_easy": "Easy",
   "preset_value_gwai_medium": "Normal",

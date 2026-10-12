@@ -1,6 +1,6 @@
 # Offline AS3 frame-budget feasibility probe
 
-This is an experimental dummy workload, not Better Gwent AI production code or an
+This is an experimental dummy workload, not Better Gwent production code or an
 ISMCTS search. No game files, saves or installation were changed by the build.
 
 Original sources: `as3/GwaiFrameBudgetProbe.as`, `as3/gwai_search_probe.ws`.

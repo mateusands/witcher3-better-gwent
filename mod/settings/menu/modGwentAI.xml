@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Source draft for Options > Mods > Better Gwent AI.
+<!-- Source draft for Options > Mods > Better Gwent.
      Requires settings initialization, English w3strings and a WitcherScript hook
      that disables sub-options while GwaiEnabled is off. Not installed. -->
 <UserConfig>

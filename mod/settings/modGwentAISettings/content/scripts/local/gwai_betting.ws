@@ -1,4 +1,4 @@
-// Original Better Gwent AI betting additions, researched from vanilla 5.01 only.
+// Original Better Gwent betting additions, researched from vanilla 5.01 only.
 // Standard pure-gold Gwent wagers only. No replacement game files or reward tables.
 function GwaiSettingsMaxBet() : int
 {

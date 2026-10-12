@@ -2,7 +2,7 @@
 """Compile original V8 core classes offline, without modifying/installing the game.
 
 This interim artifact includes a decision hook. Autoplay and recorder packaging
-remain required before producing the installable Better Gwent AI mod.
+remain required before producing the installable Better Gwent mod.
 """
 import argparse,hashlib,json,re,subprocess,tempfile,shutil
 from pathlib import Path

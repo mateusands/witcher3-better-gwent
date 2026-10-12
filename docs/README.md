@@ -1,4 +1,4 @@
-# Better Gwent AI documentation
+# Better Gwent documentation
 
 - **[Installation](INSTALL.md)**: Install, options, compatibility and uninstall.
 - **[Recorder edition](RECORDER.md)**: Record your matches to help development.

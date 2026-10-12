@@ -11,5 +11,5 @@ event OnGwaiSearchProbe(iterations : int, elapsedMs : int, frames : int, maxBatc
     cfg.SetRawConfigValueByStr("GwaiSearchProbe", "checksum", IntToString(checksum));
     cfg.SetRawConfigValueByStr("GwaiSearchProbe", "iterationsPerSecond", IntToString(rate));
     theGame.SaveUserSettings();
-    theGame.GetGuiManager().ShowNotification("Better Gwent AI: frame probe metrics saved.");
+    theGame.GetGuiManager().ShowNotification("Better Gwent: frame probe metrics saved.");
 }
