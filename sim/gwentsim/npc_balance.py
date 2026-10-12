@@ -34,8 +34,10 @@ KIT_CAP, STRONG_UNITS = 8, 24   # set per deck mode from MODE_SHAPE while a deck
 # Adaptive at most 2 specials +4.4 Hard / +8.2 Normal.
 # Adaptive also draws heroes that fit its faction, one of HERO_VARIANTS per match (test, 12 October 2026:
 # no measurable change, -0.9 Normal / +0.9 Hard, |z| 0.6); Strong keeps every hero (-5 there).
+# Triss is never in an NPC deck (owner's choice, 12 October 2026), including the Adaptive
+# every-hero fallback.
 MODE_SHAPE = {'strong': dict(kit=4, units=22, excluded=frozenset({'triss'}), heroes=False),
-              'balanced': dict(kit=2, units=24, excluded=frozenset(), heroes=True)}
+              'balanced': dict(kit=2, units=24, excluded=frozenset({'triss'}), heroes=True)}
 _OVERRIDE = {}   # Lab switches (apply_mode flags) on top of MODE_SHAPE
 MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (test, 12 October 2026: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'

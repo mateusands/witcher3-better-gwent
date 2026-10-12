@@ -42,11 +42,12 @@ def test_native_xml_adapter_matches_all_recorded_opponent_definitions():
         # recorded player deck at one of the four levels, in the current shape or the 0.9.0 one
         # (8 specials, 24 Strong units, Triss allowed; installed until the lean decks, 12 October 2026).
         player=match.decks[0].card_indices
-        # Adaptive draws one of the hero variants per match (since 12 October 2026).
+        # Adaptive draws one of the hero variants per match (since 12 October 2026); g152-g157 still
+        # allowed Triss in the Adaptive fallback (balanced:triss).
         assert any(sorted(apply_mode(match.templates,native.build(name,difficulty,repaired=True),names,mode,player,level,variant).card_indices)
                    ==sorted(recorded.card_indices)
                    for name in native.npc_names() for difficulty in (1,2,3)
-                   for mode in ('balanced','strong','balanced:v090','strong:v090','balanced:allheroes','balanced:strictheroes')
+                   for mode in ('balanced','strong','balanced:v090','strong:v090','balanced:allheroes','balanced:strictheroes','balanced:triss')
                    for level in (0,1,2,3) for variant in range(3)),path.name
 
 

@@ -33,7 +33,7 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
   switch `v090` rebuilds the old shape for comparison. A second test the same day, with new
   luck, confirmed it: the old shape was 5.3 to 9.5 points weaker in every cell.
 - **Heroes (Adaptive):** Avallac'h and Yennefer stay allowed, 2 or 3 of the faction's heroes are
-  drawn, Geralt or Ciri in about one deck in four, never Triss; the game stores three variants
+  drawn, Geralt or Ciri in about one deck in four, never Triss (in no NPC deck, fallback included); the game stores three variants
   per NPC and picks one per match. When those heroes cannot reach the target strength, every
   hero is allowed again, so a strong player deck still meets the strongest deck the rules allow.
   Tests, 12 October 2026: with the AI as shipped, faction heroes alone cost Adaptive 10.4
