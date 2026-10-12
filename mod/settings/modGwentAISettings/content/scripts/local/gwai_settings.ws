@@ -65,10 +65,10 @@ function GwaiSettingsInitialize() : void
         cfg.SetRawConfigValueByStr("GwentAI", "GwaiStakesStronger", normalized);
         changed = true;
     }
-    // NPC decks: 0 Original (default), 1 Adaptive, 2 Strong.
+    // NPC decks: 0 Original, 1 Adaptive (default), 2 Strong.
     if (npcDecks != "0" && npcDecks != "1" && npcDecks != "2")
     {
-        cfg.SetRawConfigValueByStr("GwentAI", "GwaiNpcDecks", "0");
+        cfg.SetRawConfigValueByStr("GwentAI", "GwaiNpcDecks", "1");
         changed = true;
     }
     if (changed)

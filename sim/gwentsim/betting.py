@@ -62,7 +62,7 @@ class AcceptedBet:
         return max(original, 3 if self.stage >= 2 else 2 if self.stage else original)
 
     def dynamic_requirement(self, level, original_difficulty, repaired=False):
-        """Requirement for a dynamic card level. repaired=True mirrors Better AI On, which
+        """Requirement for a dynamic card level. repaired=True mirrors Better Gwent On, which
         applies the intended per-level requirements instead of the vanilla inverted check."""
         difficulty = self.native_difficulty(original_difficulty)
         if repaired:
@@ -102,7 +102,7 @@ def normalize_betting_settings(raw):
 
 
 def effective_betting_settings(settings, enabled):
-    """Better AI Off means the original game, wagers included (stored choices are kept)."""
+    """Better Gwent Off means the original game, wagers included (stored choices are kept)."""
     return settings if enabled else BettingSettings(MAX_BETS[0], False)
 
 

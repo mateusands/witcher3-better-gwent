@@ -5,6 +5,7 @@
 !/.gitignore
 !/LICENSE
 !/NOTICE.md
+!/CONTRIBUTING.md
 !/README.md
 !/docs/
 # Only the concise docs are public; research notes and the working log stay local.
@@ -17,6 +18,7 @@
 !/docs/PUBLICATION_SCOPE.md
 !/docs/INSTALL.md
 !/docs/RECORDER.md
+!/docs/ROADMAP.md
 !/docs/img/
 !/mod/
 !/lab/

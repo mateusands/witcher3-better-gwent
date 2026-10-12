@@ -8,8 +8,11 @@ locally into `dist/` and are never committed: they contain the modified Gwent in
 
 - Original work only: mod scripts and the V8 AI, build and test tools, the Lab and
   concise docs (`README.md`, `INSTALL.md`, `RECORDER.md`, `NPC_DECKS.md`, `TESTING.md`,
-  `RESEARCH.md`, `DEVELOPMENT.md`, this file).
+  `RESEARCH.md`, `DEVELOPMENT.md`, `ROADMAP.md`, this file, and `CONTRIBUTING.md` at the root).
 - Research notes and the working log stay local.
+- One exception, chosen by the owner: previews of the game's own **unused** card art, to show
+  what the mod uses or plans to use (`docs/img/bond-card-art.png`, `docs/img/lost-cards/`).
+  Nothing else from the game: no card art the game uses, no other textures, files or data.
 - The `.gitignore` is an allowlist: anything not explicitly allowed stays out.
 
 ## Before every push

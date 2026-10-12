@@ -20,7 +20,7 @@ and keeps their saved choices; the game then behaves as shipped. Player AI is ef
 when the main switch and the player-AI switch are both On. The native difficulty preference is
 never changed.
 
-With Better AI On, every NPC extra-card requirement is rebuilt from the mod's difficulty
+With Better Gwent On, every NPC extra-card requirement is rebuilt from the mod's difficulty
 (the vanilla `GetDifficulty` check is repaired for all 15 levels). Special 50/100 wagers and
 quest rewards stay vanilla; only the common money wager gets the higher maximum.
 

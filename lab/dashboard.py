@@ -117,6 +117,20 @@ def card(height, t, body, title=None, subtitle=None):
                t['surface'], t['border'], head, body))
 
 
+def legend(t, items, y=64):
+    """items: (kind, colour, label); kind 'box' (a bar colour) or 'dash' (a reference line)."""
+    out, x = [], 20
+    for kind, colour, label in items:
+        if kind == 'dash':
+            out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1.5" stroke-dasharray="4 3"/>'
+                       % (x, y + 6, x + 14, y + 6, colour))
+        else:
+            out.append('<rect x="%d" y="%d" width="12" height="12" rx="3" fill="%s"/>' % (x, y, colour))
+        out.append(text(x + 20, y + 11, label, t['ink'], 12))
+        x += 20 + 7 * len(label) + 28
+    return ''.join(out)
+
+
 def percent_axis(t, x0, x1, top, bottom):
     out = []
     for v in (0, 25, 50, 75, 100):
@@ -166,10 +180,11 @@ def ladder_levels(levels_db, ladder_db):
 
 def levels_chart(t, levels):
     rows = [(LEVEL_NAMES[p], levels[p]) for p in PROFILES if levels[p][1]]
-    x0, x1, top = 110, WIDTH - 150, 76
+    x0, x1, top = 110, WIDTH - 150, 92
     h, gap = 22, 14
     bottom = top + len(rows) * (h + gap) - gap + 8
-    body = [percent_axis(t, x0, x1, top - 8, bottom)]
+    body = [percent_axis(t, x0, x1, top - 8, bottom),
+            legend(t, (('box', t['s1'], 'Better AI score share'), ('dash', t['ref'], '50%: as strong as the native AI')))]
     for i, (name, (won, games)) in enumerate(rows):
         y = top + i * (h + gap)
         pct = 100 * won / games
@@ -203,7 +218,7 @@ def styles_chart(t, styles):
             yy = y + j * (h + inner)
             body.append(bar(x0, yy, x0 + (x1 - x0) * pct / 100, h, colour))
             body.append(text(x0 + (x1 - x0) * pct / 100 + 8, yy + 12, '%.1f%%' % pct, t['ink'], 12, 600))
-    return card(bottom + 40, t, ''.join(body), 'NPC decks against player-style decks (Expert)',
+    return card(bottom + 40, t, ''.join(body), 'NPC decks against player-style decks (8,192-node search)',
                 'Win share of the NPC side; the player side is played by Better AI as a strong stand-in '
                 'for a human. Same decks and luck.')
 
@@ -211,10 +226,10 @@ def styles_chart(t, styles):
 def rounds_chart(t, rounds):
     rows = [('Round %d' % r, rounds[r]) for r in sorted(rounds)]
     total = sum(n for _, n in rows) or 1
-    x0, x1, top = 110, WIDTH - 150, 76
+    x0, x1, top = 110, WIDTH - 150, 92
     h, gap = 20, 12
     peak = max(n for _, n in rows) if rows else 1
-    body = []
+    body = [legend(t, (('box', t['s1'], 'Costly decisions in that round (share of all found)'),))]
     for i, (name, n) in enumerate(rows):
         y = top + i * (h + gap)
         body.append(text(20, y + 14, name, t['ink'], 13, 600))
@@ -228,7 +243,7 @@ def rounds_chart(t, rounds):
 
 def requirement_curve(strengths):
     """Extra NPC cards that enter, summed over every native NPC deck, by player deck strength:
-    vanilla (inverted check) and Better AI On per deck variant (Easy 1, Normal 2, Hard 3)."""
+    vanilla (inverted check) and Better Gwent On per deck variant (Easy 1, Normal 2, Hard 3)."""
     sys.path.insert(0, str(ROOT / 'sim'))
     from evaluate_pool import setup, XML
     from gwentsim.native_decks import NativeDecks
@@ -284,7 +299,7 @@ def requirements_chart(t, strengths, curves, total):
         body.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="2"/>' % (x1 + 8, y - 4, x1 + 18, y - 4, colour))
         body.append(text(x1 + 22, y, name, t['ink'], 12, 600))
     return card(bottom + 52, t, ''.join(body), "NPC extra cards by the strength of the player's deck",
-                'Vanilla gives almost every extra card at any strength; with Better AI On each card needs '
+                'Vanilla gives almost every extra card at any strength; with Better Gwent On each card needs '
                 'its intended requirement. All native NPC decks.')
 
 
@@ -415,32 +430,39 @@ def challenge_card(t, theme):
 
 
 def ab_chart(t, rows, title, subtitle, span=3.0):
-    """rows: (label, note, change_pct, z). Bars from zero: blue = better, orange = worse."""
-    x0, x1, top = 230, WIDTH - 150, 84
-    h, gap = 20, 16
+    """rows: (label, note, change_pct, z), grouped by label. Each test name heads its group; each
+    cell (level, decks, games) gets a bar from zero (blue = NPC wins more, orange = less)."""
+    import math
+    span = max(5.0, 5 * math.ceil(span / 5))           # round axis ticks
+    x0, x1, top = 330, WIDTH - 190, 96
+    h, row, head = 14, 24, 30
     mid = (x0 + x1) / 2
     scale = (x1 - x0) / 2 / span
-    bottom = top + len(rows) * (h + gap) - gap + 8
-    body = []
+    groups = len({r[0] for r in rows})
+    bottom = top + len(rows) * row + groups * head
+    body = [legend(t, (('box', t['s1'], 'NPC wins more'), ('box', t['s2'], 'NPC wins less'),
+                       ('dash', t['ref'], 'no change')), y=66)]
     for v in (-span, -span / 2, 0, span / 2, span):
         x = mid + v * scale
         body.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s"%s/>' % (
-            x, top - 8, x, bottom, t['ref'] if v == 0 else t['grid'], ' stroke-dasharray="4 3"' if v == 0 else ''))
-        body.append(text(x, bottom + 16, '%+.1f%%' % v if v else '0 · no change', t['ink2'], 11, anchor='middle'))
-    for i, (label, note, change, z) in enumerate(rows):
-        y = top + i * (h + gap)
-        if label:
-            body.append(text(20, y + 10, label, t['ink'], 13, 600))
-            body.append(text(20, y + 25, note, t['ink2'], 11))
-        else:
-            body.append(text(20, y + 15, note, t['ink2'], 11))
+            x, top, x, bottom, t['ref'] if v == 0 else t['grid'], ' stroke-dasharray="4 3"' if v == 0 else ''))
+        body.append(text(x, bottom + 16, '%+g%%' % v if v else '0', t['ink2'], 11, anchor='middle'))
+    y, last = top, None
+    for label, note, change, z in rows:
+        if label != last:
+            body.append(text(20, y + 20, label, t['ink'], 13, 600))
+            y += head
+            last = label
+        body.append(text(32, y + 12, note, t['ink2'], 11))
         end = mid + max(-span, min(span, change)) * scale
-        colour = t['s1'] if change >= 0 else t['s2']
         lo, hi = sorted((mid, end))
-        body.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%d" rx="3" fill="%s"/>' % (lo, y, max(1, hi - lo), h, colour))
-        verdict = 'proven' if abs(z) >= 2 else 'not proven'
-        body.append(text(WIDTH - 20, y + 15, '%+.2f%% · z %+.1f · %s' % (change, z, verdict), t['ink'], 12, 600, anchor='end'))
-    return card(bottom + 40, t, ''.join(body), title, subtitle)
+        body.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%d" rx="3" fill="%s"/>'
+                    % (lo, y + 1, max(1, hi - lo), h, t['s1'] if change >= 0 else t['s2']))
+        proven = abs(z) >= 2
+        body.append(text(WIDTH - 20, y + 12, '%+.2f%% · z %+.1f · %s' % (change, z, 'proven' if proven else 'not proven'),
+                         t['ink'] if proven else t['ink2'], 12, 600 if proven else 400, anchor='end'))
+        y += row
+    return card(bottom + 34, t, ''.join(body), title, subtitle)
 
 
 def ab_rows(dbs):
@@ -490,6 +512,7 @@ def main():
     parser.add_argument('--levels-ladder', nargs=2, metavar=('LEVELS_DB', 'LADDER_DB'),
                         help="the mod's three levels from the fresh level benchmark and the node ladder")
     parser.add_argument('--ab', nargs='*', default=None, help='databases for the A/B chart (default: --battery)')
+    parser.add_argument('--ab-tests', default='', help='comma-separated tests to chart, in this order (default: all)')
     parser.add_argument('--battery', nargs='*', default=None,
                         help='databases for the deck-mode and A/B charts (default: all databases)')
     args = parser.parse_args()
@@ -539,7 +562,8 @@ def main():
         if rows:
             for theme, t in THEMES.items():
                 (out / ('%s-%s.svg' % (key, theme))).write_text(grouped_chart(
-                    t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and luck.',
+                    t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and '
+                    'luck. NPC decks as built in 0.9.0, before the lean decks of 12 October 2026.',
                     rows))
             print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
     ab = ab_rows(args.ab or args.battery or args.dbs)
@@ -569,20 +593,20 @@ def main():
                   'heroes': ('Faction heroes, varied per match', "2-3 of the faction's, Geralt/Ciri 1 in 4"),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
-        scenes = {'player-mulligan': 'player exchanges too', 'base-mulligan': 'on top of the NPC exchange'}
-
-        def name(label):
-            flags = label.split('+')
-            tested = '+'.join(f for f in flags if not f.startswith(('player-', 'base-')))
-            scene = [scenes.get(f, f) for f in flags if f.startswith(('player-', 'base-'))]
-            return labels.get(tested, (tested, ''))[0] + (' (%s)' % ', '.join(scene) if scene else '')
-        rows = [(name(k[0]), '%s · %s · %s games' % (k[1].capitalize(), decks[k[2]],
-                 format(v[2], ',')), v[0], v[1]) for k, v in sorted(ab.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2]))]
+        def tested(label):
+            return '+'.join(f for f in label.split('+') if not f.startswith(('player-', 'base-')))
+        order = {name: i for i, name in enumerate(args.ab_tests.split(','))} if args.ab_tests else None
+        level_order = {'easy': 0, 'medium': 1, 'hard': 2, 'expert': 3}
+        items = [kv for kv in ab.items() if order is None or tested(kv[0][0]) in order]
+        items.sort(key=lambda kv: (order[tested(kv[0][0])] if order else kv[0][0], level_order.get(kv[0][1], 9), kv[0][2]))
+        rows = [(labels.get(tested(k[0]), (tested(k[0]), ''))[0], '%s · %s · %s games' % (
+                 LEVEL_NAMES.get(k[1], k[1]), decks[k[2]], format(v[2], ',')), v[0], v[1]) for k, v in items]
         span = max(3.0, max(abs(r[2]) for r in rows) * 1.15)
         for theme, t in THEMES.items():
             (out / ('ab-%s.svg' % theme)).write_text(ab_chart(
                 t, rows, 'A/B tests: candidate vs the current AI',
-                'Change in NPC win share, same matchups and luck. Proven: z of 2 or more.', span))
+                'Change in NPC win share; same matchups and luck, the player exchanges opening cards too. '
+                'Proven: z of 2 or more.', span))
         print('ab', [(r[0], r[1], round(r[2], 2), round(r[3], 2)) for r in rows])
     print('levels', {k: v for k, v in levels.items()}, '\nstyles', dict(styles), '\nrounds', dict(rounds))
     print('tiles', tiles)

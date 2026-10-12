@@ -1,8 +1,9 @@
-# Better Gwent 0.9.0 beta — recorder edition
+# Recorder edition (for testers)
 
-This is the same mod as the normal download, plus a **match recorder**. Install it only if you
-want to help with development: your recorded matches show where the AI still makes mistakes.
-Everyone else should use the normal download.
+Not a release. The recorder edition is the same mod plus a **match recorder**, shared only with
+people who want to help with development: recorded matches show where the AI still makes
+mistakes. It is not part of the public downloads; ask for it if you want to help. Everyone else
+should use the normal download.
 
 ## What the recorder does
 

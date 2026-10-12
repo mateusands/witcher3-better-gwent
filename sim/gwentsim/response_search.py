@@ -7,7 +7,7 @@ and available leaders are recorded as unresolved. Native execution is unchanged.
 from dataclasses import dataclass,replace,asdict
 from . import constants as C
 from .options import Difficulty,PROFILES
-from .position import UnsupportedPosition
+from .position import UnsupportedPosition,ROWS
 from .opponent_belief import hypotheses,opponent_view
 from .sequence_search import choose_sequence,utility,public_opponent_average
 
@@ -51,6 +51,21 @@ def inert_discard(before,after,action):
         # ability) only spends the leader.
         return (before.board,before.grave,before.hand,before.counts)==(after.board,after.grave,after.hand,after.counts)
     return (card.has(C.CardEffect_Scorch) or card.is_type(C.CardType_Weather)) and before.board==after.board
+
+
+def self_harm(before,after,action):
+    """V8 skips what inert_discard skips, plus a spell Scorch that leaves every opponent
+    row untouched: it destroys nothing or only our own units and only lowers our own
+    score (in-game match g151). A unit with Scorch (Clan Dimun Pirate) still adds its
+    own power and stays searchable. The ISMCTS kernel keeps its own guard, which allows
+    a Medic follow-up."""
+    if inert_discard(before,after,action):return True
+    card=before.cards[action.source]
+    if action.source==(before.leaders or {}).get(before.player) or not card.has(C.CardEffect_Scorch) \
+            or card.is_type(C.CardType_Creature):
+        return False
+    other=1-before.player
+    return all(before.board[other,row]==after.board[other,row] for row in ROWS)
 
 
 def choose_response(position,context,difficulty=Difficulty.HARD):
@@ -132,7 +147,7 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
         # A Scorch that destroys nothing and discarded duplicate/empty-clear
         # weather cannot prepare a future combination. Do not burn them merely
         # because the abstract utility rewards forcing another opponent turn.
-        if inert_discard(position,state,action):continue
+        if self_harm(position,state,action):continue
         try:outcomes=[response(state,h) for h in beliefs]
         except SearchBudgetReached:exhausted=True;break
         value=sum(x[0] for x in outcomes)/len(outcomes)
@@ -157,7 +172,7 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
                     except SearchBudgetReached:exhausted=True;break
                     try:after=public.apply(action)
                     except UnsupportedPosition:unsupported+=1;continue
-                    if inert_discard(public,after,action):continue
+                    if self_harm(public,after,action):continue
                     try:future=max(future,response(after,h)[0])
                     except SearchBudgetReached:exhausted=True;break
                 if exhausted:break

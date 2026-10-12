@@ -119,3 +119,11 @@ def test_excluded_cards_never_in_npc_decks():
             for step in choice.split('|'):
                 apply(cards, step.split(':', 1)[1])
                 assert not excluded & set(cards), key
+
+
+def test_adaptive_is_the_default_npc_deck_mode():
+    settings = (SCRIPTS / 'gwai_settings.ws').read_text()
+    decks = (SCRIPTS / 'gwai_npc_decks.ws').read_text()
+    assert 'cfg.SetRawConfigValueByStr("GwentAI", "GwaiNpcDecks", "1");' in settings
+    body = decks[decks.index('function GwaiSettingsNpcDecks'):][:400]
+    assert 'return 1;' in body and 'raw == "0" || raw == "2"' in body

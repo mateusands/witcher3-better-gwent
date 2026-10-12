@@ -267,7 +267,7 @@ def deck_builder_patch(name, source):
         raise ValueError('deck builder already patched')
     if name=='CardSlot':
         source=once(source,'loadIcon("icons/gwint/" + param1.imageLoc + ".png");',
-            'this.gwaiPicture = gwaiDeckPicture(param1,data);\n            loadIcon("icons/gwint/" + this.gwaiPicture + ".png");')
+            'this.gwaiPicture = gwaiDeckPicture(param1,this.gwaiTileData());\n            loadIcon("icons/gwint/" + this.gwaiPicture + ".png");')
         # A reused tile keeps its card index when only the copy changes: reload the picture then.
         anchor='CardManager.log("CardSlot setData called with cardID: " + data.cardID + ", and copy count: " + data.numCopies);\n            this.cardIndex = data.cardID;'
         source=once(source,anchor,anchor+'''
@@ -284,6 +284,14 @@ def deck_builder_patch(name, source):
       private static const GWAI_BOND_ART:Object = %s;
       private static const GWAI_COPY_ART:Object = %s;
       private var gwaiPicture:String = null;
+      // Zoom carousel: the data of the tile at each carousel position (set by the deck builder
+      // before it opens the zoom). Carousel slots get a bare card index and no data of their own.
+      public static var gwaiCarousel:Array = [];
+      protected function gwaiTileData() : Object
+      {
+         if(data != null || this._cardState != STATE_CAROUSEL || this.index >= gwaiCarousel.length) return data;
+         return gwaiCarousel[this.index];
+      }
       // Pictures of a card shown one tile per copy, or null to keep the stock grouped tile.
       public static function gwaiCopyPictures(param1:int) : Array
       {
@@ -311,6 +319,12 @@ def deck_builder_patch(name, source):
     if name=='DeckBuilderMenu':
         anchor='dispatchEvent(new GameEvent(GameEvent.REGISTER,"gwint.deckbuilder.decks",[this.updateGwintDecks]));'
         source=once(source,anchor,'dispatchEvent(new GameEvent(GameEvent.REGISTER,"gwai.deck.bondart",[this.gwaiUpdateDeckArt]));\n         this.mcCollectionHolder.gwaiCopyFromTop = true;\n         '+anchor)
+        # Zoom (right click): the carousel lists the tiles of the open list in order; each
+        # carousel slot takes the art of the tile at the same position.
+        source=once(source,'         if(param1 != null)\n         {\n            _loc4_.push(param1.cardIndex);',
+            '         CardSlot.gwaiCarousel = [];\n         if(param1 != null)\n         {\n            _loc4_.push(param1.cardIndex);')
+        source=once(source,'_loc4_.push(_loc6_.cardIndex);',
+            '_loc4_.push(_loc6_.cardIndex);\n                     CardSlot.gwaiCarousel.push(_loc6_.data);')
         source=once(source,'this.collectionDeck.cardIndices.length = 0;',
             'this.collectionDeck.cardIndices.length = 0;\n         CardSlot.gwaiOwnedCopies = {};')
         source=once(source,'_loc4_ = _loc2_.getCardTemplate(_loc3_.cardID).factionIdx;',

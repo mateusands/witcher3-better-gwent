@@ -22,9 +22,9 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
 - Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
 - Optional stronger existing NPC deck variants at higher stakes (Off by default).
 - Menu in 18 languages.
-- **Better AI Off = the original game**, wagers included; the wager options are locked
+- **Better Gwent Off = the original game**, wagers included; the wager options are locked
   while it is Off.
-- **NPC decks: Original (default) / Adaptive / Strong**: which existing cards an NPC brings,
+- **NPC decks: Adaptive (default) / Original / Strong**: which existing cards an NPC brings,
   rebuilt in memory for each match, safe for saves. Adaptive is checked in game; Strong is
   checked in the simulator.
 - **The NPC exchanges up to two opening cards** (Normal and Hard), as you can, and first the
@@ -40,7 +40,7 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
   unchanged, no card definition file is overridden). The Gwent deck builder (pause menu >
   Gwent decks) shows the same pictures, with one tile per copy of Blue Stripes Commando and
   Siege Tower instead of one "x3" tile (adding or removing any of them moves one copy, as
-  before). With the mod Off or removed, the stock art and tiles return. [See every copy side by side](docs/img/bond-card-art.png).
+  before); the right-click zoom shows each copy with the picture of its tile. With the mod Off or removed, the stock art and tiles return. [See every copy side by side](docs/img/bond-card-art.png).
 
 ## NPC decks: Original, Adaptive, Strong
 
@@ -109,9 +109,9 @@ You set the challenge with two independent dials:
      of your deck's strength on Easy to 110% on Hard.
    - **Strong:** the best deck the NPC's faction allows.
 
-Two wager options come with it, both part of Better AI: a higher maximum bet for common Gwent
+Two wager options come with it, both part of Better Gwent: a higher maximum bet for common Gwent
 matches (money only, the NPC is not harder), and an optional setting that makes NPCs stronger
-the more gold you bet. Turning **Better AI Off turns everything off**: the native AI, the game's
+the more gold you bet. Turning **Better Gwent Off turns everything off**: the native AI, the game's
 own decks and the vanilla wagers, with no exception. Your choices are kept for when you turn it
 back On.
 
@@ -183,7 +183,7 @@ removed or edited.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/requirements-dark.svg">
-  <img src="docs/img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better AI On, Hard reaches all extras at 160, Normal at 240, Easy at 320" width="880">
+  <img src="docs/img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better Gwent On, Hard reaches all extras at 160, Normal at 240, Easy at 320" width="880">
 </picture>
 
 Our own recorded player decks measured 214–284, so Hard NPCs keep every extra card against a
@@ -248,12 +248,14 @@ GWENT_LAB_SERVER=user@host lab/open_server_panel.sh
 ## Documentation
 
 - [Installation](docs/INSTALL.md): install, options, compatibility and uninstall.
-- [Recorder edition](docs/RECORDER.md): record your matches to help development.
+- [Recorder edition](docs/RECORDER.md): for testers only, not a release; records matches to help development.
 - [NPC decks](docs/NPC_DECKS.md): the Original / Adaptive / Strong option.
 - [Testing](docs/TESTING.md): methods, results and running totals.
 - [Research](docs/RESEARCH.md): papers, tools, and what I tried and dropped.
 - [Development](docs/DEVELOPMENT.md): local setup, builds, tests and the Lab.
 - [Repository scope](docs/PUBLICATION_SCOPE.md): what may and may not be committed.
+- [Roadmap](docs/ROADMAP.md): planned work, including optional modules for new cards and card balance.
+- [Contributing](CONTRIBUTING.md): what a change needs before it is kept.
 
 Detailed research notes and the working log are kept locally, outside the repository.
 

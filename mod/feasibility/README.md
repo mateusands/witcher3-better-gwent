@@ -55,7 +55,7 @@ for a future in-game test, not claims that those acceptance checks passed.
 All generated game-derived SWFs/bundles, manifests and this local feasibility source
 remain ignored by the public allowlist. Do not publish extracted/patched native AS.
 
-## Latest offline verification — 2026-10-09
+## Latest offline verification — 9 October 2026
 
 The revised class compiles through FFDec and exports successfully. The builder
 also re-exports AIPlayerController to verify exactly one decision-start attachment,

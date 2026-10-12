@@ -1,4 +1,4 @@
-"""NPC deck options for Better AI On: Original, Adaptive (mode "balanced") and Strong.
+"""NPC deck options for Better Gwent On: Original, Adaptive (mode "balanced") and Strong.
 
 Only the choice of cards in an NPC deck changes, in memory, for that match: no card's
 power or ability, no deck definition and nothing in a save is edited, and with the option
@@ -29,15 +29,15 @@ MIN_UNITS, MAX_UNITS = 22, 26
 # (0 Easy, 1 Medium, 2 Hard, 3 Expert).
 BALANCED_TARGET = (0.85, 1.0, 1.1, 1.1)   # Easy, Normal, Hard (Expert: simulator only)
 KIT_CAP, STRONG_UNITS = 8, 24   # set per deck mode from MODE_SHAPE while a deck is built
-# Shipped deck shapes (Lab round 4, 2026-10-12, 1,020 paired games per cell):
+# Shipped deck shapes (test, 12 October 2026, 1,020 paired games per cell):
 # Strong lean (4 specials, 22 units, no Triss) +15.0 Hard / +15.9 Normal;
 # Adaptive at most 2 specials +4.4 Hard / +8.2 Normal.
-# Adaptive also draws heroes that fit its faction, one of HERO_VARIANTS per match (Lab round 6:
+# Adaptive also draws heroes that fit its faction, one of HERO_VARIANTS per match (test, 12 October 2026:
 # no measurable change, -0.9 Normal / +0.9 Hard, |z| 0.6); Strong keeps every hero (-5 there).
 MODE_SHAPE = {'strong': dict(kit=4, units=22, excluded=frozenset({'triss'}), heroes=False),
               'balanced': dict(kit=2, units=24, excluded=frozenset(), heroes=True)}
 _OVERRIDE = {}   # Lab switches (apply_mode flags) on top of MODE_SHAPE
-MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (Lab round 3: Hard Adaptive +3.19 z 4.0)
+MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (test, 12 October 2026: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'
 # Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
 # lands after he has left the board (seen in the Lab with Adaptive Skellige decks, 2026-10-12);
@@ -278,8 +278,37 @@ def balanced_steps(templates, deck, names, variant=0):
 
 
 def balanced_deck(templates, deck, names, target, steps=None, variant=0):
+    shape = dict(MODE_SHAPE['balanced'], **_OVERRIDE)
+    if not shape['heroes'] or not shape.get('fallback', True):
+        with shaped('balanced', templates, deck, names, variant):
+            return _balanced_deck(templates, deck, names, target, steps)
+    # Faction heroes first; when they cannot reach the target, the steps go on with every hero
+    # allowed (the tested lean shape), so a strong player deck still meets a strong NPC deck.
+    # The game reads the same list: the first step reaching the target, else the last one.
+    combined = hero_fallback_steps(templates, deck, names, variant)
+    if steps is not None:
+        steps.extend(combined)
+    for strength, cards in combined:
+        if strength >= target:
+            return list(cards)
+    return list(combined[-1][1])
+
+
+def hero_fallback_steps(templates, deck, names, variant):
+    """Adaptive steps with faction heroes, then the every-hero steps stronger than its last one."""
+    global _OVERRIDE
+    own, every = [], []
     with shaped('balanced', templates, deck, names, variant):
-        return _balanced_deck(templates, deck, names, target, steps)
+        _balanced_deck(templates, deck, names, float('inf'), own)
+    saved = _OVERRIDE
+    _OVERRIDE = dict(_OVERRIDE, heroes=False)
+    try:
+        with shaped('balanced', templates, deck, names, variant):
+            _balanced_deck(templates, deck, names, float('inf'), every)
+    finally:
+        _OVERRIDE = saved
+    top = own[-1][0]
+    return own + [step for step in every if step[0] > top]
 
 
 def _balanced_deck(templates, deck, names, target, steps=None):
@@ -469,7 +498,9 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2, va
         override['excluded'] = frozenset()
     if 'heroes' in switches:                  # faction heroes drawn per match (Adaptive default)
         override['heroes'] = True
-    if 'allheroes' in switches:               # every hero allowed (Strong default; Adaptive before round 6)
+    if 'strictheroes' in switches:            # faction heroes without the every-hero fallback (g151)
+        override.update(heroes=True, fallback=False)
+    if 'allheroes' in switches:               # every hero allowed (Strong default; Adaptive before the heroes test)
         override['heroes'] = False
     _OVERRIDE = override
     try:

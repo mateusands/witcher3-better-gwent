@@ -175,7 +175,11 @@ internal class GwaiV8Policy
                     replaced.value = options[i].oneTurnValue; return replaced;
                 }
             }
-            if(context.own_losses == 0) return GwaiV8Policy.finish(base,null,"pass_for_match_resources",true);
+            // Also pass after a lost round when nothing would be left in hand, or when the
+            // search values passing above the wasted move (same rule as response_v8.py).
+            var emptyAfter:Boolean = true; var hand:Array = state.hand;
+            for(i = 0; i < hand.length; ++i) if(hand[i] != move.source) { emptyAfter = false; break; }
+            if(context.own_losses == 0 || emptyAfter || base.pass_value > base.value) return GwaiV8Policy.finish(base,null,"pass_for_match_resources",true);
         }
         return GwaiV8Policy.finish(base,move);
     }

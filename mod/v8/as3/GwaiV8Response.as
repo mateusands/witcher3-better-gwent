@@ -24,6 +24,17 @@ internal class GwaiV8Response
         if(move.source == before.leaders[before.player])
             return GwaiV8Response.same(before.board,after.board) && GwaiV8Response.same(before.grave,after.grave) && GwaiV8Response.same(before.hand,after.hand) && GwaiV8Response.same(before.counts,after.counts);
         var card:Object = before.cards[move.source];
+        if(GwaiV8Position.has(card,29) && !GwaiV8Position.isType(card,8))
+        {
+            // response_search.self_harm: a spell Scorch that leaves every opponent row untouched only lowers our own score.
+            var other:int = 1-before.player;
+            for(var r:int = 0; r < GwaiV8Position.ROWS.length; ++r)
+            {
+                var slot:String = GwaiV8Position.slot(other,GwaiV8Position.ROWS[r]);
+                if(!GwaiV8Response.same(before.board[slot],after.board[slot])) return false;
+            }
+            return true;
+        }
         return (GwaiV8Position.has(card,29) || GwaiV8Position.isType(card,16)) && GwaiV8Response.same(before.board,after.board);
     }
     public static function result(move:Object,value:Number,passValue:Number,samples:int,nodes:int,unsupported:int,unresolved:Boolean,reason:String,alternatives:Array = null,exhausted:Boolean = false):Object

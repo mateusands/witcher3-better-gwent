@@ -1,9 +1,9 @@
-// NPC decks option (Original / Adaptive / Strong), Better AI On only.
+// NPC decks option (Original / Adaptive / Strong), Better Gwent On only.
 // GetCurrentAIDeck returns a copy of the NPC deck for one match; with Adaptive or Strong the
 // copy gets the cards chosen by sim/gwentsim/npc_balance.py (table in gwai_npc_decks_data.ws).
 // No card, deck definition or save data is changed. The tutorial match keeps its native deck.
 
-// 0 Original, 1 Adaptive, 2 Strong. Original while Better AI is Off.
+// 0 Original, 1 Adaptive (default), 2 Strong. Original while Better Gwent is Off.
 function GwaiSettingsNpcDecks() : int
 {
     var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("GwentAI", "GwaiNpcDecks");
@@ -11,11 +11,11 @@ function GwaiSettingsNpcDecks() : int
     {
         return 0;
     }
-    if (raw == "1" || raw == "2")
+    if (raw == "0" || raw == "2")
     {
-        return StringToInt(raw, 0);
+        return StringToInt(raw, 1);
     }
-    return 0;
+    return 1;
 }
 
 // The game's player-deck strength measure (unit power plus fixed bonuses by first effect),

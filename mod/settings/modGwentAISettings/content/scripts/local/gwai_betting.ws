@@ -3,7 +3,7 @@
 function GwaiSettingsMaxBet() : int
 {
     var raw : string;
-    // Better AI Off means the original game, wagers included: the stored choice is kept
+    // Better Gwent Off means the original game, wagers included: the stored choice is kept
     // for when the mod is turned On again, but the vanilla maximum applies.
     if (!GwaiSettingsEnabled())
     {
@@ -238,7 +238,7 @@ function GetDifficulty(diffIndex : int) : int
             return 0;
         }
         // Vanilla inverts its size check, so levels 1-14 always return 0 and NPC extra
-        // cards ignore the player's deck. With Better AI On the intended rule applies at
+        // cards ignore the player's deck. With Better Gwent On the intended rule applies at
         // every level: an extra card enters only when the player's deck strength reaches
         // its requirement, so an early, weak player deck faces a matching NPC deck.
         return difficultybalance[diffIndex - 1];
@@ -247,7 +247,7 @@ function GetDifficulty(diffIndex : int) : int
     {
         return 0;
     }
-    // With Better AI Off, preserve vanilla and the independent betting option.
+    // With Better Gwent Off, preserve vanilla and the independent betting option.
     return wrappedMethod(diffIndex);
 }
 

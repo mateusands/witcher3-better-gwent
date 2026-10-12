@@ -135,8 +135,8 @@ def main():
                 code=(tmp/'deck-export/scripts'/package/(name+'.as')).read_text()
                 (deck_dir/(name+'.as')).write_text(deck_builder_patch(name,code))
             ffdec('-importScript',deck_source,dest/'deck_builder.swf',tmp/'deck-import')
-            deck_hooks={'CardSlot':['gwaiDeckPicture(param1,data)','gwaiDeckArt','gwaiCopyPictures','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
-                'DeckBuilderMenu':['"gwai.deck.bondart"','gwaiUpdateDeckArt','CardSlot.gwaiDeckArt = ','gwaiCopyFromTop = true','CardSlot.gwaiOwnedCopies['],
+            deck_hooks={'CardSlot':['gwaiDeckPicture(param1,this.gwaiTileData())','gwaiCarousel[this.index]','gwaiDeckArt','gwaiCopyPictures','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
+                'DeckBuilderMenu':['CardSlot.gwaiCarousel.push(_loc6_.data)','"gwai.deck.bondart"','gwaiUpdateDeckArt','CardSlot.gwaiDeckArt = ','gwaiCopyFromTop = true','CardSlot.gwaiOwnedCopies['],
                 'GwintDeckCTabModule':['gwaiSetCopies(param1,param2)','gwaiSplitCopies(_loc2_)','gwaiCopyEntry','int(param1.gwaiCopy) - int(param2.gwaiCopy)']}
             for name,tokens in deck_hooks.items():
                 ffdec('-selectclass',PKG+'.'+name,'-export','script',tmp/('deck-'+name),dest/'deck_builder.swf')

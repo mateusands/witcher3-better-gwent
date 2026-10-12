@@ -1,9 +1,9 @@
 # NPC deck option
 
 Menu option **NPC decks: Original / Adaptive / Strong** (Options > Mods > Better Gwent),
-Original by default.
+Adaptive by default (a saved choice is kept).
 It only changes *which existing cards* an NPC brings to a match, and only while Better
-Gwent AI is On.
+Gwent is On.
 
 ## Safe for saves
 
@@ -26,11 +26,18 @@ Like a seasoned player builds, from the NPC's own faction plus neutral cards:
   - when the kit is cut, it keeps first the weather the leader pulls, then Scorch, a Horn,
     a Decoy and Clear Weather.
 
-  Lab round 4 (2026-10-12, 1,020 paired games per cell, NPC win share against the 0.9.0 shape
+  Test, 12 October 2026 (1,020 paired games per cell; NPC win share against the 0.9.0 shape
   of up to 8 specials, 24 Strong units and Triss): Strong +15.0 points on Hard (z 9.7) and
   +15.9 on Normal (z 10.1); Adaptive +4.4 on Hard (z 2.6) and +8.2 on Normal (z 4.8). Removing
   Triss alone cost about 2 points; in the lean Strong shape it is part of the gain. The Lab
-  switch `v090` rebuilds the old shape for comparison.
+  switch `v090` rebuilds the old shape for comparison. A second test the same day, with new
+  luck, confirmed it: the old shape was 5.3 to 9.5 points weaker in every cell.
+- **Heroes (Adaptive):** Avallac'h and Yennefer stay allowed, 2 or 3 of the faction's heroes are
+  drawn, Geralt or Ciri in about one deck in four, never Triss; the game stores three variants
+  per NPC and picks one per match. When those heroes cannot reach the target strength, every
+  hero is allowed again, so a strong player deck still meets the strongest deck the rules allow.
+  Test, 12 October 2026: no measurable change for Adaptive (-0.9 Normal, +0.9 Hard, z 0.6).
+  Strong keeps every hero (the same rule there cost about 5 points).
 - **Weather:** at most two types, never one that hits the deck's own strong rows (a deck
   built on siege units carries no Torrential Rain); Skellige's weather-resistant leader is
   the exception.
@@ -67,7 +74,7 @@ Every Gwent opponent, including quest and tournament players, except the tutoria
 
 ## In the game
 
-- `gwai_npc_decks.ws` wraps `CR4GwintManager.GetCurrentAIDeck`. With Better AI Off, the option
+- `gwai_npc_decks.ws` wraps `CR4GwintManager.GetCurrentAIDeck`. With Better Gwent Off, the option
   on Original, or the tutorial match, the native deck is returned untouched.
 - The decks are not built in the game: `tools/build_npc_decks.py` writes a table
   (`gwai_npc_decks_data.ws`) for every native NPC deck variant (150 variants of 50 NPC decks; the tutorial deck is listed but never replaced): the Strong deck,

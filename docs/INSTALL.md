@@ -21,7 +21,7 @@ plays Gwent exactly as before.
 
 - **Better Gwent**: On/Off. Off = the original game, wagers included.
 - **Difficulty**: Easy, Normal or Hard (default), independent of the game difficulty.
-- **NPC decks**: Original (default), Adaptive or Strong. Which existing cards an NPC brings,
+- **NPC decks**: Adaptive (default), Original or Strong. Which existing cards an NPC brings,
   rebuilt in memory for each match; nothing is written to your save.
 - **AI plays for you**: the AI also plays your side (you still pick your deck and your opening
   exchange).

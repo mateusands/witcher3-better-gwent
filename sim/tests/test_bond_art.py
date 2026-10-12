@@ -185,7 +185,7 @@ def deck_source(name):
 
 def test_deck_builder_patches_apply_once_and_register_the_switch_before_the_decks():
     slot = deck_builder_patch('CardSlot', deck_source('CardSlot'))
-    assert 'this.gwaiPicture = gwaiDeckPicture(param1,data);\n            loadIcon("icons/gwint/" + this.gwaiPicture + ".png");' in slot
+    assert 'this.gwaiPicture = gwaiDeckPicture(param1,this.gwaiTileData());\n            loadIcon("icons/gwint/" + this.gwaiPicture + ".png");' in slot
     assert 'param1.imageLoc + ".png"' not in slot
     for old, new in BOND_ART.values():
         assert '"%s","%s"' % (old, new) in slot
@@ -383,3 +383,96 @@ def test_deck_builder_with_the_mod_off_keeps_the_stock_grouped_tiles():
                            [[160, 1, None], [170, 1, None]], [[170, 1, None]]]
     assert [sorted(step[0]) for step in result['steps']] == expected_deck
     assert [sorted(step[1]) for step in result['steps']] == expected_collection
+
+
+# Deck builder zoom (right click): the carousel gets bare card indices, one per tile of the open list.
+
+def test_deck_builder_zoom_patches_apply_once():
+    menu = deck_builder_patch('DeckBuilderMenu', deck_source('DeckBuilderMenu'))
+    zoom = menu[menu.index('protected function tryZoomCard('):menu.index('protected function closeZoomCB(')]
+    # The table is reset after the zoom-mode guard and filled in step with the carousel list.
+    assert zoom.index('if(this.isInZoomMode)') < zoom.index('CardSlot.gwaiCarousel = [];') < zoom.index('_loc4_.push(param1.cardIndex);')
+    assert '_loc4_.push(_loc6_.cardIndex);\n                     CardSlot.gwaiCarousel.push(_loc6_.data);' in zoom
+    assert zoom.index('CardSlot.gwaiCarousel.push(_loc6_.data);') < zoom.index('showDialogCardTemplates(_loc4_')
+    assert menu.count('gwaiCarousel') == 2
+    slot = deck_builder_patch('CardSlot', deck_source('CardSlot'))
+    assert slot.count('this.gwaiTileData()') == 1 and 'public static var gwaiCarousel:Array = [];' in slot
+    # The leader carousel and the tutorial carousel stay stock: they open without the table.
+    leader = menu[menu.index('protected function startChooseModeLeader('):menu.index('protected function leaderChosenCb(')]
+    assert 'gwai' not in leader
+
+
+def run_zoom(owned, deck_cards, art=True):
+    """Open the deck builder, then zoom on each list as tryZoomCard does.
+
+    Returns, per list, the tile pictures and the carousel pictures, position by position."""
+    slot = deck_builder_patch('CardSlot', deck_source('CardSlot'))
+    script = module_script()
+    script += 'var tileData=new Function("data","STATE_CAROUSEL","gwaiCarousel",%s);' % json.dumps(body(slot, 'gwaiTileData'))
+    script += 'gwaiDeckArt=%s;' % ('true' if art else 'false')
+    script += 'for(var i of [160,170,10])templates[i]={index:i,imageLoc:{160:"nor_blue_stripes",170:"nor_siege_tower"}[i]||"x"+i,factionIdx:1,power:5,isType:()=>true};'
+    script += 'var owned=%s,deckCards=%s;' % (json.dumps(owned), json.dumps(deck_cards))
+    script += """
+CardSlot.gwaiOwnedCopies={};var coll=[];
+for(var id in owned){CardSlot.gwaiOwnedCopies[id]=owned[id];var n=owned[id]-deckCards.filter(c=>c==id).length;for(var k=0;k<n;k++)coll.push(+id);}
+var dm=new Module(false),cm=new Module(true);dm.show(new Deck(deckCards));cm.show(new Deck(coll));
+function zoom(m){
+  var list=[],carousel=[];                                  // tryZoomCard: one entry per tile
+  for(var t of m.mcCardSlotList.r){list.push(t.cardIndex);carousel.push(t.data);}
+  var tiles=m.mcCardSlotList.r.map(t=>[t.cardIndex,CardSlot.gwaiDeckPicture(templates[t.cardIndex],t.data)]);
+  // SlotsListCarousel.populateData: a fresh slot per index, state Carousel, no data of its own.
+  var shown=list.map((id,i)=>[id,CardSlot.gwaiDeckPicture(templates[id],tileData.call({_cardState:"Carousel",index:i},null,"Carousel",carousel))]);
+  return {tiles,shown};}
+console.log(JSON.stringify({deck:zoom(dm),collection:zoom(cm)}));
+"""
+    return node(script)
+
+
+def nth(shown, index):
+    return [p for i, p in shown if i == index]
+
+
+def test_deck_builder_zoom_shows_each_copy_as_its_tile():
+    old, pictures = COPY_ART[160]
+    tower = COPY_ART[170][1]
+    result = run_zoom({160: 3, 170: 2, 10: 2}, [160, 160, 170, 10])
+    deck, collection = result['deck'], result['collection']
+    for side in (deck, collection):
+        assert side['shown'] == side['tiles']
+    # The deck holds copies 1..d in list order, the collection the rest counted down from the owned total.
+    assert nth(deck['shown'], 160) == [pictures[0], pictures[1]]
+    assert nth(collection['shown'], 160) == [pictures[2]]
+    assert nth(deck['shown'], 170) == [tower[0]] and nth(collection['shown'], 170) == [tower[1]]
+    assert nth(deck['shown'], 10) == ['x10'] and nth(collection['shown'], 10) == ['x10']
+    # The whole deck in the collection: the n-th Blue Stripes is copy owned+1-n.
+    result = run_zoom({160: 3, 170: 2}, [])
+    assert nth(result['collection']['shown'], 160) == [pictures[2], pictures[1], pictures[0]]
+    assert nth(result['collection']['shown'], 170) == [tower[1], tower[0]]
+
+
+def test_deck_builder_zoom_cycles_when_copies_outnumber_pictures():
+    pictures = COPY_ART[160][1]
+    result = run_zoom({160: 5}, [160, 160, 160, 160])
+    assert nth(result['deck']['shown'], 160) == [pictures[n % len(pictures)] for n in range(4)]
+    assert nth(result['collection']['shown'], 160) == [pictures[4 % len(pictures)]]
+    assert result['deck']['shown'] == result['deck']['tiles']
+
+
+def test_deck_builder_zoom_with_the_mod_off_is_stock():
+    result = run_zoom({160: 3, 170: 2}, [160, 160, 170], art=False)
+    for side in ('deck', 'collection'):
+        assert {p for _, p in result[side]['shown']} <= {'nor_blue_stripes', 'nor_siege_tower'}
+        assert result[side]['shown'] == result[side]['tiles']
+
+
+def test_deck_builder_zoom_table_only_feeds_carousel_slots_of_the_same_card():
+    slot = deck_builder_patch('CardSlot', deck_source('CardSlot'))
+    script = deck_slot_script()
+    script += 'var tileData=new Function("data","STATE_CAROUSEL","gwaiCarousel",%s);' % json.dumps(body(slot, 'gwaiTileData'))
+    script += 'gwaiDeckArt=true;templates[160]={index:160,imageLoc:"nor_blue_stripes"};templates[126]={index:126,imageLoc:"nor_poor_infantry"};'
+    script += 'var table=[{cardID:160,numCopies:1,gwaiCopy:1,gwaiArt:1}];'
+    script += 'function pic(id,state,i,data){return CardSlot.gwaiDeckPicture(templates[id],tileData.call({_cardState:state,index:i},data,"Carousel",table));}'
+    script += 'console.log(JSON.stringify([pic(160,"Carousel",0,null),pic(160,"Carousel",1,null),pic(160,"Default",0,null),'
+    script += 'pic(160,"Carousel",0,{cardID:160,numCopies:2}),pic(126,"Carousel",0,null)]));'
+    # Matching slot; position past the table; a list tile; a tile with its own data; a Tight Bond card.
+    assert node(script) == ['nor_blue_stripes_1', 'nor_blue_stripes', 'nor_blue_stripes', 'nor_blue_stripes', 'nor_poor_infantry_1']
