@@ -21,6 +21,9 @@ from build_settings import build,language_labels,LANGUAGES,VERSION
 
 ROOT=Path(__file__).resolve().parents[1]
 RESOURCE='gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf'
+DECK_RESOURCE='gameplay\\gui_new\\swf\\gwint\\deck_builder.redswf'
+# Bundle resource -> stem of the vanilla file in game/vanilla/swf and of the compiled SWF.
+RESOURCES={RESOURCE:'gwint_game',DECK_RESOURCE:'deck_builder'}
 VARIANTS={'release':('core','INSTALL.md',''),'recorder':('combined','RECORDER.md','-recorder')}
 
 
@@ -34,15 +37,17 @@ def canonical_swf(data):
     return data
 
 
-def verify_resource(content,swf,trailer):
+def verify_resources(content,expected):
+    """expected: [(path, swf, trailer)] in bundle order."""
     entries=bundle.toc(str(content/'blob0.bundle'))
-    if len(entries)!=1 or entries[0][0]!=RESOURCE:raise ValueError('resource override count/path mismatch')
-    red=bundle.extract(str(content/'blob0.bundle'),entries[0])
-    actual,tail=split_redswf(red)
-    if actual!=swf or tail!=trailer:raise ValueError('packed SWF/trailer differs from compiled input')
+    if [e[0] for e in entries]!=[path for path,_,_ in expected]:raise ValueError('resource override count/path mismatch')
     files,_=metastore.read((content/'metadata.store').read_bytes())
-    if len(files)!=1 or files[0]['path']!=RESOURCE or files[0]['size']!=len(red):raise ValueError('metadata resource mismatch')
-    return red
+    if [f['path'] for f in files]!=[path for path,_,_ in expected]:raise ValueError('metadata resource mismatch')
+    for entry,meta,(path,swf,trailer) in zip(entries,files,expected):
+        red=bundle.extract(str(content/'blob0.bundle'),entry)
+        actual,tail=split_redswf(red)
+        if actual!=swf or tail!=trailer:raise ValueError('packed SWF/trailer differs from compiled input: '+path)
+        if meta['size']!=len(red):raise ValueError('metadata resource size mismatch: '+path)
 
 
 def main():
@@ -60,19 +65,24 @@ def main():
     for path,digest in proof['inputs'].items():
         if sha(ROOT/path)!=digest:raise ValueError('stale compiled input: '+path)
     if sha(compiled/'gwint_game.swf')!=proof['compiledSha256']:raise ValueError('compiled SWF digest mismatch')
+    if sha(compiled/'deck_builder.swf')!=proof.get('deckBuilderSha256'):raise ValueError('compiled deck builder digest mismatch')
     stage=ROOT/'dist'/name
     if stage.exists():shutil.rmtree(stage)
     content=stage/'Mods/modBetterGwentAI/content';content.mkdir(parents=True)
-    source=ROOT/'game/vanilla/swf/gwint_game.redswf'
-    old=source.read_bytes();original,trailer=split_redswf(old)
-    if original!=canonical_swf((ROOT/'game/vanilla/swf/gwint_game.swf').read_bytes()):raise ValueError('vanilla SWF source mismatch')
-    swf=canonical_swf((compiled/'gwint_game.swf').read_bytes())
-    red=patch_redswf(old,swf,trailer)
-    blob,meta=build_bundle([(RESOURCE,red,True)])
+    inputs={'tools/build_v8_package.py':sha(Path(__file__))}
+    packed,expected=[],[]
+    for path,stem in RESOURCES.items():
+        # Each resource keeps its own Scaleform trailer (symbol table) from the vanilla file.
+        source=ROOT/'game/vanilla/swf'/(stem+'.redswf')
+        old=source.read_bytes();original,trailer=split_redswf(old)
+        if original!=canonical_swf((ROOT/'game/vanilla/swf'/(stem+'.swf')).read_bytes()):raise ValueError('vanilla SWF source mismatch: '+stem)
+        swf=canonical_swf((compiled/(stem+'.swf')).read_bytes())
+        packed.append((path,patch_redswf(old,swf,trailer),True));expected.append((path,swf,trailer))
+        inputs[str(source.relative_to(ROOT))]=sha(source)
+    blob,meta=build_bundle(packed)
     (content/'blob0.bundle').write_bytes(blob);(content/'metadata.store').write_bytes(meta)
-    verify_resource(content,swf,trailer)
+    verify_resources(content,expected)
     scripts=content/'scripts/local';scripts.mkdir(parents=True)
-    inputs={str(source.relative_to(ROOT)):sha(source),'tools/build_v8_package.py':sha(Path(__file__))}
     for path in ['mod/settings/modGwentAISettings/content/scripts/local/gwai_settings.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_betting.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks.ws',
@@ -88,8 +98,8 @@ def main():
     readme=ROOT/'docs'/readme_name;shutil.copyfile(readme,stage/'README.md');inputs[str(readme.relative_to(ROOT))]=sha(readme)
     manifest=dict(status='offline_verified_package',version=VERSION,variant=variant,installed=False,runtimeGameVerified=False,
         witcherScriptEngineCompiled=False,patch='5.01',policy='response-v8',recorderMerged=variant=='recorder',
-        decisionHookConnected=True,autoplayControllerConnected=True,resource=RESOURCE,
-        compiledSha256=proof['compiledSha256'],compiledInputs=proof['inputs'],packageInputs=inputs,
+        decisionHookConnected=True,autoplayControllerConnected=True,resource=RESOURCE,resources=list(RESOURCES),
+        compiledSha256=proof['compiledSha256'],deckBuilderSha256=proof['deckBuilderSha256'],compiledInputs=proof['inputs'],packageInputs=inputs,
         files={str(p.relative_to(stage)):sha(p) for p in sorted(stage.rglob('*')) if p.is_file()})
     (stage/'BUILD_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
     archive=stage.parent/(stage.name+'.zip')

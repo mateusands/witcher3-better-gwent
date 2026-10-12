@@ -37,11 +37,16 @@ def hypotheses(position,context,samples=4,*,rng=None):
     other=1-position.player
     seen=Counter(c.template for c in position.cards.values() if c.owner==other)
     pool=[]
+    # Experiment "scorch-pool": Scorch is the only playable card typed Global_Effect, so the
+    # filter below never imagines it in the opponent's hand; the switch admits that type.
+    from . import response_v8
+    global_effect=response_v8.flag('scorch-pool',position.player)
     for template in sorted(position.catalog):
         card=position.catalog[template]
         if card.faction not in (C.FactionId_Neutral,context.opponent_faction):continue
         if not (card.is_type(C.CardType_Creature) or card.is_type(C.CardType_Weather) or
-                card.is_type(C.CardType_Spell) or card.is_type(C.CardType_Row_Modifier)):continue
+                card.is_type(C.CardType_Spell) or card.is_type(C.CardType_Row_Modifier) or
+                (global_effect and card.is_type(C.CardType_Global_Effect))):continue
         cap=1 if card.is_type(C.CardType_Hero) else 3
         pool.extend([template]*max(0,cap-seen[template]))
     # Publicly known hand cards are in every hypothesis; only the other slots are sampled.

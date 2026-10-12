@@ -34,7 +34,8 @@ def skellige_decisions(limit_matches=10):
     out = []
     try:
         for pair in pairs:
-            spec = dict(source='player', pair=pair, seed=31, swap=False, seat=1, profile='hard', npc_decks='balanced')
+            spec = dict(source='player', pair=pair, seed=31, swap=False, seat=1, profile='hard',
+                        npc_decks='balanced:v090')   # the sample predates the lean decks; it only feeds parity
             _, log = bh.play(spec)
             out.extend((e['position'], e['context']) for e in log)
     finally:

@@ -249,3 +249,188 @@ def patch(name, source):
             'protected function pickWeather(isAI:Boolean) : void\n      {\n         var cardManagerRef:CardManager = CardManager.getInstance();\n         if(isAI && cardManagerRef.gwaiLeaderTarget(owningPlayer,instanceId) >= 0)\n         {\n            this.handleCardDrawChoice_Weather(cardManagerRef.gwaiLeaderTarget(owningPlayer,instanceId));\n            return;\n         }')
         return source
     raise ValueError('unrecognized native class: '+name)
+
+
+# Deck builder (pause menu > Gwent decks): a separate SWF with its own copy of CardSlot.
+# FFDec exports it with generic names (param1, _loc2_), so the anchors use those.
+# While the mod is On: Tight Bond pictures (BOND_ART), and the cards of COPY_ART show one tile
+# per copy instead of one tile with "x3". Underneath it is still the same index repeated: the
+# deck, the collection and every add/remove call are untouched. The art of a tile is a pure
+# function of the counts: the deck shows copies 1..d, the collection the remaining copies
+# (owned..d+1), so moving a card moves the top copy and reopening the menu draws the same.
+DECK_BUILDER_CLASSES = ['CardSlot','DeckBuilderMenu','GwintDeckCTabModule']
+
+
+def deck_builder_patch(name, source):
+    source=source.replace('\r\n','\n')
+    if 'gwai' in source:
+        raise ValueError('deck builder already patched')
+    if name=='CardSlot':
+        source=once(source,'loadIcon("icons/gwint/" + param1.imageLoc + ".png");',
+            'this.gwaiPicture = gwaiDeckPicture(param1,data);\n            loadIcon("icons/gwint/" + this.gwaiPicture + ".png");')
+        # A reused tile keeps its card index when only the copy changes: reload the picture then.
+        anchor='CardManager.log("CardSlot setData called with cardID: " + data.cardID + ", and copy count: " + data.numCopies);\n            this.cardIndex = data.cardID;'
+        source=once(source,anchor,anchor+'''
+            var gwaiTemplate:CardTemplate = CardManager.getInstance().getCardTemplate(this.cardIndex);
+            if(gwaiTemplate != null && this.gwaiPicture != null && gwaiDeckPicture(gwaiTemplate,data) != this.gwaiPicture)
+            {
+               this.updateCardData();
+            }''')
+        return add_methods(source,'''      // Deck builder art, only while the mod is On (sent by our script before the deck data).
+      // A picture that differs from the stock definition (another mod changed it) is left alone.
+      public static var gwaiDeckArt:Boolean = false;
+      // Owned copies per card index, from the collection data (total, deck included).
+      public static var gwaiOwnedCopies:Object = {};
+      private static const GWAI_BOND_ART:Object = %s;
+      private static const GWAI_COPY_ART:Object = %s;
+      private var gwaiPicture:String = null;
+      // Pictures of a card shown one tile per copy, or null to keep the stock grouped tile.
+      public static function gwaiCopyPictures(param1:int) : Array
+      {
+         if(!gwaiDeckArt) return null;
+         var art:Array = GWAI_COPY_ART[param1] as Array;
+         if(art == null) return null;
+         var manager:CardManager = CardManager.getInstance();
+         var template:CardTemplate = manager != null ? manager.getCardTemplate(param1) : null;
+         if(template == null || template.imageLoc != art[0]) return null;
+         return art[1] as Array;
+      }
+      public static function gwaiDeckPicture(param1:CardTemplate, param2:Object) : String
+      {
+         if(!gwaiDeckArt) return param1.imageLoc;
+         var art:Array = GWAI_BOND_ART[param1.index] as Array;
+         if(art != null) return param1.imageLoc == art[0] ? art[1] : param1.imageLoc;
+         art = GWAI_COPY_ART[param1.index] as Array;
+         if(art == null || param1.imageLoc != art[0] || param2 == null || param2.cardID != param1.index || !param2.hasOwnProperty("gwaiArt")) return param1.imageLoc;
+         var pictures:Array = art[1] as Array;
+         var copy:int = int(param2.gwaiArt) %% pictures.length;
+         if(copy < 0) copy += pictures.length;
+         return pictures[copy];
+      }
+''' % (bond_art_table(), copy_art_table()))
+    if name=='DeckBuilderMenu':
+        anchor='dispatchEvent(new GameEvent(GameEvent.REGISTER,"gwint.deckbuilder.decks",[this.updateGwintDecks]));'
+        source=once(source,anchor,'dispatchEvent(new GameEvent(GameEvent.REGISTER,"gwai.deck.bondart",[this.gwaiUpdateDeckArt]));\n         this.mcCollectionHolder.gwaiCopyFromTop = true;\n         '+anchor)
+        source=once(source,'this.collectionDeck.cardIndices.length = 0;',
+            'this.collectionDeck.cardIndices.length = 0;\n         CardSlot.gwaiOwnedCopies = {};')
+        source=once(source,'_loc4_ = _loc2_.getCardTemplate(_loc3_.cardID).factionIdx;',
+            'CardSlot.gwaiOwnedCopies[_loc3_.cardID] = int(CardSlot.gwaiOwnedCopies[_loc3_.cardID]) + int(_loc3_.numCopies);\n            _loc4_ = _loc2_.getCardTemplate(_loc3_.cardID).factionIdx;')
+        return add_methods(source,'''      // Bindings arrive in registration order, so the switch lands before the deck data.
+      // A later change redraws both lists with the same deck.
+      protected function gwaiUpdateDeckArt(param1:*) : void
+      {
+         var art:Boolean = param1 === true;
+         if(CardSlot.gwaiDeckArt == art) return;
+         CardSlot.gwaiDeckArt = art;
+         if(this.hasDeckInfo && this.selectedDeckIndex != -1)
+         {
+            this.mcDeckHolder.setTargetDeck(this.factionDecks[this.selectedDeckIndex]);
+            if(this.hasCollectionInfo) this.updateCollectionDeck();
+         }
+      }
+''')
+    if name=='GwintDeckCTabModule':
+        source=once(source,'''         if(_loc5_ == null)
+         {
+            if(param2 > 0)''','''         if(CardSlot.gwaiCopyPictures(param1) != null)
+         {
+            _loc6_ = this.gwaiSetCopies(param1,param2);
+         }
+         else if(_loc5_ == null)
+         {
+            if(param2 > 0)''')
+        source=once(source,'''               _loc7_++;
+            }
+         }
+         return _loc2_;''','''               _loc7_++;
+            }
+         }
+         return this.gwaiSplitCopies(_loc2_);''')
+        tie='return _loc3_.index - _loc4_.index;'
+        if source.count(tie)!=2:raise ValueError('native patch anchor count: '+tie)
+        source=source.replace(tie,'return _loc3_.index != _loc4_.index ? _loc3_.index - _loc4_.index : int(param1.gwaiCopy) - int(param2.gwaiCopy);')
+        return add_methods(source,'''      // The collection numbers its copies from the top (owned..d+1), the deck from the bottom.
+      public var gwaiCopyFromTop:Boolean = false;
+      protected function gwaiCopyEntry(param1:int, param2:int) : Object
+      {
+         var owned:int = CardSlot.gwaiOwnedCopies[param1] != undefined ? int(CardSlot.gwaiOwnedCopies[param1]) : CardSlot.gwaiCopyPictures(param1).length;
+         return {"cardID":param1,"numCopies":1,"gwaiCopy":param2,"gwaiArt":(this.gwaiCopyFromTop ? owned - 1 - param2 : param2)};
+      }
+      // One tile per copy for the cards of COPY_ART; every other entry is kept as it is.
+      protected function gwaiSplitCopies(param1:Array) : Array
+      {
+         var result:Array = new Array();
+         var i:int = 0;
+         var k:int = 0;
+         while(i < param1.length)
+         {
+            if(CardSlot.gwaiCopyPictures(param1[i].cardID) == null)
+            {
+               result.push(param1[i]);
+            }
+            else
+            {
+               k = 0;
+               while(k < int(param1[i].numCopies))
+               {
+                  result.push(this.gwaiCopyEntry(param1[i].cardID,k));
+                  k++;
+               }
+            }
+            i++;
+         }
+         return result;
+      }
+      // A split card changed count: drop the highest copies or add the lowest free ones, so the
+      // tiles always hold copies 0..count-1 and the other tiles keep their art.
+      protected function gwaiSetCopies(param1:int, param2:int) : Boolean
+      {
+         var tiles:Array = new Array();
+         var used:Object = {};
+         var slot:CardSlot = null;
+         var i:int = 0;
+         var top:int = 0;
+         var removed:Boolean = false;
+         var added:Boolean = false;
+         while(i < this.mcCardSlotList.getRenderersLength())
+         {
+            slot = this.mcCardSlotList.getRendererAt(i) as CardSlot;
+            if(slot != null && slot.cardIndex == param1) tiles.push(slot);
+            i++;
+         }
+         while(tiles.length > Math.max(param2,0))
+         {
+            top = 0;
+            i = 1;
+            while(i < tiles.length)
+            {
+               if(int(tiles[i].data.gwaiCopy) > int(tiles[top].data.gwaiCopy)) top = i;
+               i++;
+            }
+            this.mcCardSlotList.removeRenderer(tiles[top]);
+            tiles.splice(top,1);
+            removed = true;
+         }
+         if(removed && this.mcCardSlotList.getRenderersLength() == 0)
+         {
+            close();
+         }
+         i = 0;
+         while(i < tiles.length)
+         {
+            used[int(tiles[i].data.gwaiCopy)] = true;
+            i++;
+         }
+         i = 0;
+         while(tiles.length < param2)
+         {
+            while(used[i] == true) i++;
+            used[i] = true;
+            this.mcCardSlotList.addRenderer(this.gwaiCopyEntry(param1,i));
+            tiles.push(null);
+            added = true;
+         }
+         return added;
+      }
+''')
+    raise ValueError('unrecognized deck builder class: '+name)

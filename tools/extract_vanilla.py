@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Extracts every vanilla file the Gwent minigame depends on into game/vanilla/:
-#   swf/      gwint_game.redswf (+ the plain SWF without the Scaleform trailer)
+#   swf/      gwint_game.redswf, deck_builder.redswf (+ the plain SWFs without the Scaleform trailer)
 #   xml/      card, leader and deck definitions (base game and DLC bundles)
 #   scripts/  the WitcherScript files that talk to the minigame
 # and writes game/vanilla/MANIFEST.txt with sizes and CRC32 of every file, so a game
@@ -14,7 +14,7 @@ import bundle  # noqa: E402
 GAME = os.path.expanduser('~/.local/share/Steam/steamapps/common/The Witcher 3')
 OUT = os.path.join(HERE, '..', 'game', 'vanilla')
 
-SWF_PATHS = {'gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf'}
+SWF_PATHS = {'gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf', 'gameplay\\gui_new\\swf\\gwint\\deck_builder.redswf'}
 XML_KEYS = ('gwint', 'gwent')
 SCRIPT_KEYS = ('gwint', 'gwent')
 
@@ -48,8 +48,9 @@ def main():
             low = name.lower()
             if name in SWF_PATHS:
                 data = bundle.extract(b, e)
-                save(os.path.join('swf', 'gwint_game.redswf'), data)
-                save(os.path.join('swf', 'gwint_game.swf'), redswf_to_swf(data))
+                stem = name.rsplit('\\', 1)[1][:-len('.redswf')]
+                save(os.path.join('swf', stem + '.redswf'), data)
+                save(os.path.join('swf', stem + '.swf'), redswf_to_swf(data))
                 manifest.append((name, src, len(data), zlib.crc32(data)))
             elif low.endswith('.xml') and any(k in low for k in XML_KEYS):
                 data = bundle.extract(b, e)

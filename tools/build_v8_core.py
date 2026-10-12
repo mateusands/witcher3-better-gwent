@@ -6,7 +6,7 @@ remain required before producing the installable Better Gwent AI mod.
 """
 import argparse,hashlib,json,re,subprocess,tempfile,shutil
 from pathlib import Path
-from v8_runtime_patch import NATIVE_CLASSES, patch
+from v8_runtime_patch import NATIVE_CLASSES, DECK_BUILDER_CLASSES, patch, deck_builder_patch
 from v8_ai_patch import patch_ai
 ROOT=Path(__file__).resolve().parents[1]
 PKG='red.game.witcher3.menus.gwint'
@@ -25,7 +25,8 @@ def main():
         logs.append(result.stdout+result.stderr)
         if result.returncode or re.search(r'\b(error|exception)\b',logs[-1],re.I):raise RuntimeError(logs[-1][-7000:])
     sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-    inputs={str(source.relative_to(ROOT)):sha(source)}
+    deck_source=ROOT/'game/vanilla/swf/deck_builder.swf'
+    inputs={str(source.relative_to(ROOT)):sha(source),str(deck_source.relative_to(ROOT)):sha(deck_source)}
     inputs['tools/v8_runtime_patch.py']=sha(ROOT/'tools/v8_runtime_patch.py')
     inputs['tools/v8_ai_patch.py']=sha(ROOT/'tools/v8_ai_patch.py')
     for name in CLASSES:inputs[f'mod/v8/as3/{name}.as']=sha(ROOT/f'mod/v8/as3/{name}.as')
@@ -127,12 +128,32 @@ def main():
                 exported=(dest/'compiled-source'/'GwintGameFlowController.as').read_text()
                 if exported.index('gwaiSnap("deal")')>exported.index('gwaiNpcMulligan'):raise RuntimeError('Deal snapshot after the NPC exchange')
                 report['recorderMerged']=True
+            # Deck builder: its own SWF, patched for its card art and copy tiles (same export/patch/import route).
+            ffdec('-selectclass',','.join(PKG+'.'+name for name in DECK_BUILDER_CLASSES),'-export','script',tmp/'deck-export',deck_source)
+            deck_dir=tmp/'deck-import'/package;deck_dir.mkdir(parents=True)
+            for name in DECK_BUILDER_CLASSES:
+                code=(tmp/'deck-export/scripts'/package/(name+'.as')).read_text()
+                (deck_dir/(name+'.as')).write_text(deck_builder_patch(name,code))
+            ffdec('-importScript',deck_source,dest/'deck_builder.swf',tmp/'deck-import')
+            deck_hooks={'CardSlot':['gwaiDeckPicture(param1,data)','gwaiDeckArt','gwaiCopyPictures','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
+                'DeckBuilderMenu':['"gwai.deck.bondart"','gwaiUpdateDeckArt','CardSlot.gwaiDeckArt = ','gwaiCopyFromTop = true','CardSlot.gwaiOwnedCopies['],
+                'GwintDeckCTabModule':['gwaiSetCopies(param1,param2)','gwaiSplitCopies(_loc2_)','gwaiCopyEntry','int(param1.gwaiCopy) - int(param2.gwaiCopy)']}
+            for name,tokens in deck_hooks.items():
+                ffdec('-selectclass',PKG+'.'+name,'-export','script',tmp/('deck-'+name),dest/'deck_builder.swf')
+                exported=(tmp/('deck-'+name)/'scripts'/package/(name+'.as')).read_text()
+                for token in tokens:
+                    if token not in exported:raise RuntimeError('Compiled deck builder hook missing: '+name+'.'+token)
+                audit=dest/'compiled-source/deck_builder'/(name+'.as');audit.parent.mkdir(parents=True,exist_ok=True)
+                audit.write_text(exported)
+            exported=(dest/'compiled-source/deck_builder/DeckBuilderMenu.as').read_text()
+            if exported.index('"gwai.deck.bondart"')>exported.index('"gwint.deckbuilder.decks"'):raise RuntimeError('Deck art switch registered after the deck data')
+            report['deckBuilderSha256']=sha(dest/'deck_builder.swf')
             report['decisionHookConnected']=True
             report['publicContextBridgeCompiled']=True
             report['settingsBridgeCompiled']=True
             report['autoplayControllerConnected']=True
             report['explicitChoiceHooksCompiled']=True
-            assert sha(source)==inputs[str(source.relative_to(ROOT))]
+            assert sha(source)==inputs[str(source.relative_to(ROOT))] and sha(deck_source)==inputs[str(deck_source.relative_to(ROOT))]
             report.update(status='core_compiled',compiledSha256=sha(dest/'gwint_game.swf'))
     except Exception as exc:report.update(status='build_failed',error=str(exc))
     (dest/'build.log').write_text('\n'.join(logs));(dest/'manifest.json').write_text(json.dumps(report,indent=2)+'\n')

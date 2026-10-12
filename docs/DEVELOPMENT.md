@@ -23,6 +23,12 @@ python3 tools/build_v8_core.py --with-recorder   # V8 AI + match recorder
 python3 tools/build_v8_package.py recorder       # -> dist/BetterGwentAI-<version>-recorder.zip
 ```
 
+`tools/extract_vanilla.py` copies the two Gwent interface files the build patches
+(`gwint_game.redswf` and `deck_builder.redswf`) into the git-ignored `game/vanilla/swf`. The
+deck builder tests read an FFDec script export of `deck_builder.swf` from
+`game/vanilla/as_deck_builder` (`ffdec-cli -export script game/vanilla/as_deck_builder
+game/vanilla/swf/deck_builder.swf`); without it they are skipped.
+
 The version is `VERSION` in `tools/build_settings.py`; menu translations are in
 `mod/settings/menu/labels.translations.json` (a missing text stays in English). Back up the
 game files and saves before installing a test build. With the mod Off the game behaves

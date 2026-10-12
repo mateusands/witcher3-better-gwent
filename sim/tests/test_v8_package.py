@@ -41,23 +41,32 @@ def test_archive_hashes_exact_contents_and_explicit_runtime_status(shipping):
     assert {name.split('/')[1] for name in files if name.startswith('Mods/')}=={'modBetterGwentAI'}
 
 
-def test_one_combined_resource_round_trips_compiled_swf_and_native_trailer(shipping):
+def test_both_interface_resources_round_trip_compiled_swf_and_native_trailer(shipping):
     files,manifest=shipping;prefix='Mods/modBetterGwentAI/content/'
     blob=files[prefix+'blob0.bundle'];meta=files[prefix+'metadata.store']
-    assert blob[:8]==b'POTATO70' and struct.unpack_from('<I',blob,16)[0]==0x130
-    entry=blob[32:32+0x130]
-    path=entry[:0x100].split(b'\0')[0].decode()
-    offset,_,size,zsize,crc,comp=struct.unpack_from('<6I',entry,0x110)
-    assert path==manifest['resource'] and comp==1
-    red=zlib.decompress(blob[offset:offset+zsize])
-    assert len(red)==size and zlib.crc32(red)==crc
-    swf,trailer=split_redswf(red)
-    compiled=(ROOT/'game/port-v8'/('combined' if manifest['variant']=='recorder' else 'core')/'gwint_game.swf').read_bytes()
-    if compiled[:3]==b'CWS':compiled=b'FWS'+compiled[3:8]+zlib.decompress(compiled[8:])
-    assert swf==compiled
-    assert trailer==split_redswf((ROOT/'game/vanilla/swf/gwint_game.redswf').read_bytes())[1]
+    stems={'gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf':'gwint_game',
+           'gameplay\\gui_new\\swf\\gwint\\deck_builder.redswf':'deck_builder'}
+    assert manifest['resources']==list(stems) and manifest['resource']==list(stems)[0]
+    assert blob[:8]==b'POTATO70' and struct.unpack_from('<I',blob,16)[0]==0x130*len(stems)
+    build=ROOT/'game/port-v8'/('combined' if manifest['variant']=='recorder' else 'core')
+    expected=[]
+    for i,(resource,stem) in enumerate(stems.items()):
+        entry=blob[32+i*0x130:32+(i+1)*0x130]
+        path=entry[:0x100].split(b'\0')[0].decode()
+        offset,_,size,zsize,crc,comp=struct.unpack_from('<6I',entry,0x110)
+        assert path==resource and comp==1
+        red=zlib.decompress(blob[offset:offset+zsize])
+        assert len(red)==size and zlib.crc32(red)==crc
+        swf,trailer=split_redswf(red)
+        compiled=(build/(stem+'.swf')).read_bytes()
+        if compiled[:3]==b'CWS':compiled=b'FWS'+compiled[3:8]+zlib.decompress(compiled[8:])
+        assert swf==compiled
+        # Each file keeps its own Scaleform symbol table.
+        assert trailer==split_redswf((ROOT/'game/vanilla/swf'/(stem+'.redswf')).read_bytes())[1]
+        expected.append(dict(path=path,size=size,zsize=zsize,comp=comp,offset=offset))
+    assert hashlib.sha256((build/'deck_builder.swf').read_bytes()).hexdigest()==manifest['deckBuilderSha256']
     metadata,_=metastore.read(meta)
-    assert metadata==[dict(path=path,size=size,zsize=zsize,comp=comp,offset=offset)]
+    assert metadata==expected
 
 
 def test_settings_receiver_and_close_channels_are_shipped_together(shipping):

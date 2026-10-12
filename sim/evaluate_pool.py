@@ -53,8 +53,9 @@ def player_seats(pair_index, swap, npc_mode=None, difficulty=2):
         from dataclasses import replace
         from gwentsim.npc_balance import apply_mode
         from blunder_hunter import card_names
+        # The variant (experiment "heroes") cycles over matchups, like a per-match draw in the game.
         deck = apply_mode(setup()['match'].templates, npc.deck, card_names(), npc_mode, player.deck.card_indices,
-                          difficulty)
+                          difficulty, variant=pair_index)
         npc = replace(npc, name='%s/%s' % (npc.name, npc_mode), deck=deck)
     seats = (npc, player) if swap else (player, npc)
     return seats, (0 if swap else 1)

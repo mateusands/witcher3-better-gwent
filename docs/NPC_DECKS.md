@@ -19,8 +19,18 @@ Gwent AI is On.
 Like a seasoned player builds, from the NPC's own faction plus neutral cards:
 
 - **Identity:** same faction and leader; the NPC's heroes stay in its deck.
-- **Size:** at least 22 units; special cards limited to a playable kit (at most 8). Native
-  NPC decks carry about 10 special cards on average, and up to 13 weather cards.
+- **Size:** at least 22 units; special cards limited to a lean playable kit. Native NPC decks
+  carry about 10 special cards on average, and up to 13 weather cards.
+  - **Strong:** 22 units and at most 4 special cards, no Triss;
+  - **Adaptive:** at most 2 special cards;
+  - when the kit is cut, it keeps first the weather the leader pulls, then Scorch, a Horn,
+    a Decoy and Clear Weather.
+
+  Lab round 4 (2026-10-12, 1,020 paired games per cell, NPC win share against the 0.9.0 shape
+  of up to 8 specials, 24 Strong units and Triss): Strong +15.0 points on Hard (z 9.7) and
+  +15.9 on Normal (z 10.1); Adaptive +4.4 on Hard (z 2.6) and +8.2 on Normal (z 4.8). Removing
+  Triss alone cost about 2 points; in the lean Strong shape it is part of the gain. The Lab
+  switch `v090` rebuilds the old shape for comparison.
 - **Weather:** at most two types, never one that hits the deck's own strong rows (a deck
   built on siege units carries no Torrential Rain); Skellige's weather-resistant leader is
   the exception.

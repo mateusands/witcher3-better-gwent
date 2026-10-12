@@ -34,8 +34,10 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
   deck (copies of the same card get different art; a fourth Blue Stripes repeats the first).
   The artwork is the game's own: alternate card art that ships with The Witcher 3 but that
   the vanilla card list never uses. Visual only (power, abilities and the card list are
-  unchanged, no card definition file is overridden); with the mod Off or removed, the stock
-  art returns. [See every copy side by side](docs/img/bond-card-art.png).
+  unchanged, no card definition file is overridden). The Gwent deck builder (pause menu >
+  Gwent decks) shows the same pictures, with one tile per copy of Blue Stripes Commando and
+  Siege Tower instead of one "x3" tile (adding or removing any of them moves one copy, as
+  before). With the mod Off or removed, the stock art and tiles return. [See every copy side by side](docs/img/bond-card-art.png).
 
 ## NPC decks: Original, Adaptive, Strong
 
@@ -54,8 +56,10 @@ regardless of your deck because of an inverted check. This option chooses what t
   100% on Normal, 110% on Hard. A fair fight at every stage of the game.
 - **Strong:** the best deck the NPC's faction allows under the same rules.
 
-Every deck is built like a seasoned player builds one: a playable kit of special cards
-(never more than 8), no weather that hits its own strong rows, synergies kept whole, spies and
+Every deck is built like a seasoned player builds one, lean as hand-built archetype decks are:
+Strong decks carry 22 units and at most 4 special cards (no Triss), Adaptive decks at most 2
+special cards (Lab: +15.0 and +4.4 points of NPC win share on Hard over the 0.9.0 shape of up
+to 8 specials; [details](docs/NPC_DECKS.md)). No weather that hits its own strong rows, synergies kept whole, spies and
 medics capped, and leader-aware choices (a leader that clears weather replaces the Clear Weather
 card; a leader that doubles a row leaves one Horn for the other rows). It applies to every
 Gwent opponent, including quest and tournament players, except the tutorial.

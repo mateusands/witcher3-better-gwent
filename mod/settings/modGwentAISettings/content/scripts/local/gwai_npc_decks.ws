@@ -78,6 +78,23 @@ function GwaiNpcDeckApply(out cards : array<int>, list : string) : void
     }
 }
 
+// Adaptive hero variants (heroes that fit the NPC's faction) are separated by "#"; the game
+// draws one per match. A missing variant falls back to the last one.
+function GwaiNpcDeckPick(choices : string, pick : int) : string
+{
+    var first, rest : string;
+    while (pick > 0 && StrSplitFirst(choices, "#", first, rest))
+    {
+        choices = rest;
+        pick -= 1;
+    }
+    if (StrSplitFirst(choices, "#", first, rest))
+    {
+        return first;
+    }
+    return choices;
+}
+
 // Adaptive: the first step whose strength reaches the target, else the last step.
 function GwaiNpcDeckAdaptive(adaptive : string, target : float) : array<int>
 {
@@ -176,7 +193,7 @@ function GetCurrentAIDeck() : SDeckDefinition
     }
     else
     {
-        indices = GwaiNpcDeckAdaptive(adaptive, GwaiNpcDeckTarget());
+        indices = GwaiNpcDeckAdaptive(GwaiNpcDeckPick(adaptive, RandRange(3)), GwaiNpcDeckTarget());
     }
     for (i = 0; i < indices.Size(); i += 1)
     {

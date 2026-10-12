@@ -19,6 +19,7 @@ weakest units for the best eligible ones until its strength reaches the player's
 deck-strength measure the game uses for its extra cards). Strong: the best deck those rules
 allow for the faction. The player's hand is never read; only the strength of the deck.
 """
+from contextlib import contextmanager
 from collections import defaultdict
 
 from . import constants as C
@@ -27,7 +28,15 @@ MIN_UNITS, MAX_UNITS = 22, 26
 # Balanced: target strength as a share of the player's deck strength, by mod difficulty
 # (0 Easy, 1 Medium, 2 Hard, 3 Expert).
 BALANCED_TARGET = (0.85, 1.0, 1.1, 1.1)   # Easy, Normal, Hard (Expert: simulator only)
-KIT_CAP, STRONG_UNITS = 8, 24
+KIT_CAP, STRONG_UNITS = 8, 24   # set per deck mode from MODE_SHAPE while a deck is built
+# Shipped deck shapes (Lab round 4, 2026-10-12, 1,020 paired games per cell):
+# Strong lean (4 specials, 22 units, no Triss) +15.0 Hard / +15.9 Normal;
+# Adaptive at most 2 specials +4.4 Hard / +8.2 Normal.
+# Adaptive also draws heroes that fit its faction, one of HERO_VARIANTS per match (Lab round 6:
+# no measurable change, -0.9 Normal / +0.9 Hard, |z| 0.6); Strong keeps every hero (-5 there).
+MODE_SHAPE = {'strong': dict(kit=4, units=22, excluded=frozenset({'triss'}), heroes=False),
+              'balanced': dict(kit=2, units=24, excluded=frozenset(), heroes=True)}
+_OVERRIDE = {}   # Lab switches (apply_mode flags) on top of MODE_SHAPE
 MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (Lab round 3: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'
 # Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
@@ -228,7 +237,26 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
     return chosen
 
 
-def strong_deck(templates, deck, names):
+@contextmanager
+def shaped(mode, templates=None, deck=None, names=None, variant=0):
+    """KIT_CAP, STRONG_UNITS and EXCLUDED for one deck mode while its deck is built."""
+    global KIT_CAP, STRONG_UNITS, EXCLUDED
+    shape = dict(MODE_SHAPE[mode], **_OVERRIDE)
+    saved = KIT_CAP, STRONG_UNITS, EXCLUDED
+    heroes = hero_exclusions(templates, deck, names, variant % HERO_VARIANTS) if shape['heroes'] else frozenset()
+    KIT_CAP, STRONG_UNITS, EXCLUDED = shape['kit'], shape['units'], EXCLUDED | shape['excluded'] | heroes
+    try:
+        yield
+    finally:
+        KIT_CAP, STRONG_UNITS, EXCLUDED = saved
+
+
+def strong_deck(templates, deck, names, variant=0):
+    with shaped('strong', templates, deck, names, variant):
+        return _strong_deck(templates, deck, names)
+
+
+def _strong_deck(templates, deck, names):
     leader = deck.selected_king_index
     faction = templates[leader].faction
     heroes = [i for i in deck.card_indices if templates[i].is_type(C.CardType_Hero)
@@ -238,18 +266,23 @@ def strong_deck(templates, deck, names):
     return sorted(t.index for t in units) + kit
 
 
-def balanced_steps(templates, deck, names):
+def balanced_steps(templates, deck, names, variant=0):
     """Every deck balanced_deck can return for this NPC deck, as (strength checked, cards).
 
     balanced_deck only uses its target to decide when to stop, so for any target the result is
     the cards of the first step whose checked strength reaches it, else the last step. The game
     uses this table instead of running the builder (see tools/build_npc_decks.py)."""
     steps = []
-    balanced_deck(templates, deck, names, float('inf'), steps)
+    balanced_deck(templates, deck, names, float('inf'), steps, variant)
     return steps
 
 
-def balanced_deck(templates, deck, names, target, steps=None):
+def balanced_deck(templates, deck, names, target, steps=None, variant=0):
+    with shaped('balanced', templates, deck, names, variant):
+        return _balanced_deck(templates, deck, names, target, steps)
+
+
+def _balanced_deck(templates, deck, names, target, steps=None):
     """The NPC's own units made legal (caps, 22+ units), then the weakest swapped for better
     eligible ones until the deck's strength reaches the player's (never weakened below)."""
     leader = deck.selected_king_index
@@ -382,7 +415,32 @@ def with_decoys(templates, cards, count):
     return cards
 
 
-def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
+# Experiment "heroes": heroes that fit the NPC's faction, varied per match. Avallac'h (a spy) and
+# Yennefer (a medic) stay allowed; 2 or 3 of the faction's heroes are drawn; Geralt or Ciri
+# (never both) in about one deck in four; Triss never. The draw depends only on the NPC deck
+# and a variant number, so the game can store a few variants per NPC and pick one per match.
+HERO_FIXED = frozenset({'yennefer', 'mysterious_elf'})
+HERO_WITCHERS = (frozenset({'geralt', 'geraltGOG'}), frozenset({'ciri', 'ciriGOG'}))
+HERO_VARIANTS = 3
+
+
+def hero_exclusions(templates, deck, names, variant):
+    """Hero names the builder must leave out for this NPC deck and variant."""
+    import hashlib
+    from random import Random
+    faction = templates[deck.selected_king_index].faction
+    key = '%d|%s|%d' % (deck.selected_king_index, ','.join(map(str, sorted(deck.card_indices))), variant)
+    rng = Random(int.from_bytes(hashlib.sha256(key.encode()).digest()[:8], 'big'))
+    heroes = lambda f: sorted({names[t.index] for t in templates.values() if t.index < 1000 and t.faction == f
+                               and t.is_type(C.CardType_Hero) and names.get(t.index)})
+    own = heroes(faction)
+    keep = set(rng.sample(own, min(len(own), rng.choice((2, 3)))))
+    witcher = rng.choice(HERO_WITCHERS) if rng.random() < 0.25 else frozenset()
+    neutral = set(heroes(C.FactionId_Neutral)) - HERO_FIXED - witcher
+    return frozenset(set(own) - keep) | frozenset(neutral)
+
+
+def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2, variant=0):
     """DeckDefinition for the NPC under an option mode ('original', 'balanced', 'strong').
 
     "<mode>:decoy3" (experiment) gives the NPC 3 Decoys against a Nilfgaard or Northern Kingdoms
@@ -391,29 +449,39 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2):
     mode, _, flags = (mode or 'original').partition(':')
     if mode == 'original':
         return deck
-    global MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED
-    saved = MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED
+    global MAX_SPIES, _OVERRIDE
+    saved = MAX_SPIES, _OVERRIDE
     switches = set(flags.split('+'))
+    override = {}
     if 'spies4' in switches:
         MAX_SPIES = 4                         # experiment: one more spy allowed (shipped since)
-    if 'kit4' in switches:
-        KIT_CAP = 4                           # experiments from hand-built archetype decks
-    if 'kit2' in switches:
-        KIT_CAP = 2
-    if 'units22' in switches:
-        STRONG_UNITS = 22
+    if 'v090' in switches:                    # the 0.9.0 shape: 8 specials, 24 units, Triss allowed
+        override.update(kit=8, units=24, excluded=frozenset(), heroes=False)
+    for n in (2, 4, 8):
+        if 'kit%d' % n in switches:
+            override['kit'] = n
+    for n in (22, 24):
+        if 'units%d' % n in switches:
+            override['units'] = n
     if 'notriss' in switches:
-        EXCLUDED = EXCLUDED | {'triss'}
+        override['excluded'] = frozenset({'triss'})
+    if 'triss' in switches:
+        override['excluded'] = frozenset()
+    if 'heroes' in switches:                  # faction heroes drawn per match (Adaptive default)
+        override['heroes'] = True
+    if 'allheroes' in switches:               # every hero allowed (Strong default; Adaptive before round 6)
+        override['heroes'] = False
+    _OVERRIDE = override
     try:
         if mode == 'strong':
-            cards = strong_deck(templates, deck, names)
+            cards = strong_deck(templates, deck, names, variant)
         elif mode in ('balanced', 'adaptive'):   # "Adaptive" in the menu and docs
             target = deck_strength(templates, player_cards or []) * BALANCED_TARGET[difficulty]
-            cards = balanced_deck(templates, deck, names, target)
+            cards = balanced_deck(templates, deck, names, target, variant=variant)
         else:
             raise ValueError('unknown NPC deck mode %s' % mode)
     finally:
-        MAX_SPIES, KIT_CAP, STRONG_UNITS, EXCLUDED = saved
+        MAX_SPIES, _OVERRIDE = saved
     if 'decoy3' in flags.split('+') and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
         cards = with_decoys(templates, cards, 3)
     # The chosen deck replaces the native extra-card mechanism for this match.

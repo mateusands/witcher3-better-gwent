@@ -1,8 +1,8 @@
 """The in-game NPC deck table (gwai_npc_decks_data.ws) gives the simulator's decks.
 
-The table is read here the way gwai_npc_decks.ws reads it (first Adaptive step whose strength
-reaches the target, "-i"/"+i" changes), and the script's deck-strength bonuses must match
-npc_balance.STRENGTH_BONUS.
+The table is read here the way gwai_npc_decks.ws reads it (one Adaptive hero variant per match,
+"#"-separated; first Adaptive step whose strength reaches the target, "-i"/"+i" changes), and the
+script's deck-strength bonuses must match npc_balance.STRENGTH_BONUS.
 """
 import re
 import sys
@@ -42,6 +42,12 @@ def adaptive(steps, target):
     return cards
 
 
+def pick(choices, n):
+    """GwaiNpcDeckPick: the n-th "#"-separated variant, else the last one."""
+    parts = choices.split('#')
+    return parts[min(n, len(parts) - 1)]
+
+
 def test_generated_script_is_current():
     text = (SCRIPTS / 'gwai_npc_decks_data.ws').read_text()
     for key, strong, steps in table():
@@ -59,11 +65,20 @@ def test_table_matches_simulator_decks():
             deck = native.build(name, variant, repaired=True)
             strong, steps = rows['%s:%d' % (name, variant)]
             assert sorted(apply([], strong)) == sorted(nb.apply_mode(templates, deck, names, 'strong').card_indices)
-            for target in range(100, 380, 7):
-                expected = nb.balanced_deck(templates, deck, names, target)
-                assert sorted(adaptive(steps, target)) == sorted(expected), (name, variant, target)
-                checked += 1
-    assert checked > 5000
+            assert len(steps.split('#')) == nb.HERO_VARIANTS
+            for hero_variant in range(nb.HERO_VARIANTS):
+                for target in range(100, 380, 7):
+                    expected = nb.balanced_deck(templates, deck, names, target, variant=hero_variant)
+                    assert sorted(adaptive(pick(steps, hero_variant), target)) == sorted(expected), \
+                        (name, variant, hero_variant, target)
+                    checked += 1
+    assert checked > 15000
+
+
+def test_script_draws_every_hero_variant():
+    text = (SCRIPTS / 'gwai_npc_decks.ws').read_text()
+    assert 'GwaiNpcDeckPick(adaptive, RandRange(%d))' % nb.HERO_VARIANTS in text
+    assert pick('a#b#c', 0) == 'a' and pick('a#b#c', 2) == 'c' and pick('a', 2) == 'a'
 
 
 def test_script_strength_bonuses_match_simulator():
@@ -99,7 +114,8 @@ def test_excluded_cards_never_in_npc_decks():
     assert excluded
     for key, strong, steps in table():
         assert not excluded & set(apply([], strong)), key
-        cards = []
-        for step in steps.split('|'):
-            apply(cards, step.split(':', 1)[1])
-            assert not excluded & set(cards), key
+        for choice in steps.split('#'):
+            cards = []
+            for step in choice.split('|'):
+                apply(cards, step.split(':', 1)[1])
+                assert not excluded & set(cards), key

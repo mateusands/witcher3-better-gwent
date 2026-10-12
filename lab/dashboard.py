@@ -563,6 +563,10 @@ def main():
                   'kit4+units22+notriss': ('Lean NPC decks', '4 specials, 22 units, no Triss'),
                   'scorch-prior': ('NPC expects your Scorch', 'in every other sampled hand'),
                   'reserve35': ('NPC values kept cards more', 'passes a led round sooner'),
+                  'scorch-pool': ('NPC imagines Scorch in your hand', 'Scorch was missing from its guesses'),
+                  'scorch-pool+scorch-prior': ('NPC expects your Scorch', 'in its guesses, half the hands hold one'),
+                  'v090': ('0.9.0 NPC deck shape', '8 specials, 24 Strong units, Triss'),
+                  'heroes': ('Faction heroes, varied per match', "2-3 of the faction's, Geralt/Ciri 1 in 4"),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
         scenes = {'player-mulligan': 'player exchanges too', 'base-mulligan': 'on top of the NPC exchange'}

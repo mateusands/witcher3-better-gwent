@@ -179,3 +179,13 @@ function OnConfigUI()
     // Native controller replacement and decision execution remain separate hooks.
     // No vanilla difficulty fact is read, replaced or written by this settings layer.
 }
+
+// Deck builder (pause menu > Gwent decks): Tight Bond art only while the mod is On.
+// Sent before the deck data, which the interface registers right after this switch.
+@wrapMethod(CR4DeckBuilderMenu)
+function SendDeckInformation() : void
+{
+    GwaiSettingsInitialize();
+    m_flashValueStorage.SetFlashBool("gwai.deck.bondart", GwaiSettingsEnabled());
+    wrappedMethod();
+}
