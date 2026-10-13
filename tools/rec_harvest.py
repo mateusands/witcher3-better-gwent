@@ -63,6 +63,11 @@ def split_section(text):
     return outside, inside
 
 
+def match_ids(inside):
+    """Every recorded match in the section: g100 ... g999, then g1000 and up (any digit count)."""
+    return sorted({int(m.group(1)) for k in inside for m in [re.match(r'g(\d{3,})_', k)] if m})
+
+
 def rebuild(outside, games_line):
     # The section goes back at the end of the file with only the counter.
     lines = list(outside)
@@ -80,8 +85,8 @@ def harvest():
         return 0
     text = open(path, 'rb').read().decode('utf-8')
     outside, inside = split_section(text)
-    match_ids = sorted({int(m.group(1)) for k in inside for m in [re.match(r'g(\d{3})_', k)] if m})
-    if not match_ids:
+    ids = match_ids(inside)
+    if not ids:
         return 0
 
     raw = rec_read.read_section(path, SECTION)
@@ -89,7 +94,7 @@ def harvest():
         os.makedirs(os.path.join(OUT, d), exist_ok=True)
     stamp = time.strftime('%Y%m%d-%H%M%S')
     saved = broken = 0
-    for g in match_ids:
+    for g in ids:
         prefix = 'g%03d_' % g
         lines = '\r\n'.join(inside[k] for k in sorted(inside) if k.startswith(prefix)) + '\r\n'
         info, records, problems = rec_read.load_match(raw, g)
@@ -121,7 +126,7 @@ def harvest():
     shutil.copy2(path, os.path.join(BACKUPS, 'dx12user.settings.%s' % stamp))
     for old in sorted(glob.glob(os.path.join(BACKUPS, 'dx12user.settings.*')))[:-20]:
         os.remove(old)
-    games_line = inside.get('games', 'games="%d"' % (max(match_ids) + 1))
+    games_line = inside.get('games', 'games="%d"' % (max(ids) + 1))
     new_text = rebuild(outside, games_line)
     # Safety check: everything outside the section is unchanged (apart from trailing blank lines).
     def strip_tail(lines):

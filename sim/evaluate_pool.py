@@ -61,13 +61,9 @@ def player_seats(pair_index, swap, npc_mode=None, difficulty=2):
     return seats, (0 if swap else 1)
 
 
-def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
-    """NPC side played by npc_policy ('vanilla' or the candidate) against the player side
-    played by response-v8 at the same profile, a strong stand-in for a human player."""
-    match = setup()['match']
-    seats, npc_seat = player_seats(pair_index, swap, npc_mode, profile)
-    decks = [seats[0].for_player(0), seats[1].for_player(1)]
-    policies = tuple(npc_policy if p == npc_seat else 'response-v8' for p in (0, 1))
+def scene(npc_seat, seed, npc_policy):
+    """The match scene of player-deck tasks: NPC switches bound to the NPC seat and the opening
+    exchanges the policy switches ask for. Returns a context manager around run_match."""
     from contextlib import ExitStack
     import gwentsim.response_v8 as v8
     from evaluate_mulligan import exchange_hook
@@ -89,6 +85,17 @@ def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
                    'full' if 'mulligan-full' in v8.VARIANT else
                    'combined' if v8.VARIANT & {'mulligan-combined', 'base-mulligan'} else 'evaluated')
         hook.enter_context(exchange_hook(npc_seat, variant, seed, []))
+    return hook
+
+
+def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
+    """NPC side played by npc_policy ('vanilla' or the candidate) against the player side
+    played by response-v8 at the same profile, a strong stand-in for a human player."""
+    match = setup()['match']
+    seats, npc_seat = player_seats(pair_index, swap, npc_mode, profile)
+    decks = [seats[0].for_player(0), seats[1].for_player(1)]
+    policies = tuple(npc_policy if p == npc_seat else 'response-v8' for p in (0, 1))
+    hook = scene(npc_seat, seed, npc_policy)
     with hook:
         recorder, flow = run_match(match.templates.values(), decks, match.card_values, SeededRandom(seed),
                                    coin_toss_choice=lambda: True, seat_policies=policies, candidate_profile=profile)

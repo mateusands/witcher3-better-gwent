@@ -20,6 +20,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import report  # noqa: E402
+sys.path.insert(0, str(ROOT / 'sim'))
+from gwentsim.tuning import DEFAULTS as DEFAULT_WEIGHTS  # noqa: E402
 
 FONT = "system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 THEMES = {
@@ -51,7 +53,7 @@ def collect(dbs):
         db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
         for kind, params, payload, result in db.execute(
                 "SELECT j.kind, j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
-                "WHERE t.status='done'"):
+                "WHERE t.status='done' AND j.status != 'superseded'"):
             params, p, r = json.loads(params), json.loads(payload), json.loads(result)
             if kind in report.HUNTS:
                 for f in r.get('findings', []):
@@ -477,12 +479,15 @@ def ab_rows(dbs):
                 "SELECT j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
                 "WHERE t.status='done' AND j.kind='benchmark' AND j.status != 'superseded'"):
             params, p, r = json.loads(params), json.loads(payload), json.loads(result)
-            if p.get('source') != 'player' or params.get('weights'):
+            if p.get('source') != 'player':
                 continue
             policy, _, variant = params.get('policy', 'response-v8').partition(':')
             decks, _, flags = (params.get('npc_decks') or 'original').partition(':')
             s = r['seats'][0]
-            label = '+'.join(f for f in (variant, flags) if f)   # policy and deck-mode switches
+            weights = params.get('weights')                       # NPC weights from a tuning run
+            # Shipped weights passed through the same path: a control for the weights plumbing.
+            tuned = '' if not weights else 'weights-control' if weights == DEFAULT_WEIGHTS else 'tuned'
+            label = '+'.join(f for f in (variant, flags, tuned) if f)   # policy and deck-mode switches
             groups[label, params['profile'], decks][p['pair'], p['seed'], p['swap']] = score(s['won'], s['winner'])
     out = {}
     for (label, level, decks), runs in groups.items():
@@ -606,6 +611,19 @@ def main():
                   'overkill-trim': ('NPC wins a round with the cheapest play', 'no overkill'),
                   'agile-dry+weather-guard+medic-hold+r1-chase+overkill-trim': ('All round-8 NPC changes together', ''),
                   'ability-value': ('NPC decks value card abilities', 'Horn units, muster groups, row Scorch, Morph'),
+                  'careless': ('The four careful-play rules switched off', 'agile-dry, weather-guard, medic-hold, overkill-trim'),
+                  'tuned': ('NPC with SPSA-tuned weights', 'all seven utility weights'),
+                  'weights-control': ('Shipped weights via the tuning path', 'control: should read zero'),
+                  'spyval': ('Adaptive counts a spy by its draw', 'not by the power it gives away'),
+                  'spymirror': ("NPC spies limited to the player's", 'at least one'),
+                  'spymirror1': ("NPC spies one fewer than the player's", 'at least one'),
+                  'spymirror+decoymirror': ('Spy mirror and one Decoy per player spy', ''),
+                  'spymirror+decoyhalf': ('Spy mirror and Decoys for half the player spies', 'rounded up'),
+                  'decoy3': ('Three Decoys against spy factions', 'Nilfgaard and Northern Realms players'),
+                  'witcherone': ('One of Geralt and Ciri in the hero fallback', 'Adaptive'),
+                  'spy-first': ('NPC plays its cheapest spy first', 'outside the final round'),
+                  'draw15': ('NPC values cards to draw 1.5x', 'spies'),
+                  'draw20': ('NPC values cards to draw 2x', 'spies'),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
         def tested(label):

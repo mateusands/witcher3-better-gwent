@@ -54,7 +54,7 @@ CARELESS = {'careless'}                                        # the Lab switch:
 
 def test_shipped_rules_on_by_default_and_lab_switches_off():
     assert v8.SHIPPED_RULES == {'agile-dry', 'weather-guard', 'medic-hold', 'overkill-trim'}
-    assert v8.NPC_SWITCHES == {'r1-chase'}
+    assert v8.NPC_SWITCHES == {'r1-chase', 'spy-first'}
     assert not v8.VARIANT and not v8.SHIPPED_RULES & v8.NPC_SWITCHES
     assert all(v8.rule(name, 0) for name in v8.SHIPPED_RULES)
     assert not any(v8.rule(name, 0) for name in v8.NPC_SWITCHES)

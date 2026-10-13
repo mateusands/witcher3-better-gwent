@@ -183,17 +183,47 @@ def _tune_iteration(params):
                         for n in names}
     pool = rng.sample(range(len(setup()['pairs'])), params['pool'])
     player = rng.sample(range(len(player_setup())), params['player'])
+    policy = params.get('policy', 'response-v8')   # scene switches, as in the validating benchmarks
     out = []
     for sign in (1, -1):
         for pair in pool:
             out.append(dict(kind='tune-eval', source='pool', pair=pair, seed=params['seed_base'] + k * 1000 + pair,
-                            swap=bool(pair % 2), profile=params['profile'], policy='response-v8',
+                            swap=bool(pair % 2), profile=params['profile'], policy=policy,
                             params=thetas[sign], iteration=k, sign=sign))
         for pair in player:
             out.append(dict(kind='tune-eval', source='player', pair=pair, seed=params['seed_base'] + k * 1000 + pair,
-                            swap=bool(pair % 2), profile=params['profile'], policy='response-v8',
-                            params=thetas[sign], iteration=k, sign=sign))
+                            swap=bool(pair % 2), profile=params['profile'], policy=policy,
+                            params=thetas[sign], iteration=k, sign=sign,
+                            **({'npc_decks': params['npc_decks']} if params.get('npc_decks') else {})))
     return out
+
+
+def job_params(kind, body):
+    """Job parameters from a /api/job request body."""
+    params = dict(source=body['source'], policy=body.get('policy', 'response-v8'),
+                  profile=body.get('profile', 'hard'), seeds=[int(s) for s in body['seeds']],
+                  continuous=bool(body.get('continuous')))
+    if body.get('player_filter'):
+        params['player_filter'] = body['player_filter']
+    if body.get('npc_decks'):
+        params['npc_decks'] = body['npc_decks']
+    if body.get('game_seat'):
+        params['game_seat'] = True
+    if body.get('weights'):
+        params['weights'] = {k: float(v) for k, v in body['weights'].items()}
+    if body['source'] in ('pool', 'player'):
+        params['pairs'] = int(body['pairs']) if body.get('pairs') else None
+    else:
+        params['records'] = body['records']
+    if kind == 'deck-tune':
+        params = dict(profile=body.get('profile', 'hard'), policy=body.get('policy', 'response-v8'),
+                      npc_decks=body.get('npc_decks', 'balanced'), genome=body.get('genome', {}),
+                      **{k: body[k] for k in DECK_TUNE_DEFAULTS if k in body})
+    if kind == 'tune':
+        params = dict(profile=body.get('profile', 'hard'), policy=body.get('policy', 'response-v8'),
+                      **({'npc_decks': body['npc_decks']} if body.get('npc_decks') else {}),
+                      **{k: body[k] for k in TUNE_DEFAULTS if k in body})
+    return params
 
 
 def tune_payloads(params):
@@ -220,12 +250,18 @@ def tune_step(db):
             k = params['iteration']
             if params.get('finished') or one(db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status IN ('pending','running')", (jid,))[0]:
                 db.execute('COMMIT'); continue
-            f = {1: [0.0, 0], -1: [0.0, 0]}
+            # Plus and minus are compared on the same matchups: one that failed on either side
+            # counts on neither, so a failure never biases the gradient.
+            done = {1: {}, -1: {}}
             for payload, result in db.execute("SELECT payload, result FROM tasks WHERE job_id=? AND status='done'", (jid,)).fetchall():
                 p = json.loads(payload)
                 if p['iteration'] == k:
                     r = json.loads(result)
-                    f[p['sign']][0] += r['score']; f[p['sign']][1] += r['games']
+                    done[p['sign']][p['source'], p['pair']] = (r['score'], r['games'])
+            f = {1: [0.0, 0], -1: [0.0, 0]}
+            for key in set(done[1]) & set(done[-1]):
+                for sign in (1, -1):
+                    f[sign][0] += done[sign][key][0]; f[sign][1] += done[sign][key][1]
             if not f[1][1] or not f[-1][1]:
                 db.execute('COMMIT'); continue
             fp, fm = f[1][0] / f[1][1], f[-1][0] / f[-1][1]
@@ -251,8 +287,131 @@ def tune_step(db):
     return stepped
 
 
+# ---- Deck tuner (13 October 2026) ---------------------------------------------
+# A small self-improving search for NPC decks: an incumbent genome (sim/gwentsim/npc_balance.genome), one
+# mutation at a time, candidate and incumbent played on the same matchups and luck, the candidate
+# kept only when the paired z of NPC win share reaches accept_z. Fair play: the genome reacts to
+# the player's deck faction and strength only (see npc_balance.genome).
+DECK_TUNE_DEFAULTS = dict(tasks=600, iterations=1000, seed_base=20000, accept_z=2.0)
+PLAYER_FACTIONS = (1, 2, 3, 4, 5)        # Monsters (No Man's Land), Nilfgaard, Northern Realms, Scoia'tael, Skellige
+WEATHERS = (0, 23, 24, 25)               # none, Biting Frost (melee), Impenetrable Fog (ranged), Torrential Rain (siege)
+
+
+def _mutation(genome, k, seed_base):
+    """(new genome, player faction or None): one knob changed, within the genome limits."""
+    import copy
+    import random
+    rng = random.Random('deck/%d/%d' % (seed_base, k))
+    new = copy.deepcopy(genome or {})
+    knob = rng.choice(('decoys', 'decoys', 'weather', 'weather', 'heroes', 'spyval'))
+    if knob in ('decoys', 'weather'):
+        faction = rng.choice(PLAYER_FACTIONS)
+        values = (0, 1, 2) if knob == 'decoys' else WEATHERS
+        table = new.setdefault(knob, {})
+        current = table.get(str(faction), 0)
+        table[str(faction)] = rng.choice([v for v in values if v != current])
+        return new, faction
+    if knob == 'heroes':
+        new['heroes'] = 'default' if new.get('heroes') == 'stepped' else 'stepped'
+    else:
+        new['spyval'] = not new.get('spyval')
+    return new, None
+
+
+def mutate(genome, k, seed_base):
+    return _mutation(genome, k, seed_base)[0]
+
+
+def deck_tune_payloads(params):
+    for key, value in DECK_TUNE_DEFAULTS.items():
+        params.setdefault(key, value)
+    params.setdefault('genome', {})
+    params.setdefault('iteration', 0)
+    params.setdefault('history', [])
+    return _deck_tune_iteration(params)
+
+
+def _deck_tune_iteration(params):
+    """Paired tasks of iteration k: a faction knob is measured on that player faction's matchups."""
+    import random
+    sys.path.insert(0, str(SIM))
+    from evaluate_pool import player_setup, setup
+    from gwentsim.npc_balance import deck_faction
+    k = params['iteration']
+    candidate, faction = _mutation(params['genome'], k, params['seed_base'])
+    params['candidate'], params['mutation_faction'] = candidate, faction
+    templates = setup()['match'].templates
+    pool = player_setup()
+    eligible = [n for n, (_, player) in enumerate(pool)
+                if faction is None or deck_faction(templates, player.deck.card_indices) == faction] or list(range(len(pool)))
+    rng = random.Random('deck-pairs/%d/%d' % (params['seed_base'], k))
+    rng.shuffle(eligible)
+    out = []
+    for n in range(params['tasks']):
+        out.append(dict(kind='deck-eval', source='player', pair=eligible[n % len(eligible)],
+                        seed=params['seed_base'] + k * 1000 + n // len(eligible), swap=False,
+                        policy=params.get('policy', 'response-v8'), profile=params.get('profile', 'hard'),
+                        npc_decks=params.get('npc_decks', 'balanced'), candidate=candidate,
+                        incumbent=params['genome'], iteration=k))
+    return out
+
+
+def deck_eval(payload):
+    """NPC score with the candidate genome and with the incumbent, on the same matchup and luck."""
+    from gwentsim import npc_balance as nb
+    from evaluate_pool import run_player
+    profile = PROFILES.index(payload['profile'])
+    out = {}
+    for side in ('candidate', 'incumbent'):
+        with nb.genome(payload[side]):
+            r = run_player(payload['pair'], payload['seed'], payload['swap'], 'response-v8', profile,
+                           payload.get('npc_decks'))
+        out[side] = 1.0 if r['winner'] == r['npcSeat'] else 0.5 if r['winner'] not in (0, 1) else 0.0
+    return out
+
+
+def deck_tune_step(db):
+    """When an iteration's tasks are finished, keep or reject its candidate and queue the next."""
+    stepped = []
+    for jid, params in db.execute("SELECT id, params FROM jobs WHERE kind='deck-tune' AND status='active'").fetchall():
+        db.execute('BEGIN IMMEDIATE')
+        try:
+            params = json.loads(params)
+            k = params['iteration']
+            if params.get('finished') or one(db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status IN ('pending','running')", (jid,))[0]:
+                db.execute('COMMIT'); continue
+            diffs = []
+            for payload, result in db.execute("SELECT payload, result FROM tasks WHERE job_id=? AND status='done'", (jid,)).fetchall():
+                if json.loads(payload)['iteration'] == k:
+                    r = json.loads(result)
+                    diffs.append(r['candidate'] - r['incumbent'])
+            if not diffs:
+                db.execute('COMMIT'); continue
+            n = len(diffs); mean = sum(diffs) / n
+            sd = (sum((d - mean) ** 2 for d in diffs) / max(1, n - 1)) ** 0.5
+            z = mean / (sd / n ** 0.5) if sd else (float('inf') if mean > 0 else 0.0)
+            accepted = z >= params['accept_z']
+            params['history'].append(dict(iteration=k, candidate=params['candidate'], faction=params.get('mutation_faction'),
+                                          mean=mean, z=z if z != float('inf') else 99.0, n=n, accepted=accepted))
+            if accepted:
+                params['genome'] = params['candidate']
+            params['iteration'] = k + 1
+            if params['iteration'] >= params['iterations']:
+                params['finished'] = True
+            else:
+                start = one(db, 'SELECT COALESCE(MAX(idx)+1, 0) FROM tasks WHERE job_id=?', (jid,))[0]
+                add_tasks(db, jid, _deck_tune_iteration(params), start)
+            db.execute('UPDATE jobs SET params=? WHERE id=?', (json.dumps(params), jid))
+            db.execute('COMMIT')
+            stepped.append((jid, k, mean, z, accepted))
+        except BaseException:
+            db.execute('ROLLBACK')
+            raise
+    return stepped
+
+
 PAYLOADS = {'benchmark': benchmark_payloads, 'hunt': hunt_payloads, 'deep-hunt': deep_hunt_payloads,
-            'tune': tune_payloads}
+            'tune': tune_payloads, 'deck-tune': deck_tune_payloads}
 HUNTS = ('hunt', 'deep-hunt')
 
 
@@ -316,15 +475,18 @@ def run_payload(payload):
 
     Policy "response-v8:a+b" runs response-v8 with experiment switches a and b (A/B tests)."""
     sys.path.insert(0, str(SIM))
+    # Weights first: _with_weights calls back here with the full policy, so its switches survive.
+    if payload.get('weights') and payload.get('kind') not in ('tune-eval',):
+        return _with_weights(dict(payload))
     policy, _, flags = payload.get('policy', 'response-v8').partition(':')
     import gwentsim.response_v8 as v8
     v8.VARIANT = frozenset(f for f in flags.split('+') if f)
     v8.NPC_SEAT = None   # run_player sets it for player-deck tasks
     payload = dict(payload, policy=policy)
-    if payload.get('weights') and payload.get('kind') not in ('tune-eval',):
-        return _with_weights(payload)
     if payload.get('kind') == 'tune-eval':
         return tune_eval(payload)
+    if payload.get('kind') == 'deck-eval':
+        return deck_eval(payload)
     if payload.get('kind') in HUNTS:
         import blunder_hunter
         report = (blunder_hunter.deep_hunt if payload['kind'] == 'deep-hunt' else blunder_hunter.hunt)(payload)
@@ -388,7 +550,8 @@ def tune_eval(payload):
             from evaluate_pool import player_seats, run_player
             _, npc = player_seats(payload['pair'], payload['swap'])
             tuning.SEAT_PARAMS.clear(); tuning.SEAT_PARAMS[npc] = payload['params']
-            r = run_player(payload['pair'], payload['seed'], payload['swap'], 'response-v8', profile)
+            r = run_player(payload['pair'], payload['seed'], payload['swap'], 'response-v8', profile,
+                           payload.get('npc_decks'))
             score += 1.0 if r['winner'] == npc else 0.5 if r['winner'] not in (0, 1) else 0.0
             games += 1
     finally:
@@ -485,6 +648,9 @@ def job_summary(db, job, max_findings=30):
             durations.append(finished - started)
         if kind == 'tune':
             matches += r['games']
+            continue
+        if kind == 'deck-tune':                 # paired: candidate genome vs incumbent genome
+            cand += r['candidate']; native += r['incumbent']; matches += 2
             continue
         if kind in HUNTS:
             cand += r['score']; matches += 1; losses += r['score'] < 1

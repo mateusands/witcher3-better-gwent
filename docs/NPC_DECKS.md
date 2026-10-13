@@ -14,6 +14,13 @@ Gwent is On.
   to the save. The cards you win from NPCs are unchanged.
 - Turn the option (or the mod) Off and the next match uses the native deck again.
 
+## Fair play
+
+An NPC deck reacts only to what an NPC may know before a match: the strength of the player's
+selected deck (the game's own NPC decks already add cards by it) and the player's faction.
+Never the player's leader or individual cards. During a match the AI sees what both players
+see: the board, the graveyards, both leaders and the number of cards in hand.
+
 ## How a deck is built
 
 Like a seasoned player builds, from the NPC's own faction plus neutral cards:

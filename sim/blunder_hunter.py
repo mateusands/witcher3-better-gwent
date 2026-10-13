@@ -32,6 +32,11 @@ PROFILES = ['easy', 'medium', 'hard', 'expert']
 MAX_ALTERNATIVES = 2
 CONTINUATIONS = 4          # luck continuations per option after the judged decision
 MIN_REGRET = 0.5           # mean result gain (0..1) an alternative needs to count as a finding
+# The pass option. A search result with no action and any other reason makes the controller keep
+# the native AI's move, so a pass is forced with the reason the controller executes as a pass;
+# the policy's own "no action" (native move) stays None and is a different option.
+PASS = 'pass'
+PASS_REASON = 'pass_for_match_resources'
 
 
 class BranchRandom(SeededRandom):
@@ -67,8 +72,10 @@ def card_names():
 
 
 def describe(position, action):
-    if action is None:
+    if action == PASS:
         return 'pass'
+    if action is None:
+        return 'native move'
     card = position.cards.get(action.source)
     name = card_names().get(card.template, 'template %d' % card.template) if card else str(action.source)
     text = name
@@ -116,7 +123,8 @@ def play(spec, override=None, branch=None):
         index = len(log)
         if override is not None and override[0] == index:
             forced = override[1]
-            result = replace(result, action=forced, reason='forced_alternative')
+            result = (replace(result, action=None, value=result.pass_value, reason=PASS_REASON) if forced == PASS
+                      else replace(result, action=forced, reason='forced_alternative'))
         if branch is not None and branch[0] == index:
             source.branch(*branch)
         log.append(dict(position=position, context=context, result=result))
@@ -127,11 +135,14 @@ def play(spec, override=None, branch=None):
     try:
         if spec['source'] == 'player':
             # Player side played by response-v8 too (strong stand-in for a human); only the
-            # NPC seat's decisions are logged and judged (see search() above).
-            _, flow = run_match(match.templates.values(), decks, match.card_values, source,
-                                coin_toss_choice=lambda: True, candidate_profile=profile,
-                                seat_policies=tuple(spec.get('policy', 'response-v8') if p == seat else 'response-v8'
-                                                    for p in (0, 1)))
+            # NPC seat's decisions are logged and judged (see search() above). Same scene as the
+            # benchmarks: NPC switches on the NPC seat, opening exchanges from the policy switches.
+            from evaluate_pool import scene
+            with scene(seat, spec['seed'], spec.get('policy', 'response-v8')):
+                _, flow = run_match(match.templates.values(), decks, match.card_values, source,
+                                    coin_toss_choice=lambda: True, candidate_profile=profile,
+                                    seat_policies=tuple(spec.get('policy', 'response-v8') if p == seat else 'response-v8'
+                                                        for p in (0, 1)))
         else:
             _, flow = run_match(match.templates.values(), decks, match.card_values, source,
                                 coin_toss_choice=lambda: True, candidate_player=seat,
@@ -148,7 +159,7 @@ def outcome(winner, seat):
 
 def alternatives(entry):
     result = entry['result']
-    chosen = result.action
+    chosen = chosen_option(result)
     out = []
     for alt in result.alternatives or ():
         action = alternative_action(alt['action'])
@@ -156,9 +167,18 @@ def alternatives(entry):
             out.append(action)
         if len(out) >= MAX_ALTERNATIVES:
             break
-    if chosen is not None:
-        out.append(None)  # passing instead
+    if not chosen_pass(result):
+        out.append(PASS)  # passing instead
     return out
+
+
+def chosen_pass(result):
+    return result.action is None and result.reason in (PASS_REASON, 'proven_no_supported_overtake')
+
+
+def chosen_option(result):
+    """The chosen move as an option: PASS when the policy passed, None when it kept the native move."""
+    return PASS if chosen_pass(result) else result.action
 
 
 def option_value(spec, index, action, need=None):
@@ -191,7 +211,7 @@ def hunt(spec):
         if not options:
             continue
         try:
-            chosen_value, chosen_rounds, plays = option_value(spec, index, result.action)
+            chosen_value, chosen_rounds, plays = option_value(spec, index, chosen_option(result))
         except Exception as exc:
             report.setdefault('skipped', []).append('%s: %s' % (type(exc).__name__, exc)); continue
         report['replays'] += plays
@@ -214,7 +234,7 @@ def hunt(spec):
                 ownScore=scores[seat], opponentScore=scores[1 - seat],
                 ownHand=len(position.hand), opponentHand=context.opponent_hand_count,
                 opponentPassed=context.opponent_passed, ownLosses=context.own_losses,
-                chosen=describe(position, result.action), chosenReason=result.reason, chosenValue=chosen_value,
+                chosen=describe(position, chosen_option(result)), chosenReason=result.reason, chosenValue=chosen_value,
                 better=describe(position, best[1]), betterValue=best[0], regret=best[0] - chosen_value,
                 originalRounds=base['rounds']))
     return report
@@ -240,7 +260,7 @@ def all_options(entry):
         key = repr(action)
         if key not in seen:
             seen.add(key); out.append(action)
-    add(result.action)
+    add(chosen_option(result))
     try:
         for action in position.actions():
             add(action)
@@ -248,7 +268,7 @@ def all_options(entry):
         pass
     for alt in result.alternatives or ():
         add(alternative_action(alt['action']))
-    add(None)
+    add(PASS)
     return out
 
 
@@ -311,7 +331,7 @@ def deep_hunt(spec):
         if len(options) < 2:
             continue
         try:
-            found = deep_decision(spec, index, result.action, options, report)
+            found = deep_decision(spec, index, chosen_option(result), options, report)
         except Exception as exc:
             report.setdefault('skipped', []).append('%s: %s' % (type(exc).__name__, exc)); continue
         if found:
@@ -321,7 +341,7 @@ def deep_hunt(spec):
                 ownScore=scores[seat], opponentScore=scores[1 - seat],
                 ownHand=len(position.hand), opponentHand=context.opponent_hand_count,
                 opponentPassed=context.opponent_passed, ownLosses=context.own_losses,
-                chosen=describe(position, result.action), chosenReason=result.reason,
+                chosen=describe(position, chosen_option(result)), chosenReason=result.reason,
                 chosenValue=found['chosenValue'], better=describe(position, found['best']),
                 betterValue=found['betterValue'], regret=found['regret'],
                 pairedBetter=found['pairedBetter'], pairedWorse=found['pairedWorse'],

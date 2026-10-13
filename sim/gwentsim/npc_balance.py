@@ -68,12 +68,67 @@ STRENGTH_BONUS = {C.CardEffect_Melee: 2, C.CardEffect_Ranged: 2, C.CardEffect_Si
                   C.CardEffect_Nurse: 4, C.CardEffect_Draw2: 6, C.CardEffect_SameTypeMorale: 4}
 
 
+_SPY_VALUE = False   # Lab flag "spyval": a spy counts by its draw, not its power (see spy_valued)
+
+
+@contextmanager
+def spy_valued(on=True):
+    """Experiment "spyval": while active, deck_strength counts a spy by its draw bonus only; its
+    printed power goes to the opponent, so it is not the owner's strength."""
+    global _SPY_VALUE
+    saved, _SPY_VALUE = _SPY_VALUE, on
+    try:
+        yield
+    finally:
+        _SPY_VALUE = saved
+
+
+GENOME = {}          # deck tuner knobs for the current build (Lab); see genome()
+GENOME_MAX_DECOYS = 2
+
+
+def _normal_genome(g):
+    """JSON gives string faction keys; the builder uses faction ids."""
+    out = dict(g or {})
+    for key in ('decoys', 'weather', 'scale'):
+        if key in out:
+            out[key] = {int(k): v for k, v in out[key].items()}
+    return out
+
+
+@contextmanager
+def genome(g):
+    """Deck tuner knobs while a deck is built. Fair play: they react only to the player's deck
+    faction and strength (what the game's own NPC decks follow), never to the player's leader
+    or cards. Keys: decoys {player faction: 0..2}, weather {player faction: weather effect},
+    heroes 'stepped', spyval True, scale {NPC faction: Adaptive target multiplier}."""
+    global GENOME
+    saved, GENOME = GENOME, _normal_genome(g)
+    try:
+        yield
+    finally:
+        GENOME = saved
+
+
+def with_weather(templates, cards, effect, names):
+    """One weather card of `effect` (its basic card) added, within the 8 special cards."""
+    cards = list(cards)
+    if any(templates[i].get_first_effect() == effect for i in cards):
+        return cards
+    if sum(not templates[i].is_type(C.CardType_Creature) for i in cards) >= 8:
+        return cards
+    card = min((t.index for t in templates.values() if t.index < 1000 and t.faction == C.FactionId_Neutral
+                and t.is_type(C.CardType_Weather) and t.get_first_effect() == effect
+                and names.get(t.index) != 'skellige_storm'), default=None)
+    return cards + [card] if card is not None else cards
+
+
 def deck_strength(templates, cards):
     """The game's own player-deck strength measure (unit power plus fixed ability bonuses)."""
     total = 0
     for i in cards:
         t = templates[i]
-        if t.is_type(C.CardType_Creature):
+        if t.is_type(C.CardType_Creature) and not (_SPY_VALUE and is_spy(t)):
             total += t.power
         total += STRENGTH_BONUS.get(t.get_first_effect(), 0)
     return total
@@ -328,7 +383,8 @@ def shaped(mode, templates=None, deck=None, names=None, variant=0):
     shape = dict(MODE_SHAPE[mode], **_OVERRIDE)
     saved = KIT_CAP, STRONG_UNITS, EXCLUDED, _ABILITY_BONUS, _ABILITY_VALUE
     heroes = hero_exclusions(templates, deck, names, variant % HERO_VARIANTS) if shape['heroes'] else frozenset()
-    KIT_CAP, STRONG_UNITS, EXCLUDED = shape['kit'], shape['units'], EXCLUDED | shape['excluded'] | heroes
+    KIT_CAP, STRONG_UNITS, EXCLUDED = shape['kit'], shape['units'], EXCLUDED | shape['excluded'] | heroes \
+        | shape.get('witchers', frozenset())
     if shape.get('ability_value'):
         leader = deck.selected_king_index
         kit, _ = special_kit(templates, templates[leader].faction, leader, [], names)
@@ -385,18 +441,29 @@ def balanced_deck(templates, deck, names, target, steps=None, variant=0):
 def hero_fallback_steps(templates, deck, names, variant):
     """Adaptive steps with faction heroes, then the every-hero steps stronger than its last one."""
     global _OVERRIDE
-    own, every = [], []
+    own, one, every = [], [], []
     with shaped('balanced', templates, deck, names, variant):
         _balanced_deck(templates, deck, names, float('inf'), own)
     saved = _OVERRIDE
-    _OVERRIDE = dict(_OVERRIDE, heroes=False)
+    stepped = _OVERRIDE.get('stepped')
     try:
+        if stepped:
+            # Genome "heroes: stepped": one of Geralt and Ciri first (alternating per variant).
+            _OVERRIDE = dict(saved, heroes=False, witchers=HERO_WITCHERS[variant % 2])
+            with shaped('balanced', templates, deck, names, variant):
+                _balanced_deck(templates, deck, names, float('inf'), one)
+        _OVERRIDE = dict(saved, heroes=False)
+        if saved.get('witcherone'):
+            # Experiment "witcherone": the every-hero fallback still holds one of Geralt and Ciri.
+            _OVERRIDE['witchers'] = HERO_WITCHERS[variant % 2]
         with shaped('balanced', templates, deck, names, variant):
             _balanced_deck(templates, deck, names, float('inf'), every)
     finally:
         _OVERRIDE = saved
     top = own[-1][0]
-    return own + [step for step in every if step[0] > top]
+    steps = own + [step for step in one if step[0] > top]
+    top = steps[-1][0]
+    return steps + [step for step in every if step[0] > top]
 
 
 def _balanced_deck(templates, deck, names, target, steps=None):
@@ -522,13 +589,28 @@ def deck_faction(templates, cards):
     return max(counts, key=lambda f: (counts[f], -f)) if counts else C.FactionId_Neutral
 
 
-def with_decoys(templates, cards, count):
-    """Experiment "decoy3": at least `count` Decoys, within the 8 special cards (a second Horn
-    makes room first)."""
+def with_decoys(templates, cards, count, exact=False):
+    """At least `count` Decoys (exact: exactly `count`), within the 8 special cards (a second Horn
+    makes room first). The Decoy comes from the catalog when the deck holds none (lean kits)."""
     cards = list(cards)
-    decoy = next((i for i in cards if templates[i].get_first_effect() == C.CardEffect_UnsummonDummy), None)
+    is_decoy = lambda i: templates[i].get_first_effect() == C.CardEffect_UnsummonDummy
+    decoy = next((i for i in cards if is_decoy(i)), None)
+    if decoy is None:
+        decoy = min((t.index for t in templates.values() if t.index < 1000 and t.faction == C.FactionId_Neutral
+                     and not t.is_type(C.CardType_Creature) and is_decoy(t.index)), default=None)
     if decoy is None:
         return cards
+    while exact and sum(map(is_decoy, cards)) > count:
+        cards.remove(next(i for i in cards if is_decoy(i)))
+    while sum(map(is_decoy, cards)) < count:
+        specials = [i for i in cards if not templates[i].is_type(C.CardType_Creature)]
+        if len(specials) >= 8:
+            horns = [i for i in specials if templates[i].get_first_effect() == C.CardEffect_Horn]
+            if len(horns) < 2:
+                break
+            cards.remove(horns[-1])
+        cards.append(decoy)
+    return cards
     while sum(templates[i].get_first_effect() == C.CardEffect_UnsummonDummy for i in cards) < count:
         specials = [i for i in cards if not templates[i].is_type(C.CardType_Creature)]
         if len(specials) >= 8:
@@ -600,19 +682,44 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2, va
         override['heroes'] = False
     if 'ability-value' in switches:           # units valued by their abilities, not printed power only
         override['ability_value'] = True
+    if 'witcherone' in switches:              # one of Geralt and Ciri, also in the every-hero fallback
+        override['witcherone'] = True
+    # Spy engine (13 October 2026): the player's spies set the NPC's spy limit and Decoys.
+    player_spies = sum(templates[i].is_type(C.CardType_Creature) and is_spy(templates[i]) for i in player_cards or [])
+    if 'spymirror' in switches:
+        MAX_SPIES = min(4, max(1, player_spies))
+    if 'spymirror1' in switches:
+        MAX_SPIES = min(4, max(1, player_spies - 1))
+    if GENOME.get('heroes') == 'stepped':
+        override['stepped'] = True
     _OVERRIDE = override
+    spyval = spy_valued('spyval' in switches or bool(GENOME.get('spyval')))
+    spyval.__enter__()
     try:
         if mode == 'strong':
             cards = strong_deck(templates, deck, names, variant)
         elif mode in ('balanced', 'adaptive'):   # "Adaptive" in the menu and docs
             target = deck_strength(templates, player_cards or []) * BALANCED_TARGET[difficulty]
+            target *= GENOME.get('scale', {}).get(templates[deck.selected_king_index].faction, 1.0)
             cards = balanced_deck(templates, deck, names, target, variant=variant)
         else:
             raise ValueError('unknown NPC deck mode %s' % mode)
     finally:
+        spyval.__exit__(None, None, None)
         MAX_SPIES, _OVERRIDE = saved
-    if 'decoy3' in flags.split('+') and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
+    if 'decoy3' in switches and deck_faction(templates, player_cards or []) in SPY_FACTIONS:
         cards = with_decoys(templates, cards, 3)
+    if GENOME.get('decoys') or GENOME.get('weather'):
+        player_faction = deck_faction(templates, player_cards or [])
+        if player_faction in GENOME.get('decoys', {}):
+            count = min(GENOME_MAX_DECOYS, max(0, int(GENOME['decoys'][player_faction])))
+            cards = with_decoys(templates, cards, count, exact=True)
+        if GENOME.get('weather', {}).get(player_faction):
+            cards = with_weather(templates, cards, int(GENOME['weather'][player_faction]), names)
+    if 'decoymirror' in switches:
+        cards = with_decoys(templates, cards, player_spies, exact=True)
+    if 'decoyhalf' in switches:
+        cards = with_decoys(templates, cards, -(-player_spies // 2), exact=True)
     # The chosen deck replaces the native extra-card mechanism for this match.
     return replace(deck, card_indices=list(cards), dynamic_card_requirements=[], dynamic_cards=[])
 

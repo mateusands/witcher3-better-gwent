@@ -340,7 +340,7 @@ def wasted_move(position, action):
 # for that seat, the behaviour before them. Mirrored in AS3 by GwaiV8Policy.rules.
 SHIPPED_RULES = frozenset({'agile-dry', 'weather-guard', 'medic-hold', 'overkill-trim'})
 # Lab experiment switches, off by default (not in the game).
-NPC_SWITCHES = frozenset({'r1-chase'})
+NPC_SWITCHES = frozenset({'r1-chase', 'spy-first'})
 # Moves of earlier fixes that the switches leave alone (only agile-dry may still move their row).
 PROTECTED = frozenset({'proactive_decoy_spy', 'decoy_spy_retarget', 'medic_spy_retarget', 'proactive_medic_spy'})
 
@@ -351,6 +351,42 @@ def rule(name, seat):
     if name in SHIPPED_RULES:
         return not flag('careless', seat)
     return flag(name, seat)
+
+
+# Lab weight switches (NPC only): utility weights for the NPC's searches.
+WEIGHT_SWITCHES = {'reserve35': {'reserve_weight': 0.35}, 'draw15': {'draw_weight': 1.5},
+                   'draw20': {'draw_weight': 2.0}}
+
+
+def weight_switches(seat):
+    """Utility weights the active Lab switches set for this seat (the NPC's only)."""
+    out = {}
+    for name, weights in WEIGHT_SWITCHES.items():
+        if flag(name, seat):
+            out.update(weights)
+    return out
+
+
+def spy_first(position, context, result):
+    """spy-first: outside the final round, against an opponent still playing, a spy in hand goes
+    before a non-spy card: the cheapest spy (least power given away). None when not applicable."""
+    final = context.round_index >= 2 or (context.own_losses and context.opponent_losses)
+    if final or context.opponent_passed:
+        return None
+    chosen = in_hand_card(position, result.action)
+    if chosen is not None and chosen.is_type(C.CardType_Spy):
+        return None
+    spies = {k for k in position.hand if position.cards[k].is_type(C.CardType_Spy) and position.supported(position.cards[k])}
+    if not spies:
+        return None
+    try:
+        plays = [a for a in position.actions() if a.source in spies and not a.chain]
+    except (UnsupportedPosition, ValueError):
+        return None
+    if not plays:
+        return None
+    play = min(plays, key=lambda a: (position.cards[a.source].power, a.source, a.slot))
+    return replace(result, action=play, reason='spy_first')
 
 
 def score_gain(position, action):
@@ -535,6 +571,11 @@ def npc_switches(position, context, result, again=False):
         if rule('r1-chase', seat) and not again and hopeless_chase(position, context):
             return replace(result, action=None, value=result.pass_value, reason='pass_for_match_resources',
                            revision='response-v8+r1-chase')
+        # spy-first: a spy before other cards while later rounds remain.
+        if rule('spy-first', seat) and not again:
+            spy = spy_first(position, context, result)
+            if spy is not None:
+                return spy
         # weather-guard: no weather that gains nothing now, no unit into our own weather.
         if rule('weather-guard', seat) and useless_weather(position, context, action):
             found = replacement(position, context, result)

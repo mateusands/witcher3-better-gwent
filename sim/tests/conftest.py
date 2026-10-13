@@ -14,3 +14,15 @@ def skellige_reference(request, monkeypatch):
         original = request.module.capture
         monkeypatch.setattr(request.module, 'capture', lambda *a, **k: SkelligePosition(**original(*a, **k).__dict__))
     yield
+
+
+@pytest.fixture(autouse=True)
+def lab_globals():
+    """Lab tasks set module-wide switches (response_v8.VARIANT and NPC_SEAT, the deck genome, the
+    tuning weights) for the task they run; a test never leaves them to the next test."""
+    import gwentsim.response_v8 as v8
+    from gwentsim import npc_balance, tuning
+    saved = v8.VARIANT, v8.NPC_SEAT, npc_balance.GENOME, dict(tuning.SEAT_PARAMS)
+    yield
+    v8.VARIANT, v8.NPC_SEAT, npc_balance.GENOME = saved[:3]
+    tuning.SEAT_PARAMS.clear(); tuning.SEAT_PARAMS.update(saved[3]); tuning.reset()

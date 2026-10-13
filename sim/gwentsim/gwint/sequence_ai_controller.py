@@ -127,9 +127,10 @@ class ResponseV8AIPlayerController(SequenceAIPlayerController):
         from .. import tuning
         tuning.use_seat(self.playerID)
         from .. import response_v8
-        if response_v8.flag('reserve35',self.playerID):
-            # Experiment: value kept resources more, so a led round is passed sooner.
-            tuning.ACTIVE=dict(tuning.ACTIVE,reserve_weight=0.35)
+        weights=response_v8.weight_switches(self.playerID)
+        if weights:
+            # Lab weight switches (reserve35, draw15, draw20): the NPC's utility weights only.
+            tuning.ACTIVE=dict(tuning.ACTIVE,**weights)
         try:
             return choose_response_v8(position,context,self.search_profile)
         finally:

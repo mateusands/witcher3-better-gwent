@@ -72,6 +72,32 @@ only when the gain is proven (z of 2 or more) and nothing gets worse.
   <img src="img/ab-light.svg" alt="A/B tests from the NPC deck battery: the evaluated NPC mulligan is proven on Adaptive and Strong decks, also when the player exchanges too; weather that changes nothing and 3 Decoys are not proven" width="880">
 </picture>
 
+### Tests, 13 October 2026
+
+The four careful-play rules (agile units out of the frost, no weather that gains nothing, the
+Medic waits for a target, the cheapest winning play) do not weaken the NPC; the SPSA weights
+were not kept; the spy engine experiments came from the Novigrad tournament (in-game matches
+g158-g161) and the owner's own Northern Realms spy deck. Spies are worth a lot: limiting the
+NPC's spies to the player's makes the NPC clearly weaker everywhere, so that mirror was dropped.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/ab-spy-dark.svg">
+  <img src="img/ab-spy-light.svg" alt="A/B tests of 13 October 2026: the careful-play rules are neutral; tuned weights not kept; spy mirror variants and one witcher in the fallback make the NPC weaker; spy counting, spy-first and draw weights not proven yet" width="880">
+</picture>
+
+### Automatic deck tuner
+
+A small self-improving search for NPC decks, running around the clock on a cloud server (`lab/core.py`,
+job kind `deck-tune`). The deck builder has knobs (a genome): Decoys (0 to 2) and a weather card
+per player faction, how the Adaptive hero fallback adds Geralt and Ciri, how spies count, and
+an Adaptive target per NPC faction. The tuner changes one knob, plays the new genome and the
+current one on the same matchups, luck and opening exchanges, and keeps the change only when it
+is proven better (paired z of 2 or more). Then it tries the next change.
+
+Fair play: the genome reacts only to what an NPC may know before a match, the player's deck
+faction and deck strength (the game's own NPC decks already follow the strength). Never the
+player's leader or cards.
+
 ## 4. In-game validation
 
 I test every build in real matches with the mod installed; each match is recorded and
@@ -99,3 +125,9 @@ charts come from `python3 lab/dashboard.py <lab databases>`.
   my PC, a home server or rented cloud servers (16 ARM cores, and 32 x86 cores for the NPC
   deck battery; ARM results are identical to x86).
 - Every result is deterministic: the same task always gives the same result.
+- Since 13 October 2026 a cloud server runs the Lab around the clock (12 cores): continuous
+  A/B tests, the deep blunder hunt on my own recorded decks, SPSA tuning and the deck tuner.
+  Short batteries go to rented 32-core servers, split across several when a run is long.
+- The Lab's own code is tested like the AI: the weights path, the hunter's pass option, the
+  scene of hunts and tuning, the task split across servers, the queue release and the
+  database pull each have a test that failed before its fix.
