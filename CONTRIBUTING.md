@@ -19,6 +19,20 @@ explains what a change needs before it can be kept. Local setup, builds and the 
   separate, optional modules; see the [Roadmap](docs/ROADMAP.md).
 - **Fair play.** The AI only uses what a player could see; it never reads your hand or deck order.
 
+## AI-assisted contributions
+
+AI tools are allowed; hiding their use is not. As in other open emulation and modding projects
+(shadPS4, RPCS3), every contribution says whether AI helped:
+
+- **Commits:** add the trailer `AI-assisted: yes` (or `AI-assisted: no`) at the end of the message.
+- **Pull requests and issues:** start the description with **AI-assisted: yes** or **AI-assisted: no**,
+  and, when yes, say in one line what the AI did (for example "wrote the first draft of the
+  parser; I reviewed and tested it").
+- **You are responsible** for every line you submit, AI-written or not: you understand it, it
+  follows the rules above and below, and its tests and Lab measurements are yours to answer for.
+- Undisclosed AI use, or AI-generated changes submitted without being reviewed and tested by the
+  contributor, are closed without review.
+
 ## Changing the AI or the NPC decks
 
 1. **Python first.** The simulator in `sim/gwentsim` is the reference. Make the change there,
@@ -45,6 +59,7 @@ explains what a change needs before it can be kept. Local setup, builds and the 
 - Docs updated where the behaviour changed (README features, INSTALL, NPC_DECKS).
 - Commits are small and say what changed and why, in the present tense
   ("Adaptive: every hero allowed when faction heroes cannot reach the target").
+- The commits and the pull request description carry the AI-assisted line (see above).
 
 ## Reporting a problem
 
