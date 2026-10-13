@@ -12,138 +12,53 @@ vanilla when the mod is turned Off, and it can be installed or removed at any ti
 *Formerly "Better Gwent AI": the AI is now one feature among several.*
 
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
-**Status: 0.9.0 beta.** Installation: [docs/INSTALL.md](docs/INSTALL.md).
+**Status: 0.9.0 beta.**
 
 ## Features
 
-- **Options > Mods > Better Gwent**, with an On/Off switch (Off = vanilla game).
-- Easy, Normal and **Hard (default)**, independent of the game difficulty.
-- Optional **AI plays for you** (Off by default), using the selected difficulty.
-- Common Gwent wager maximum: Vanilla (10), 25, 50, 100 or 150 (money only).
-- Optional stronger existing NPC deck variants at higher stakes (Off by default).
-- Menu in 18 languages.
-- **Better Gwent Off = the original game**, wagers included; the wager options are locked
-  while it is Off.
-- **NPC decks: Adaptive (default) / Original / Strong**: which existing cards an NPC brings,
-  rebuilt in memory for each match, safe for saves. Adaptive is checked in game; Strong is
-  checked in the simulator.
-- **The NPC exchanges up to two opening cards** (Normal and Hard), as you can, and first the
-  weather card its leader can pull from the deck. Lab: +5.4 points of NPC win share with
-  Adaptive decks even when the player exchanges too
-  (z 3.9).
+- **A stronger opponent AI**: Easy, Normal and Hard (default), independent of the game
+  difficulty; on errors it falls back to the native AI, so a match never stalls.
+  [Details](docs/FEATURES.md#the-opponent-ai)
+- **Fair play**: the AI never sees your hand, your deck or the order of your draws; it reasons
+  from what a human player could see. [Details](docs/FEATURES.md#fair-play-the-ai-does-not-see-your-cards)
+- **NPC decks: Adaptive (default), Original or Strong**: which existing cards an NPC brings,
+  rebuilt in memory for each match, safe for saves. [Details](docs/NPC_DECKS.md)
+- **NPC deck strength, a vanilla bug we fix**: the base game gives NPCs their extra cards
+  whatever your deck; with the mod On they follow your deck's strength again.
+  [Details](docs/NPC_DECKS.md#original-the-extra-card-rule-repaired)
+- **The NPC exchanges opening cards** (Normal and Hard), as you can.
+  [Details](docs/FEATURES.md#the-opponent-ai)
 - **One artwork per card copy** (while the mod is On): the copies of one card show different
-  pictures. Cards are grouped by family, every non-hero unit that shares a name (Poor Fucking
-  Infantry, Kaedweni Siege Expert, Impera Brigade, Blue Stripes Commando, Siege Tower, the
-  Scoia'tael, Monster and Skellige groups...), so it works even when the game gives you the same
-  card number twice (Poor Fucking Infantry x2 shows two pictures, Kaedweni Siege Expert x3 three).
-  Copies are numbered by card number, then copy, and take the family's pictures in that order;
-  a picture repeats only when the family runs out (a fourth Blue Stripes repeats the first).
-  The artwork is the game's own: the pictures of the family's other cards, plus alternate card
-  art that ships with The Witcher 3 but that the vanilla card list never uses. Visual only (power, abilities and the card list are
-  unchanged, no card definition file is overridden). The Gwent deck builder (pause menu >
-  Gwent decks) shows the same pictures, with one tile per copy of these cards instead of one
-  "x3" tile (adding or removing any of them moves one copy, as before); the right-click zoom
-  shows each copy with the picture of its tile. With the mod Off or removed, the stock art and
-  tiles return. [See every copy side by side](docs/img/bond-card-art.png).
+  pictures, from the game's own art. Visual only. [Details](docs/CARD_ART.md)
+- **Better wagers**: a higher maximum bet for common matches, and optional stronger NPC decks at
+  higher stakes. [Details](docs/FEATURES.md#wagers)
+- **Optional "AI plays for you"**, and a menu in 18 languages.
 
-## NPC decks: Original, Adaptive, Strong
+## Install
 
-Native NPC decks are uneven: many carry piles of weather and special cards (about 10 special
-cards on average, up to 13 weather cards), and the vanilla game gives them extra cards
-regardless of your deck because of an inverted check. This option chooses what the NPC brings:
+Extract the archive into the game folder, register `modGwentAI.xml;` in the filelists if they
+exist, start the game and switch the mod On in **Options > Mods > Better Gwent**. Full steps,
+updating from "Better Gwent AI" and uninstall: [docs/INSTALL.md](docs/INSTALL.md).
 
-- **Original:** the NPC's own deck with the game's own adaptive rule, repaired. Each NPC has
-  a few extra cards on 15 levels that enter only when your deck is strong enough; with the
-  inverted check fixed, they finally follow your deck. But it is a small lever: 4.4 extra
-  cards per NPC on average (14 of 51 NPCs have none), worth about +31 strength (173 to 205),
-  while a good player deck sits at 250-300, and the pile of weather cards stays in.
-- **Adaptive:** the same idea done fully. The NPC keeps its faction, leader and heroes; its
-  whole deck is made legal and playable, and its weakest units are swapped for better cards
-  of its faction until it matches the strength of *your* deck at that match: 85% on Easy,
-  100% on Normal, 110% on Hard. A fair fight at every stage of the game.
-- **Strong:** the best deck the NPC's faction allows under the same rules.
+## Options
 
-Every deck is built like a seasoned player builds one, lean as hand-built archetype decks are:
-Strong decks carry 22 units and at most 4 special cards (no Triss), Adaptive decks at most 2
-special cards (Lab: +15.0 and +4.4 points of NPC win share on Hard over the 0.9.0 shape of up
-to 8 specials; [details](docs/NPC_DECKS.md)). No weather that hits its own strong rows, synergies kept whole, spies and
-medics capped, and leader-aware choices (a leader that clears weather replaces the Clear Weather
-card; a leader that doubles a row leaves one Horn for the other rows). It applies to every
-Gwent opponent, including quest and tournament players, except the tutorial.
+- **Better Gwent On/Off**: Off = the original game, wagers included.
+- **Difficulty** (how well the NPC thinks) and **NPC decks** (which cards it plays): two
+  independent dials. [Choosing your challenge](docs/FEATURES.md#choosing-your-challenge)
+- **AI plays for you**, **Gwent max bet** and **Higher stakes, stronger opponent**.
+  [All options](docs/FEATURES.md)
 
-Measured in the simulator (same decks and luck; the player side is played by Better AI):
+## Compatibility
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-dark.svg">
-  <img src="docs/img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 35-40%, Adaptive 64-74%, Strong 68-71% with Better AI" width="880">
-</picture>
+Mods that replace the Gwent board or deck builder screens cannot run together with Better Gwent;
+other script mods usually can. [Compatibility with other mods](docs/KNOWN_LIMITATIONS.md#compatibility-with-other-mods)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/deck-modes-mine-dark.svg">
-  <img src="docs/img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 29-35%, Adaptive 61-71%, Strong 60-66% with Better AI" width="880">
-</picture>
+## How it is tested
 
-Against my own real decks (140 games per cell), Adaptive goes from 37% on Easy to 53% on
-Hard, an even fight, and Strong stays hard but winnable at 52-55% on every level.
+Every change is measured in a simulator that reproduces the game's Gwent rules, on the same decks
+and luck, and then played in real matches in the game. Methods and all results:
+[docs/TESTING.md](docs/TESTING.md).
 
-Nothing is written to your save and no card is edited: the NPC's deck is rebuilt in memory
-for that match only. Turn the option or the mod Off and the next match uses the native deck.
-Details: [docs/NPC_DECKS.md](docs/NPC_DECKS.md).
-
-### Choosing your challenge
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/challenge-dark.svg">
-  <img src="docs/img/challenge-light.svg" alt="Choosing your challenge: dial 1 AI difficulty Easy to Hard, dial 2 NPC decks Original, Adaptive, Strong; combinations from the original game to maximum challenge" width="880">
-</picture>
-
-<details>
-<summary>Details</summary>
-
-You set the challenge with two independent dials:
-
-1. **AI difficulty (Easy, Normal, Hard): how well the NPC thinks.** It sets how deeply the AI
-   analyses its moves; on Hard it thinks longest and makes the fewest mistakes.
-2. **NPC decks (Original, Adaptive, Strong): which cards the NPC plays.**
-   - **Original:** the game's deck, with the extra-card rule repaired. The NPC only gets the few
-     extra cards the game lists for it (4.4 on average, none for 14 of 51 NPCs), so against a
-     strong deck it stays weaker.
-   - **Adaptive:** the NPC gets more and better cards than in Original, but balanced: its deck
-     is rebuilt to follow the strength of yours, and the difficulty sets the target, from 85%
-     of your deck's strength on Easy to 110% on Hard.
-   - **Strong:** the best deck the NPC's faction allows.
-
-Two wager options come with it, both part of Better Gwent: a higher maximum bet for common Gwent
-matches (money only, the NPC is not harder), and an optional setting that makes NPCs stronger
-the more gold you bet. Turning **Better Gwent Off turns everything off**: the native AI, the game's
-own decks and the vanilla wagers, with no exception. Your choices are kept for when you turn it
-back On.
-
-Combinations, from light to heavy:
-
-- **The original game:** mod Off.
-- **Just a smarter opponent:** Hard with Original decks.
-- **A fair fight all game long:** Normal or Hard with Adaptive decks.
-- **Maximum challenge:** Hard with Strong decks and stronger stakes On. Against my own real
-  decks the NPC wins about half of the matches (55% on Hard): very hard, still winnable.
-
-</details>
-
-## Fair play: the AI does not see your cards
-
-The AI plays harder by reasoning better, not by cheating. It only uses what a human
-player could see: the board, both graveyards, how many cards you hold, your faction and
-leader, the cards you have already played and cards revealed by an effect. It never
-reads your hand, your deck list or the order of your draws. It samples plausible hidden
-hands from public information instead, and an automated test swaps the hidden hand for
-different cards and checks that the decision does not change. Its opening exchange uses only
-its own hand and which of its own cards are left in its deck, never their order.
-
-## Status
-
-- The V8 decision engine (ActionScript, `mod/v8/as3`) runs inside the game and plays
-  whole matches; on errors or time-outs it falls back to the native AI, so a match
-  never stalls.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/kpis-dark.svg">
   <img src="docs/img/kpis-light.svg" alt="250,429 simulated matches, 222 hours of Lab CPU time, 40 in-game matches analysed, 281 mistakes found, 20% more NPC wins than the native AI against player decks" width="880">
@@ -154,112 +69,20 @@ its own hand and which of its own cards are left in its deck, never their order.
   <img src="docs/img/levels-light.svg" alt="Better AI score share against the native AI: Easy 52.9%, Normal 57.6%, Hard 59.5% (native AI = 50%)" width="880">
 </picture>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/player-decks-dark.svg">
-  <img src="docs/img/player-decks-light.svg" alt="NPC win share against player-style decks by deck style, NPC played by Better AI vs by the native AI" width="880">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/mistakes-dark.svg">
-  <img src="docs/img/mistakes-light.svg" alt="Costly decisions found by round: round 1 178, round 2 93, round 3 10" width="880">
-</picture>
-
-- In progress: fixing the mistake patterns the hunter found (round-1 overcommit, Horn and
-  weather timing, Spy value), then self-play parameter tuning and a small value network.
-- How the AI is measured and the full numbers: [docs/TESTING.md](docs/TESTING.md). The
-  charts are generated from the Lab results with `lab/dashboard.py`.
-
-## NPC deck strength: a vanilla bug we fix
-
-Each NPC deck has dynamic extra cards on 15 levels, and each level has a requirement
-compared against the strength of the player's deck: the extra card enters only when the
-player's deck is strong enough. The NPC deck was meant to grow with the player's.
-
-The vanilla `GetDifficulty` function has its size check inverted: it only returns a real
-requirement for **level 15**, and **levels 1–14 always return 0**. So every extra card of
-levels 1–14 always enters the NPC deck, even against a weak early-game player deck.
-
-**With Better Gwent On, the intended rule applies at every level and every difficulty**:
-each extra card uses its real requirement (base 145–230 by level; +80 on Easy, −80 on
-Hard). The highest optional stronger-stakes stage still gives every extra
-card. With the mod Off the game is untouched. No card or deck definition is added,
-removed or edited.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/requirements-dark.svg">
-  <img src="docs/img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better Gwent On, Hard reaches all extras at 160, Normal at 240, Easy at 320" width="880">
-</picture>
-
-Our own recorded player decks measured 214–284, so Hard NPCs keep every extra card against a
-normal deck; the fix mainly makes the early game and Easy/Normal fair.
-
-## Research behind it
-
-The AI samples plausible hidden hands and searches its moves and the opponent's replies
-(Information Set Monte Carlo Tree Search; Perfect Information Monte Carlo sampling).
-Tests compare options on the same luck, as duplicate poker does, and the deep blunder hunt
-narrows every legal move with Sequential Halving (as in Gumbel MuZero). Next: parameter
-tuning by self-play (SPSA) and a small value network (AlphaZero). Papers, tools and what I
-tried and dropped: [docs/RESEARCH.md](docs/RESEARCH.md).
-
-## Repository layout
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/layout-dark.svg">
-  <img src="docs/img/layout-light.svg" alt="Repository layout: mod/settings, mod/v8/as3, diagnostic builds, tools, sim, sim/gwentsim, lab, docs" width="880">
-</picture>
-
-## Development (local setup)
-
-Prerequisites: Python 3, `pytest`, `psutil` (Lab), Java + FFDec at `tools/ffdec`, and a
-Witcher 3 5.01 installation. Details in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md);
-PyPy is installed separately (`uv python install pypy3.11`) and is not part of the repository.
-
-```sh
-python3 tools/build_settings.py                     # menu labels -> *.w3strings
-python3 tools/build_npc_decks.py                    # NPC deck table (needs the local vanilla XML)
-python3 tools/build_v8_core.py                      # compile V8 into the Gwent interface
-python3 tools/build_v8_package.py release           # -> dist/BetterGwent-<version>.zip
-python3 tools/build_v8_core.py --with-recorder      # same, plus the match recorder
-python3 tools/build_v8_package.py recorder          # -> dist/BetterGwent-<version>-recorder.zip
-python3 -m pytest sim/tests -q                      # test suite
-```
-
-Back up the game files and saves before installing a test build.
-
-### Gwent AI Lab
-
-Runs long benchmarks and blunder hunts in the background, with progress, CPU/GPU/RAM
-and disk usage in a browser panel (`http://127.0.0.1:8765`, local only).
-
-```sh
-python3 lab/gwent_lab.py            # PC: starts paused, press Resume
-python3 lab/gwent_lab.py --no-open  # headless server (reach it through an SSH tunnel)
-GWENT_LAB_SERVER=user@host lab/open_server_panel.sh
-```
-
-- Data lives in a folder marked with `.gwent_ai_lab_root` (default `/mnt/hdd/GwentAILab`,
-  `--data` or `GWENT_LAB_DATA` to change); the Lab refuses to start without the marker.
-- Crash-safe: results are committed together with the task state, so a power cut only
-  repeats the tasks that were running (`lab/selftest_resume.py` verifies this).
-- Workers run at low priority, their number is adjustable live, and they pause while
-  `witcher3.exe` runs or when the disk cap is reached.
-- Continuous jobs queue the next seed by themselves when they finish.
-- Workers can run under PyPy (setting `worker_python`, e.g. from `uv python install pypy3.11`):
-  1.7x faster on benchmarks and 2.1x on blunder hunts with identical results, so fewer
-  workers (less heat) produce the same output. Changing the setting swaps workers live.
-
 ## Documentation
 
 - [Installation](docs/INSTALL.md): install, options, compatibility and uninstall.
+- [Features and options](docs/FEATURES.md): every option in detail, fair play and how to choose your challenge.
+- [NPC decks](docs/NPC_DECKS.md): the Original / Adaptive / Strong option and the repaired extra-card rule.
+- [Card art](docs/CARD_ART.md): one artwork per card copy.
 - [Recorder edition](docs/RECORDER.md): for testers only, not a release; records matches to help development.
-- [NPC decks](docs/NPC_DECKS.md): the Original / Adaptive / Strong option.
 - [Testing](docs/TESTING.md): methods, results and running totals.
 - [Research](docs/RESEARCH.md): papers, tools, and what I tried and dropped.
-- [Development](docs/DEVELOPMENT.md): local setup, builds, tests and the Lab.
-- [Repository scope](docs/PUBLICATION_SCOPE.md): what may and may not be committed.
+- [Development](docs/DEVELOPMENT.md): repository layout, local setup, builds, tests and the Gwent AI Lab.
 - [Known limitations](docs/KNOWN_LIMITATIONS.md): what does not work well yet, and why.
+- [Studying the game](docs/game-study/README.md): cut cards, unused art, abandoned features and bugs of the base game.
 - [Roadmap](docs/ROADMAP.md): planned work, including optional modules for new cards and card balance.
+- [Repository scope](docs/PUBLICATION_SCOPE.md): what may and may not be committed.
 - [Contributing](CONTRIBUTING.md): what a change needs before it is kept.
 
 Detailed research notes and the working log are kept locally, outside the repository.

@@ -85,14 +85,25 @@ NPC's spies to the player's makes the NPC clearly weaker everywhere, so that mir
   <img src="img/ab-spy-light.svg" alt="A/B tests of 13 October 2026: the careful-play rules are neutral; tuned weights not kept; spy mirror variants and one witcher in the fallback make the NPC weaker; spy counting, spy-first and draw weights not proven yet" width="880">
 </picture>
 
+### Sequential tests (since 13 October 2026)
+
+A/B tests stop as soon as their answer is clear, as chess engines test their patches (SPRT, the
+method of Stockfish's Fishtest), instead of always playing a fixed number of matches. Each paired
+matchup gives the difference between the candidate and the current AI on the same deal and luck;
+a sequential probability ratio test decides "better" or "not better" with 5% error each way, and
+gives up as "undecided" at a match budget. With the Lab's real spread of results, a clearly worse
+change is decided in about 120 matchups, a clear gain in about 180 and a neutral change in about
+1,000, against 2,100 for a fixed test (`lab/sprt.py`, job kind `ab`).
+
 ### Automatic deck tuner
 
 A small self-improving search for NPC decks, running around the clock on a cloud server (`lab/core.py`,
 job kind `deck-tune`). The deck builder has knobs (a genome): Decoys (0 to 2) and a weather card
 per player faction, how the Adaptive hero fallback adds Geralt and Ciri, how spies count, and
-an Adaptive target per NPC faction. The tuner changes one knob, plays the new genome and the
-current one on the same matchups, luck and opening exchanges, and keeps the change only when it
-is proven better (paired z of 2 or more). Then it tries the next change.
+an Adaptive target per NPC faction. Each round races several changes at once (racing, as in
+irace and Hyperband): every candidate plays against the current genome on the same matchups,
+luck and opening exchanges, in small batches, with its own sequential test. A candidate that is
+not better is dropped early; the best one proven better is kept. Then the next race starts.
 
 Fair play: the genome reacts only to what an NPC may know before a match, the player's deck
 faction and deck strength (the game's own NPC decks already follow the strength). Never the
@@ -111,6 +122,11 @@ the NPC decks, and a 3 s thinking limit that cut Hard's opening searches.
 
 Updated as tests run (`python3 lab/report.py <lab databases> --evaluations <reports>`); the README
 charts come from `python3 lab/dashboard.py <lab databases>`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/kpis-dark.svg">
+  <img src="img/kpis-light.svg" alt="250,429 simulated matches, 222 hours of Lab CPU time, 40 in-game matches analysed, 281 mistakes found, 20% more NPC wins than the native AI against player decks" width="880">
+</picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/totals-dark.svg">

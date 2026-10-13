@@ -32,6 +32,9 @@ What Better Gwent does not do well yet, or cannot do, and why. Items move to the
   player's leader or individual cards.
 - **Skellige is validated in the simulator only.** The owner's game has no Blood and Wine
   expansion, so Skellige decks are not checked in real matches.
+- Fixed, shipping in the next package: a quest's extra NPC card could duplicate a hero of an
+  Adaptive or Strong deck (two Avallac'h in g162). The deck now leaves out such heroes and keeps
+  any card within 3 copies counting the extra cards.
 
 ## AI decisions
 
@@ -56,6 +59,17 @@ Seen in recorded matches:
   the leader carousel (leaders have no alternate art), and the card notification of other mods.
 - In the deck builder, a split tile moves the top copy of that card, not always the tile clicked;
   the counts are always right.
+
+## Compatibility with other mods
+
+- **Mods that replace the Gwent screens do not work together with Better Gwent.** Better Gwent
+  ships its own copy of the two Gwent screens, `gameplay\gui_new\swf\gwint\gwint_game.redswf`
+  (the match) and `gameplay\gui_new\swf\gwint\deck_builder.redswf` (the deck builder); the game
+  loads only one copy of each, so whichever mod loads first wins and the other one is ignored
+  (the AI, the deck options or the card art of Better Gwent, or the other mod's changes).
+  Example: Gwent FPS and UI Tweaks (Nexus 14117) replaces `gwint_game.redswf`. Pick one of them.
+- Better Gwent's scripts are its own files (wrapping the game's functions, no game script
+  replaced), so script mods that do not replace those two screens can run alongside it.
 
 ## Simulator
 

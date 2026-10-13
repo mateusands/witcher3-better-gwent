@@ -6,7 +6,7 @@ Papers are cited as references; the software tools are listed with their license
 ## How the AI decides
 
 Gwent hides information: the opponent's hand and both decks are unknown. The AI never
-reads them (see "Fair play" in the README). It samples plausible hidden hands from public
+reads them (see [Fair play](FEATURES.md#fair-play-the-ai-does-not-see-your-cards)). It samples plausible hidden hands from public
 information and searches its own moves and the opponent's replies against those samples.
 
 - **Information Set Monte Carlo Tree Search**
@@ -40,11 +40,27 @@ information and searches its own moves and the opponent's replies against those 
   - Reference: Y. Zhang, M. C. Fontaine, A. K. Hoover, S. Nikolaidis, [*Deep Surrogate Assisted MAP-Elites for Automated Hearthstone Deckbuilding*](https://arxiv.org/abs/2112.03534), GECCO 2022
   - Where it is used: Inspiration for player-style decks (power, synergy, random, early-game)
 
+- **Sequential testing of changes (SPRT)**
+  - Reference: A. Wald, *Sequential Tests of Statistical Hypotheses*, Annals of Mathematical Statistics, 1945; its use for engine patches in Stockfish's [Fishtest](https://github.com/official-stockfish/fishtest/wiki/Fishtest-faq) and the [Chess Programming Wiki](https://chessprogramming.org/SPRT)
+  - Where it is used: Lab A/B tests and every candidate of the deck tuner stop as soon as their answer is clear (since 13 October 2026)
+- **Racing configurations**
+  - Reference: M. López-Ibáñez et al., [*The irace package*](https://mirror.linux.duke.edu/pub/cran/web/packages/irace/vignettes/irace-package.pdf); L. Li et al., [*Hyperband*](https://arxiv.org/pdf/1603.06560), JMLR 2018
+  - Where it is used: The deck tuner races several candidates per round and drops the weak ones early
+- **Tuning weights from positions (Texel's method)**
+  - Reference: P. Österlund, [*Texel's Tuning Method*](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
+  - Where it is used: The V8 utility weights fitted to the results of many recorded positions, without playing matches during the fit; every fitted set is confirmed by a paired A/B test
+
 ## Studied, not used (yet)
 
 - **Variance reduction for evaluating agents**
   - Reference: N. Burch, M. Schmid, M. Moravčík, D. Morrill, M. Bowling, [*AIVAT: A New Variance Reduction Technique for Agent Evaluation in Imperfect Information Games*](https://ojs.aaai.org/index.php/AAAI/article/view/11481), AAAI 2018
-  - Why not yet: Needs a calibrated value estimate; a candidate once the value network exists
+  - Why not yet: Needs a calibrated value estimate; a candidate once the value network exists. Our paired matchups (the same deal and luck for both versions) already apply the simpler "Baseline" control variate of the same group (J. Davidson, C. Archibald, M. Bowling, [AAMAS 2013](https://webdocs.cs.ualberta.ca/~bowling/publications/b2hd-13aamas-baseline.html))
+- **Optimisers for very noisy measurements**
+  - Reference: R. Coulom, [*CLOP: Confident Local Optimization for Noisy Black-Box Parameter Tuning*](https://www.remi-coulom.fr/CLOP/CLOP.pdf); L. Kocsis, C. Szepesvári, [*Universal parameter optimisation in games based on SPSA*](https://www.datalearner.com/academic/journal-papers/0885-6125/volumes-and-issues/63/paper-detail/11141), Machine Learning 2006
+  - Why not yet: Texel's method replaces game-playing optimisation for the weights; CLOP stays an option if a parameter can only be measured by playing
+- **Self-play learning with search for hidden-information games**
+  - Reference: N. Brown et al., [*ReBeL*](https://arxiv.org/pdf/2007.13544), NeurIPS 2020; M. Schmid et al., [*Student of Games*](https://arxiv.org/pdf/2112.03178), Science Advances 2023
+  - Why not yet: Far beyond what the game's Flash runtime can run; the planned small value network is the realistic step
 - **Counterfactual regret minimization**
   - Reference: M. Zinkevich, M. Johanson, M. Bowling, C. Piccione, *Regret Minimization in Games with Incomplete Information*, NeurIPS 2007
   - Why not yet: Solves the whole game offline; far too heavy for the game's Flash runtime

@@ -29,7 +29,8 @@ plays Gwent exactly as before.
 - **Higher stakes, stronger opponent**: with a big wager, the NPC uses a stronger existing deck.
 
 On Normal and Hard, the NPC exchanges up to two opening cards, as you can. Settings are read when
-a Gwent match opens; to change them, finish the match and start a new one.
+a Gwent match opens; to change them, finish the match and start a new one. Every option in
+detail, and how to combine them: [Features and options](FEATURES.md).
 
 ## Fair play
 
@@ -54,7 +55,7 @@ The per-copy card art (every family of unit cards with several pictures, such as
 Infantry, Kaedweni Siege Expert, Blue Stripes Commando and Siege Tower), in matches and in the deck
 builder, is drawn by the mod at display time; saves store only card numbers, so
 removing the mod brings back the stock pictures and the stock deck builder (one "x3" tile per
-card again).
+card again). See [One artwork per card copy](CARD_ART.md).
 
 ## Known issues
 

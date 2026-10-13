@@ -3,6 +3,13 @@
 Commands run from the repository root. They build and test locally; none of them installs
 anything into the game.
 
+## Repository layout
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/layout-dark.svg">
+  <img src="img/layout-light.svg" alt="Repository layout: mod/settings, mod/v8/as3, diagnostic builds, tools, sim, sim/gwentsim, lab, docs" width="880">
+</picture>
+
 ## Requirements
 
 - Python 3 with `pytest`; `psutil` for the Gwent AI Lab panel.
@@ -61,6 +68,28 @@ Job kinds: `benchmark` (Better AI vs native AI on the same decks and luck), `hun
 (replays lost matches with alternative moves) and `deep-hunt` (every match, every move).
 Sources: `pool` (NPC decks, every faction and leader) and `player` (NPC decks against
 player-style decks, including early-game ones). See [TESTING.md](TESTING.md).
+
+### Gwent AI Lab
+
+The Lab runs long benchmarks and blunder hunts in the background, with progress, CPU/GPU/RAM
+and disk usage in a browser panel (`http://127.0.0.1:8765`, local only).
+
+```sh
+python3 lab/gwent_lab.py            # PC: starts paused, press Resume
+python3 lab/gwent_lab.py --no-open  # headless server (reach it through an SSH tunnel)
+GWENT_LAB_SERVER=user@host lab/open_server_panel.sh
+```
+
+- Data lives in a folder marked with `.gwent_ai_lab_root` (default `/mnt/hdd/GwentAILab`,
+  `--data` or `GWENT_LAB_DATA` to change); the Lab refuses to start without the marker.
+- Crash-safe: results are committed together with the task state, so a power cut only
+  repeats the tasks that were running (`lab/selftest_resume.py` verifies this).
+- Workers run at low priority, their number is adjustable live, and they pause while
+  `witcher3.exe` runs or when the disk cap is reached.
+- Continuous jobs queue the next seed by themselves when they finish.
+- Workers can run under PyPy (setting `worker_python`, e.g. from `uv python install pypy3.11`):
+  1.7x faster on benchmarks and 2.1x on blunder hunts with identical results, so fewer
+  workers (less heat) produce the same output. Changing the setting swaps workers live.
 
 ## In-game recordings
 
