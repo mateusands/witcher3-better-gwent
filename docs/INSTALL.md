@@ -50,8 +50,9 @@ already played, and its own hand and deck.
 Close the game and delete `Mods/modBetterGwent`, `modGwentAI.xml` and its lines in the
 filelists. Saves stay valid: the mod adds no items, quests or cards. Money won in wagers stays
 yours.
-The per-copy card art (Tight Bond cards, Blue Stripes Commando, Siege Tower), in matches and in
-the deck builder, is drawn by the mod at display time; saves store only card numbers, so
+The per-copy card art (every family of unit cards with several pictures, such as Poor Fucking
+Infantry, Kaedweni Siege Expert, Blue Stripes Commando and Siege Tower), in matches and in the deck
+builder, is drawn by the mod at display time; saves store only card numbers, so
 removing the mod brings back the stock pictures and the stock deck builder (one "x3" tile per
 card again).
 

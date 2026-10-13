@@ -1,0 +1,9 @@
+stty -echo
+(apt-get update -qq && apt-get install -y -qq python3-psutil python3-pytest nodejs) </dev/null >/dev/null 2>&1; echo APT_DONE $?
+cd /srv/lab; (curl -LsSf https://astral.sh/uv/install.sh | sh) </dev/null >/dev/null 2>&1; echo UV_DONE $?
+~/.local/bin/uv python install pypy3.11 </dev/null >/dev/null 2>&1; echo PYPY_DONE $?
+P=$(ls -d ~/.local/share/uv/python/pypy-3.11*/bin/pypy3.11 | head -1); echo PYPY=$P; $P -c "import sqlite3,sys;print('PYV',sys.version.split()[0])" </dev/null
+python3 -c "import psutil;print('PSUTIL ok')" </dev/null
+mkdir -p /srv/data/db && touch /srv/data/.gwent_ai_lab_root; cd /srv/lab && setsid nohup python3 lab/gwent_lab.py --no-open --data /srv/data </dev/null > /srv/data/server.log 2>&1 &
+sleep 8; curl -s 127.0.0.1:8765/api/status </dev/null | head -c 160; echo; echo SETUP_END
+exit

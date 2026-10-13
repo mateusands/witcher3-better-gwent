@@ -39,6 +39,17 @@ KIT_CAP, STRONG_UNITS = 8, 24   # set per deck mode from MODE_SHAPE while a deck
 MODE_SHAPE = {'strong': dict(kit=4, units=22, excluded=frozenset({'triss'}), heroes=False),
               'balanced': dict(kit=2, units=24, excluded=frozenset({'triss'}), heroes=True)}
 _OVERRIDE = {}   # Lab switches (apply_mode flags) on top of MODE_SHAPE
+# Experiment "ability-value" (deck flag, not shipped): units whose builder worth was only their
+# printed power although their ability matters. While a deck is built: the extra worth per
+# template index (Horn units, row-scorch units, Morph units) and whether muster packages hold
+# every copy and are valued by what one draw brings (see ability_bonus and package_worth).
+_ABILITY_BONUS = {}
+_ABILITY_VALUE = False
+MUSTER_SELF_COPIES = 3     # as in native decks: three Darkness, three Light Drakkars
+HAND_SHARE = 0.5           # a match puts about 13 of a ~26-card deck in hand
+ROUNDS = 3
+SCORCH_HIT = 0.5           # row Scorch: chance the player's row holds 10+ when the unit lands
+SCORCH_TOP = 6             # typical strongest non-hero unit it then destroys
 MAX_SPIES, MAX_MEDICS = 4, 2   # 4 spies since 0.9.0 (test, 12 October 2026: Hard Adaptive +3.19 z 4.0)
 AVALLACH = 'mysterious_elf'
 # Never put in an NPC deck. Olaf: the game's own CardEffectManager throws when his morale effect
@@ -99,7 +110,71 @@ def unit_value(t, names, horn_row=None):
         value += 3
     if horn_row and unit_row(t) == horn_row and not t.is_type(C.CardType_Hero):
         value *= 1.15
-    return value
+    return value + _ABILITY_BONUS.get(t.index, 0.0)
+
+
+def ability_bonus(templates, deck, names, kit):
+    """Experiment "ability-value": worth of a unit's ability beyond its printed power, by
+    template index, for one NPC deck (unit_value adds it). Simple documented estimates:
+
+    - Horn unit (Dandelion, Draig Bon-Dhu): the Horn doubles his row's expected board in the
+      round he is played: the native deck's non-hero, non-spy unit power on that row times
+      HAND_SHARE, spread over ROUNDS. No stacking: nothing when the leader horns that row, and
+      shared with each Horn card of the kit (divided by 1 + kit Horns), which may take the row.
+    - Row-scorch unit (Villentretenmerth, Schirru, Toad): SCORCH_HIT * SCORCH_TOP, the expected
+      destroyed power against a typical player row. Clan Dimun Pirate (a Scorch on every row,
+      own units included) gets half of it.
+    - Morph unit (Berserker -> Bear, Young Berserker -> Young Bear): the power gained by the
+      transformation times the chance a Mardroeme source is drawn, only when the deck carries one
+      (Ermion; the kit never holds the Mardroeme card). Without one, nothing.
+    - Suicide summon (Cow, Kambi's cock): unchanged (no bonus). Their summon needs the unit
+      destroyed; a 0-power unit is never the Scorch target and these decks hold no other way to
+      destroy their own units, so the printed value stays.
+    Muster packages are valued in package_worth."""
+    leader = deck.selected_king_index
+    horn_row = LEADER_HORN_ROW.get(leader_effect(templates, leader))
+    cards = [templates[i] for i in deck.card_indices]
+    row_power = defaultdict(int)
+    for t in cards:
+        if t.is_type(C.CardType_Creature) and not t.is_type(C.CardType_Hero) and not is_spy(t):
+            row_power[unit_row(t)] += t.power
+    kit_horns = sum(templates[k].has_effect(C.CardEffect_Horn) for k in kit)
+    sources = sum(t.is_type(C.CardType_Creature) and t.has_effect(C.CardEffect_Mushroom)
+                  and names.get(t.index) not in EXCLUDED for t in cards)
+    morph_chance = 1 - (1 - HAND_SHARE) ** sources
+    bonus = {}
+    for t in templates.values():
+        if t.index >= 1000 or not t.is_type(C.CardType_Creature):
+            continue
+        if t.has_effect(C.CardEffect_Horn):
+            row = unit_row(t)
+            bonus[t.index] = 0.0 if row == horn_row else row_power[row] * HAND_SHARE / ROUNDS / (1 + kit_horns)
+        elif any(t.has_effect(e) for e in (C.CardEffect_MeleeScorch, C.CardEffect_RangedScorch,
+                                             C.CardEffect_Siege_Scorch)):
+            bonus[t.index] = SCORCH_HIT * SCORCH_TOP
+        elif t.has_effect(C.CardEffect_Scorch):
+            bonus[t.index] = SCORCH_HIT * SCORCH_TOP / 2
+        elif t.has_effect(C.CardEffect_Morph) and t.summon_flags and t.summon_flags[0] in templates:
+            bonus[t.index] = max(0, templates[t.summon_flags[0]].power - t.power) * morph_chance
+    return bonus
+
+
+def package_worth(kind, cards, value):
+    """Worth per card of a package, by which the builders rank and swap packages.
+
+    Default: the mean unit value, plus 1.5 for a muster group where the Strong builder ranks
+    packages (Adaptive ranks by the mean alone), as shipped. Experiment "ability-value": a muster
+    member reaches the board when any card that calls it is drawn, so each member counts
+    value * (1 - (1 - HAND_SHARE) ** k) / HAND_SHARE, where k is the number of package cards
+    that bring it (itself included): 1 for a single card, 1.75 for a group of three, 1.875 for
+    four. The same rule in both builders, without the flat 1.5."""
+    if kind != 'muster' or not _ABILITY_VALUE:
+        return sum(map(value, cards)) / len(cards)
+    total = 0.0
+    for n, t in enumerate(cards):
+        k = sum(1 for m, c in enumerate(cards) if m == n or t.index in (c.summon_flags or ()))
+        total += value(t) * (1 - (1 - HAND_SHARE) ** k) / HAND_SHARE
+    return total / len(cards)
 
 
 def hero_identity(t, names):
@@ -130,6 +205,13 @@ def packages(templates, faction, names):
             musters.append([flags, cards])
     for flags, cards in musters:                         # plain cards a muster calls (Roach)
         cards += [t for t in pool if t.index in flags and t not in cards]
+        if _ABILITY_VALUE:
+            # Experiment "ability-value": a member that calls only its own template (Gaunter
+            # O'Dimm's Darkness, Light Drakkar) is one card in several copies; the package holds
+            # every copy, as other muster groups hold every member, so one draw brings them all.
+            for t in list(cards):
+                if tuple(t.summon_flags or ()) == (t.index,):
+                    cards += [t] * (MUSTER_SELF_COPIES - 1)
     in_muster = {t.index for _, cards in musters for t in cards}
     for t in sorted(pool, key=lambda t: t.index):
         if t.index in in_muster:
@@ -219,8 +301,8 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
             continue
         if kind == 'bond' and len(cards) < 2:
             kind = 'single'                  # a lone bond card is just a unit
-        value = sum(unit_value(c, names, horn_row) for c in cards) / len(cards)
-        if kind == 'muster':
+        value = package_worth(kind, cards, lambda c: unit_value(c, names, horn_row))
+        if kind == 'muster' and not _ABILITY_VALUE:
             value += 1.5                     # pulls its group from the deck: card advantage
         ranked.append((value, kind, cards))
     ranked.sort(key=lambda item: (-item[0], item[2][0].index))
@@ -242,15 +324,19 @@ def choose_units(templates, faction, leader, names, keep=(), count=24):
 @contextmanager
 def shaped(mode, templates=None, deck=None, names=None, variant=0):
     """KIT_CAP, STRONG_UNITS and EXCLUDED for one deck mode while its deck is built."""
-    global KIT_CAP, STRONG_UNITS, EXCLUDED
+    global KIT_CAP, STRONG_UNITS, EXCLUDED, _ABILITY_BONUS, _ABILITY_VALUE
     shape = dict(MODE_SHAPE[mode], **_OVERRIDE)
-    saved = KIT_CAP, STRONG_UNITS, EXCLUDED
+    saved = KIT_CAP, STRONG_UNITS, EXCLUDED, _ABILITY_BONUS, _ABILITY_VALUE
     heroes = hero_exclusions(templates, deck, names, variant % HERO_VARIANTS) if shape['heroes'] else frozenset()
     KIT_CAP, STRONG_UNITS, EXCLUDED = shape['kit'], shape['units'], EXCLUDED | shape['excluded'] | heroes
+    if shape.get('ability_value'):
+        leader = deck.selected_king_index
+        kit, _ = special_kit(templates, templates[leader].faction, leader, [], names)
+        _ABILITY_BONUS, _ABILITY_VALUE = ability_bonus(templates, deck, names, kit), True
     try:
         yield
     finally:
-        KIT_CAP, STRONG_UNITS, EXCLUDED = saved
+        KIT_CAP, STRONG_UNITS, EXCLUDED, _ABILITY_BONUS, _ABILITY_VALUE = saved
 
 
 def strong_deck(templates, deck, names, variant=0):
@@ -350,6 +436,13 @@ def _balanced_deck(templates, deck, names, target, steps=None):
         for t in muster_of.get(index, ()):
             if t.index not in present:
                 current.append(t); present.add(t.index)
+    if _ABILITY_VALUE:
+        # Experiment "ability-value": every copy the package holds (three Darkness).
+        for index in sorted(present):
+            group = muster_of.get(index, ())
+            for t in {u.index: u for u in group}.values():
+                while sum(u.index == t.index for u in current) < sum(u.index == t.index for u in group):
+                    current.append(t)
     # Candidates are whole packages: a muster group enters complete or not at all, other
     # cards one by one (as before).
     pool = []
@@ -360,7 +453,8 @@ def _balanced_deck(templates, deck, names, target, steps=None):
         else:
             pool += [[t] for t in cards if t.index not in present
                      and (hero_identity(t, names) is None or hero_identity(t, names) not in heroes)]
-    pool.sort(key=lambda cards: (-sum(map(value, cards)) / len(cards), cards[0].index))
+    worth = lambda cards: package_worth('muster' if cards[0].index in muster_of else 'single', cards, value)
+    pool.sort(key=lambda cards: (-worth(cards), cards[0].index))
 
     def fits(new, without=()):
         group = [u for u in current if not any(u is w for w in without)] + list(new)
@@ -397,7 +491,7 @@ def _balanced_deck(templates, deck, names, target, steps=None):
         if reached():
             break
         out = removable()[:len(new)]
-        if len(out) < len(new) or sum(map(value, new)) / len(new) <= max(map(value, out)):
+        if len(out) < len(new) or worth(new) <= max(map(value, out)):
             if len(new) == 1:
                 break
             continue
@@ -504,6 +598,8 @@ def apply_mode(templates, deck, names, mode, player_cards=None, difficulty=2, va
         override.update(heroes=True, fallback=False)
     if 'allheroes' in switches:               # every hero allowed (Strong default; Adaptive before the heroes test)
         override['heroes'] = False
+    if 'ability-value' in switches:           # units valued by their abilities, not printed power only
+        override['ability_value'] = True
     _OVERRIDE = override
     try:
         if mode == 'strong':

@@ -98,7 +98,7 @@ def main():
                 'GwintGameMenu':['gwaiConfigureMatch','gwaiStopMatch'],
                 'CardInstance':['updateEffectsApplied','onNurseEffectEnded'],
                 'CardLeaderInstance':['ApplyLeaderAbility','pickWeather'],
-                'CardSlot':['gwaiBondPicture','setupCardWithTemplate']}
+                'CardSlot':['gwaiBondPicture','gwaiFamilyMembers','setupCardWithTemplate']}
             for name,methods in expected_native.items():
                 ffdec('-selectclass',PKG+'.'+name,'-export','script',tmp/name,dest/'gwint_game.swf')
                 exported=(tmp/name/'scripts'/package/(name+'.as')).read_text()
@@ -110,8 +110,8 @@ def main():
                     'GwintGameFlowController':['gwaiNpcMulligan'],
                     'CardInstance':['gwaiNurseChoice','gwaiTakePlacement'],
                     'CardLeaderInstance':['gwaiLeaderTarget'],
-                    'CardSlot':['gwaiBondPicture(cardTemplate,this._instanceId)','gwaiCopyOrdinal','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
-                    'CardManager':['gwaiAssignCopy(newInstance)','delete this._gwaiCopy']}.get(name,[])
+                    'CardSlot':['gwaiBondPicture(cardTemplate,this._instanceId)','gwaiCopyOrdinal','GWAI_FAMILIES','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1','nor_kaedwen_siege_2','ske_clan_drummond_shieldmaiden_3'],
+                    'CardManager':['gwaiAssignCopy(newInstance)','delete this._gwaiCopy','CardSlot.gwaiFamilyMembers','playerDeckDefinitions[card.owningPlayer]']}.get(name,[])
                 for hook in hooks:
                     if hook not in exported:raise RuntimeError('Compiled choice hook missing: '+name+'.'+hook)
             if args.with_recorder:
@@ -135,9 +135,9 @@ def main():
                 code=(tmp/'deck-export/scripts'/package/(name+'.as')).read_text()
                 (deck_dir/(name+'.as')).write_text(deck_builder_patch(name,code))
             ffdec('-importScript',deck_source,dest/'deck_builder.swf',tmp/'deck-import')
-            deck_hooks={'CardSlot':['gwaiDeckPicture(param1,this.gwaiTileData())','gwaiCarousel[this.index]','gwaiDeckArt','gwaiCopyPictures','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1'],
+            deck_hooks={'CardSlot':['gwaiDeckPicture(param1,this.gwaiTileData())','gwaiCarousel[this.index]','gwaiDeckArt','gwaiCopyPictures','gwaiFamilyMembers','GWAI_FAMILIES','nil_impera_brigade_3','nor_catapult_1','nor_blue_stripes_2','nor_siege_tower_1','nor_kaedwen_siege_2','ske_clan_drummond_shieldmaiden_3'],
                 'DeckBuilderMenu':['CardSlot.gwaiCarousel.push(_loc6_.data)','"gwai.deck.bondart"','gwaiUpdateDeckArt','CardSlot.gwaiDeckArt = ','gwaiCopyFromTop = true','CardSlot.gwaiOwnedCopies['],
-                'GwintDeckCTabModule':['gwaiSetCopies(param1,param2)','gwaiSplitCopies(_loc2_)','gwaiCopyEntry','int(param1.gwaiCopy) - int(param2.gwaiCopy)']}
+                'GwintDeckCTabModule':['gwaiSetCopies(param1,param2)','gwaiSplitCopies(_loc2_)','gwaiCopyEntry','CardSlot.gwaiFamilyMembers','int(param1.gwaiCopy) - int(param2.gwaiCopy)']}
             for name,tokens in deck_hooks.items():
                 ffdec('-selectclass',PKG+'.'+name,'-export','script',tmp/('deck-'+name),dest/'deck_builder.swf')
                 exported=(tmp/('deck-'+name)/'scripts'/package/(name+'.as')).read_text()

@@ -8,6 +8,10 @@ asked what it would play from the same public position, so in-game decisions can
 with the reference and judged with luck continuations (see judge()).
 
 Usage: python3 sim/record_review.py game/records/g138.json [--judge INDEX ...]
+       python3 sim/record_review.py game/records/g15*.json --switches agile-dry+weather-guard [--changes]
+
+--switches enables Lab experiment switches (response_v8.VARIANT) for the NPC seat only; with
+--changes only the decisions where the switches change the Python reference are listed.
 """
 import argparse
 import json
@@ -258,39 +262,77 @@ def describe(position, action, names):
     return '%s (row %s)%s' % (name, action.slot, extra)
 
 
-def review(path):
+def use_switches(switches):
+    """Lab experiment switches for the NPC seat only (as the Lab's player-deck A/B tests)."""
+    from gwentsim import response_v8
+    response_v8.VARIANT = frozenset(f for f in (switches or '').split('+') if f)
+    response_v8.NPC_SEAT = NPC if response_v8.VARIANT else None
+
+
+def review(path, switches=None):
     from blunder_hunter import card_names
     names = card_names(); rows = []
 
     def on_decision(index, controller, position, context, recorded):
+        if switches is not None:
+            use_switches('')
+            base = controller.search(position, context)
+            use_switches(switches)
         result = controller.search(position, context)
         tx = recorded['tx']
         game = 'pass' if tx is None else names.get(tx['source'][0], str(tx['source'][0])) + ' (row %s)' % tx['slot'] + (
             ' -> ' + names.get(tx['target'][0], '?') if tx['target'] else '')
         reference = describe(position, result.action, names) if result.action is not None or result.reason else 'pass'
-        rows.append(dict(index=index, round=context.round if hasattr(context, 'round') else None,
-                         game=game, reference=reference, reason=result.reason))
-    rebuild(path, on_decision)
+        row = dict(index=index, round=context.round_index, game=game, reference=reference, reason=result.reason)
+        if switches is not None:
+            row.update(base=describe(position, base.action, names), base_reason=base.reason,
+                       changed=(base.action, base.reason) != (result.action, result.reason),
+                       revision=result.revision, scores=position.scores(), hand=len(position.hand),
+                       opponent_hand=context.opponent_hand_count)
+        rows.append(row)
+    try:
+        rebuild(path, on_decision)
+    finally:
+        if switches is not None:
+            use_switches('')
     return rows
 
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('record')
+    parser.add_argument('record', nargs='+')
+    parser.add_argument('--switches', help='Lab switches for the NPC seat, e.g. agile-dry+weather-guard')
+    parser.add_argument('--changes', action='store_true', help='with --switches: only the changed decisions')
     parser.add_argument('--judge', type=int, nargs='*', default=[], help='NPC decision event indices to judge')
     parser.add_argument('--continuations', type=int, default=16)
     args = parser.parse_args(argv)
+    if args.switches is not None:
+        for record in args.record:
+            print('#', record, 'switches', args.switches)
+            try:
+                rows = review(record, args.switches)
+            except Exception as error:   # e.g. a record the simulator cannot replay (g143)
+                print('   replay failed: %s: %s' % (type(error).__name__, error))
+                continue
+            for row in rows:
+                if args.changes and not row['changed']:
+                    continue
+                print('%4d  R%d  npc %3d vs %3d  hand %2d vs %2d  game: %-30s reference: %-30s -> %-30s %s%s' % (
+                    row['index'], row['round'] + 1, row['scores'][NPC], row['scores'][1 - NPC], row['hand'],
+                    row['opponent_hand'], row['game'], row['base'], row['reference'], row['reason'],
+                    '' if row['revision'] == 'response-v8' else ' (%s)' % row['revision']))
+        return
     if args.judge:
         from blunder_hunter import card_names
         names = card_names()
         for index in args.judge:
-            position, result, rows = judge(args.record, index, args.continuations)
+            position, result, rows = judge(args.record[0], index, args.continuations)
             print('decision %d (%s)' % (index, result.reason))
             for row in rows:
                 print('   %-11s %-40s NPC result %.2f  rounds won %.2f' % (row['kind'], describe(position, row['action'], names),
                                                                          row['mean'], row['rounds']))
         return
-    for row in review(args.record):
+    for row in review(args.record[0]):
         same = '' if row['game'].split(' (')[0] == row['reference'].split(' (')[0] else '   <- differs'
         print('%4d  game: %-40s python: %-40s %s%s' % (row['index'], row['game'], row['reference'], row['reason'], same))
 

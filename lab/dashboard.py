@@ -598,6 +598,14 @@ def main():
                   'heroes': ('Faction heroes, varied per match', "2-3 of the faction's, Geralt/Ciri 1 in 4"),
                   'allow-self-harm': ('Old rule: NPC may hurt its own score', 'self-only Scorch, wasted leader'),
                   'strictheroes': ('Adaptive faction heroes without the fallback', 'vs every hero allowed when short'),
+                  'agile-dry': ('Agile units avoid a frozen row', 'when their other row is dry'),
+                  'weather-guard': ('No weather that gains nothing now', 'and no unit into its own weather'),
+                  'medic-hold': ('Medic kept until something can be revived', 'empty graveyard'),
+                  'agile-dry+weather-guard+medic-hold': ('Weather and Medic rules together', 'agile-dry, weather-guard, medic-hold'),
+                  'r1-chase': ('NPC stops chasing a lost first round', 'when down cards'),
+                  'overkill-trim': ('NPC wins a round with the cheapest play', 'no overkill'),
+                  'agile-dry+weather-guard+medic-hold+r1-chase+overkill-trim': ('All round-8 NPC changes together', ''),
+                  'ability-value': ('NPC decks value card abilities', 'Horn units, muster groups, row Scorch, Morph'),
                   'lead-pass+known-hand+mulligan-combined+weather-zero+skellige': ('All NPC changes together', '')}
         decks = dict(original='Original decks', balanced='Adaptive decks', strong='Strong decks')
         def tested(label):

@@ -31,16 +31,20 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
   weather card its leader can pull from the deck. Lab: +5.4 points of NPC win share with
   Adaptive decks even when the player exchanges too
   (z 3.9).
-- **One artwork per card copy** (while the mod is On): the copies of Impera Brigade,
-  Nausicaa Cavalry Rider, Crinfrid Reavers, Poor Fucking Infantry and Catapult each show a
-  different picture, and so do the copies of Blue Stripes Commando and Siege Tower in one
-  deck (copies of the same card get different art; a fourth Blue Stripes repeats the first).
-  The artwork is the game's own: alternate card art that ships with The Witcher 3 but that
-  the vanilla card list never uses. Visual only (power, abilities and the card list are
+- **One artwork per card copy** (while the mod is On): the copies of one card show different
+  pictures. Cards are grouped by family, every non-hero unit that shares a name (Poor Fucking
+  Infantry, Kaedweni Siege Expert, Impera Brigade, Blue Stripes Commando, Siege Tower, the
+  Scoia'tael, Monster and Skellige groups...), so it works even when the game gives you the same
+  card number twice (Poor Fucking Infantry x2 shows two pictures, Kaedweni Siege Expert x3 three).
+  Copies are numbered by card number, then copy, and take the family's pictures in that order;
+  a picture repeats only when the family runs out (a fourth Blue Stripes repeats the first).
+  The artwork is the game's own: the pictures of the family's other cards, plus alternate card
+  art that ships with The Witcher 3 but that the vanilla card list never uses. Visual only (power, abilities and the card list are
   unchanged, no card definition file is overridden). The Gwent deck builder (pause menu >
-  Gwent decks) shows the same pictures, with one tile per copy of Blue Stripes Commando and
-  Siege Tower instead of one "x3" tile (adding or removing any of them moves one copy, as
-  before); the right-click zoom shows each copy with the picture of its tile. With the mod Off or removed, the stock art and tiles return. [See every copy side by side](docs/img/bond-card-art.png).
+  Gwent decks) shows the same pictures, with one tile per copy of these cards instead of one
+  "x3" tile (adding or removing any of them moves one copy, as before); the right-click zoom
+  shows each copy with the picture of its tile. With the mod Off or removed, the stock art and
+  tiles return. [See every copy side by side](docs/img/bond-card-art.png).
 
 ## NPC decks: Original, Adaptive, Strong
 

@@ -14,17 +14,21 @@ What Better Gwent does not do well yet, or cannot do, and why. Items move to the
 - **The deck builder rates cards by their printed power.** Cards whose value is in their ability
   are underrated: Dandelion (a Commander's Horn on a unit) and Gaunter O'Dimm (summons three
   Gaunter O'Dimm: Darkness, 14 power in one play) almost never enter Strong decks. Under test.
+- **Factions are uneven.** Test, 12 October 2026, NPC win share against player-style decks:
+  Northern Realms 77% (Adaptive) and 84% (Strong), Scoia'tael 53% and 43%. Scoia'tael has many
+  low-power cards and the deck builder underrates the cards that could help it.
 
 ## AI decisions
 
-Seen in recorded matches and being tested as Lab switches (not yet changed in the game):
+Seen in recorded matches:
 
-- Spending too many cards to win round 1, or to chase a round it cannot win.
-- Winning a round by far more than needed.
-- A leader weather ability used too early (for example a first-move Biting Frost on an empty
-  board), and units then played into its own weathered row; an agile unit placed in a
-  weathered row while its other row is free.
-- A Medic played with nothing in the graveyard to revive.
+- Spending too many cards to win round 1, or to chase a round it cannot win. A first rule for
+  round 1 was tested and dropped (it made the NPC weaker on Hard).
+- Winning a round by far more than needed. A fix is being measured.
+- Fixed in the simulator, not yet in the game: a leader weather ability or weather card that
+  gains nothing (for example a first-move Biting Frost on an empty board), units played into
+  their own weathered row, an agile unit placed in a weathered row while its other row is free,
+  and a Medic played with nothing in the graveyard to revive.
 
 ## Card art
 
