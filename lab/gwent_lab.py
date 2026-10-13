@@ -109,6 +109,7 @@ class Manager:
                 core.refill(self.db)
                 core.tune_step(self.db)
                 core.deck_tune_step(self.db)
+                core.ab_step(self.db)
             self.reconcile()
             time.sleep(3)
 

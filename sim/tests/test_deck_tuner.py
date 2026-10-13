@@ -1,14 +1,11 @@
 """Automatic deck tuner (lab/core.py, job kind 'deck-tune').
 
 Spec (owner, 13 October 2026): a small self-improving search for NPC decks. The Lab keeps an incumbent
-genome (sim/gwentsim/npc_balance.genome), proposes one mutation at a time (a knob for one
-player faction, or a global knob), plays the candidate and the incumbent on the same matchups,
-luck and opening exchanges (paired), and accepts the candidate only when it is proven better:
-paired z of at least 2 on NPC win share. Then it proposes the next mutation, forever.
-
-Given a deck-tune job, when an iteration's paired tasks are finished, then the step accepts a
-proven candidate and keeps the incumbent otherwise, and queues the next iteration; mutations
-respect the genome limits (0-2 Decoys, a weather effect or none, stepped or default heroes).
+genome (sim/gwentsim/npc_balance.genome), races several mutations per iteration (a knob for one
+player faction, or a global knob), plays each candidate and the incumbent on the same matchups,
+luck and opening exchanges (paired), and accepts the best candidate proven better by its own
+sequential test (SPRT, see test_sprt.py for the race itself). Then it races again, forever.
+Mutations respect the genome limits (0-2 Decoys, a weather effect or none, stepped or default heroes).
 """
 import json
 import sqlite3
@@ -38,31 +35,11 @@ def test_mutations_stay_within_the_genome_limits():
 
 
 def test_iteration_tasks_are_paired_and_carry_the_scene():
-    params = dict(npc_decks='balanced', profile='hard', policy=SCENE, tasks=40, seed_base=11)
+    params = dict(npc_decks='balanced', profile='hard', policy=SCENE, candidates=2, batch=20, seed_base=11)
     tasks = core.deck_tune_payloads(params)
     assert len(tasks) == 40 and all(t['kind'] == 'deck-eval' for t in tasks)
     assert all(t['policy'] == SCENE and t['npc_decks'] == 'balanced' for t in tasks)
     assert all(t['candidate'] != t['incumbent'] for t in tasks)
-
-
-def test_step_accepts_only_a_proven_candidate():
-    for wins, accepted in ((0.9, True), (0.55, False)):
-        db = sqlite3.connect(':memory:', isolation_level=None)
-        db.executescript(core.SCHEMA)
-        params = dict(npc_decks='balanced', profile='hard', policy=SCENE, tasks=60, seed_base=11, iterations=5)
-        tasks = core.deck_tune_payloads(params)
-        jid = job(db, params)
-        candidate = tasks[0]['candidate']
-        for i, t in enumerate(tasks):
-            # the candidate wins `wins` of the matchups the incumbent loses
-            cand = 1.0 if i < len(tasks) * wins else 0.0
-            db.execute("INSERT INTO tasks(job_id, idx, payload, status, result) VALUES (?, ?, ?, 'done', ?)",
-                       (jid, i, json.dumps(t), json.dumps(dict(candidate=cand, incumbent=0.5))))
-        core.deck_tune_step(db)
-        stored = json.loads(db.execute("SELECT params FROM jobs").fetchone()[0])
-        assert (stored['genome'] == candidate) is accepted
-        assert stored['iteration'] == 1 and len(stored['history']) == 1
-        assert db.execute("SELECT COUNT(*) FROM tasks WHERE status='pending'").fetchone()[0] == 60
 
 
 def test_weather_choices_are_real_weather_cards():
@@ -79,7 +56,7 @@ def test_weather_choices_are_real_weather_cards():
 
 
 def test_deck_eval_plays_both_genomes_on_one_matchup():
-    task = core.deck_tune_payloads(dict(npc_decks='balanced', profile='hard', policy=SCENE, tasks=1, seed_base=11))[0]
+    task = core.deck_tune_payloads(dict(npc_decks='balanced', profile='hard', policy=SCENE, candidates=1, batch=1, seed_base=11))[0]
     result = core.run_payload(task)
     assert set(result) == {'candidate', 'incumbent'}
     assert all(v in (0.0, 0.5, 1.0) for v in result.values())
