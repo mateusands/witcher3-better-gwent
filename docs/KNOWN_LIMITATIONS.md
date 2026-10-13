@@ -60,6 +60,15 @@ Seen in recorded matches:
 - In the deck builder, a split tile moves the top copy of that card, not always the tile clicked;
   the counts are always right.
 
+## Performance
+
+- **The frame rate drops while the NPC thinks.** The AI runs in the Gwent screen itself, in small
+  slices between frames so the game never freezes, but each frame then spends part of its time on
+  the search, and the board's animations can stutter until the move is chosen. Recorded matches on
+  Hard (13 October 2026, 200 decisions): about 1 s of thinking on average, up to about 2.4 s for nine
+  moves in ten, and about 4.6 s at the longest. Easy and Normal search less and think for less time.
+  The frame rate returns to normal as soon as the NPC plays.
+
 ## Compatibility with other mods
 
 - **Mods that replace the Gwent screens do not work together with Better Gwent.** Better Gwent

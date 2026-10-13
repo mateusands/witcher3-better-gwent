@@ -49,6 +49,7 @@ information and searches its own moves and the opponent's replies against those 
 - **Tuning weights from positions (Texel's method)**
   - Reference: P. Österlund, [*Texel's Tuning Method*](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
   - Where it is used: The V8 utility weights fitted to the results of many recorded positions, without playing matches during the fit; every fitted set is confirmed by a paired A/B test
+  - How it runs: `lab/remote/texel_run.sh` on the Lab server collects, fits and queues the A/B tests; it uses the Lab's PyPy at the workers' priority, so it shares the CPU evenly with the Lab (Test, 13 October 2026: the first run used CPython at a higher priority than the workers and slowed the Lab by about a third)
 
 ## Studied, not used (yet)
 

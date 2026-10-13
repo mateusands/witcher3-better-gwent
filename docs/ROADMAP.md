@@ -56,6 +56,21 @@ Adjust cards that are rarely worth a slot, so more decks and strategies are viab
   NPC decks.
 - Off by default and fully reversible: removing the module restores the original values.
 
+### Opponent personality (future, maybe with Lost Cards)
+
+Not planned for now: it is a large piece of work. It may come later, possibly in the same
+release as Lost Cards.
+
+- The game's quests mark each opponent with a difficulty and a play style (Hard, Aggressive,
+  Defensive, "all I have"), but the game never uses those marks (see
+  [Studying the game](game-study/curiosities.md)).
+- As an On/Off option, each opponent would play the way the developers marked it: a Hard opponent
+  always at the strongest level, an aggressive one pressing early, a defensive one keeping its
+  cards, "all I have" never giving a round away.
+- Each style must be tuned in the Lab so it stays strong, only different. Test, 13 October 2026:
+  simple "defensive" changes (giving up round 1 early, passing more readily) cost the NPC 2 to 5
+  points of win rate.
+
 ## Core (ongoing)
 
 Everything in the core can be installed in the middle of a playthrough and removed at any time:
@@ -69,11 +84,10 @@ files or the save.
   - Then self-play parameter tuning and a small value network (see [Research](RESEARCH.md)).
   - **Eredin's "discard two, pick one" leader:** neither the native AI nor Better Gwent's AI uses
     it today; Better Gwent's AI will search it like the other leaders.
-  - **Opponent personality** (an On/Off option): the game's quests mark each opponent with a
-    difficulty and a play style (Hard, Aggressive, Defensive, "all I have"), but the game never
-    uses those marks. With the option on, each opponent plays the way the developers marked it:
-    a Hard opponent always at the strongest level, an aggressive one pressing early, a defensive
-    one keeping its cards. Each style is measured in the Lab so it stays strong, only different.
+- **Smoother thinking:** the frame rate still drops while the NPC thinks. Test, 13 October 2026:
+  giving the search a smaller share of each frame while cards move and a larger one while the
+  board is still made the drops worse in game, so it was reverted to the fixed 20 ms share.
+  Another approach is still open.
 - **NPC decks:** the automatic deck tuner (Decoys and weather per player faction, hero variety,
   an even fight on Adaptive), with fair play (only your deck's faction and strength are read).
 - **Content the game left unfinished** (no card or rule changes):

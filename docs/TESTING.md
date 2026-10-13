@@ -95,6 +95,31 @@ gives up as "undecided" at a match budget. With the Lab's real spread of results
 change is decided in about 120 matchups, a clear gain in about 180 and a neutral change in about
 1,000, against 2,100 for a fixed test (`lab/sprt.py`, job kind `ab`).
 
+Test, 13 October 2026: on the first 21 decided tests the Lab played 32,183 matchups where fixed
+tests would have played 44,100 (1.4x fewer). Most ideas were only slightly worse (1 to 3 points),
+close to the smallest gain the test looks for, so they needed 1,000 to 2,200 matchups; clearly
+worse ones stopped near 600. Two tests needed more than 2,100 (3,399 and 4,997) and would have
+been "unclear" with a fixed size. Since then batches are 100 matchups (was 200), the next batch
+is queued while the last one still runs, and the test is checked at every step of the Lab.
+
+Test, 13 October 2026, rented servers (rounds 11 to 17, about 70 sequential tests): two ideas
+passed three times on new matchups, both on the Original mode only: playing a spy before other
+cards while later rounds remain ("spy-first"), and keeping 20% of what the search's second ply
+adds to a move ("fusion20"). Everything else was worse or neutral: changes of the utility weights
+(draw value, reserve), giving up round 1 early, more or fewer imagined hands, a wider or narrower
+second ply, a margin for passing, caution towards the worst hand, other fusion shares, and a
+ceiling on round-1 spending on Adaptive. Two early passes (fusion25 on Strong, fusion15 on
+Original) failed their confirmations: about 1 in 20 passes is luck, which is why every pass is
+confirmed.
+
+### Autopilot (since 13 October 2026)
+
+The cloud server improves the NPC on its own (`lab/autopilot.py`, a service on the server): it
+keeps a few idea jobs running from a list of idea families, gives every passed test two
+confirmation tests on new matchups (about 1 in 20 passes is luck, and many tests run), and writes
+a report of promoted, rejected and waiting ideas. Only promoted ideas are turned into changes of
+the mod, and nothing needs testing move by move in the game.
+
 ### Automatic deck tuner
 
 A small self-improving search for NPC decks, running around the clock on a cloud server (`lab/core.py`,
@@ -144,6 +169,9 @@ charts come from `python3 lab/dashboard.py <lab databases>`.
 - Since 13 October 2026 a cloud server runs the Lab around the clock (12 cores): continuous
   A/B tests, the deep blunder hunt on my own recorded decks, SPSA tuning and the deck tuner.
   Short batteries go to rented 32-core servers, split across several when a run is long.
+- Lab audit, 13 October 2026: picking the next task scanned every task of every job (150 ms
+  inside a write lock on a 73,000-task database, so 32 workers queued for the lock); an index
+  on the tasks' job and status makes it 0.2 ms.
 - The Lab's own code is tested like the AI: the weights path, the hunter's pass option, the
   scene of hunts and tuning, the task split across servers, the queue release and the
   database pull each have a test that failed before its fix.

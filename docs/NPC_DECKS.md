@@ -49,6 +49,21 @@ Our own recorded player decks measured 214-284, so Hard NPCs keep every extra ca
 normal deck; the fix mainly makes the early game and Easy/Normal fair. The bug is also listed
 with the other [bugs of the base game](game-study/base-game-bugs.md).
 
+## Original: how the AI plays these decks
+
+With the Original decks, the NPC also plays two small changes that the Lab proved on these decks
+only (Test, 13 October 2026: each passed three times on new matchups; on Adaptive and Strong they
+were worse, so there the AI is unchanged):
+
+- **Spy first:** while later rounds remain and the player still plays, the NPC plays its cheapest
+  Spy before other cards, so it draws its cards early.
+- **A more careful look ahead:** in its second step of look-ahead the search picks its next move
+  for each imagined player hand as if it knew that hand; with these decks it trusts only 20% of
+  what that step adds to a move.
+
+The NPC decks option reaches the AI with the match settings; your own side in autoplay is not
+affected.
+
 ## Safe for saves
 
 - The game builds each NPC deck when a match starts, from its own deck definitions
