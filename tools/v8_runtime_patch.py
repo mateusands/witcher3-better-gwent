@@ -1,6 +1,6 @@
 """Original native public-context/settings bridge patches, not a decision hook."""
 import re
-NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance','CardSlot']
+NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance','CardSlot','CardFXManager']
 
 # Tight Bond art: the game ships one texture per copy, but the card definitions give every
 # copy the same picture. Card index -> (picture in the card definitions, picture we show).
@@ -156,6 +156,30 @@ def patch(name, source):
     if 'function gwai' in source or 'function get gwai' in source or 'gwaiNurseChoice(' in source or 'gwaiLeaderTarget(' in source:
         raise ValueError('native bridge already patched')
     source=source.replace('\r\n','\n')
+    if name=='GwintGameFlowController':
+        # The Skellige faction ability calls a sound that exists in no sound bank, so it is silent;
+        # the game's revive sound fits it (units come back from the discard pile).
+        if source.count('playSound("gui_gwint_skellige_ability")')!=2:
+            raise ValueError('native patch anchor count: skellige ability sound')
+        source=source.replace('playSound("gui_gwint_skellige_ability")','playSound("gui_gwint_resurrect")')
+    if name=='CardFXManager':
+        # The game ships a sound for agile cards that nothing plays: an agile unit plays it
+        # instead of the plain row sound. Nothing else in the effect manager changes.
+        return once(source,'''            switch(cardInstance.inList)
+            {
+               case CardManager.CARD_LIST_LOC_MELEE:
+                  GwintGameMenu.mSingleton.playSound("gui_gwint_close_combat");
+                  break;
+               case CardManager.CARD_LIST_LOC_RANGED:
+                  GwintGameMenu.mSingleton.playSound("gui_gwint_long_range");
+            }
+            return this._placeRangedFXClassRef;''','''            // gwai: the game's unused agile card sound
+            GwintGameMenu.mSingleton.playSound("gui_gwint_agile");
+            return this._placeRangedFXClassRef;''')
+    if name in ('CardInstance','CardLeaderInstance'):
+        # The game's revive dialog (Medic, reviving leaders) asks for a misspelled text key, so it
+        # opens without its title; the game's text files hold the key spelled "resurrect".
+        source=source.replace('[[gwint_choose_card_to_ressurect]]','[[gwint_choose_card_to_resurrect]]')
     if name=='BasePlayerController':
         source=once(source,'public function resetCurrentRoundStatus() : void\n      {',
             'public function resetCurrentRoundStatus() : void\n      {\n         if(this.gameFlowControllerRef != null && this.gameFlowControllerRef.gwaiProfileForPlayer(this.playerID) >= 0)\n         {\n            var manager:CardManager = CardManager.getInstance();\n            var leader:CardLeaderInstance = manager.getCardLeader(this.playerID);\n            this.currentRoundStatus = manager.gwaiPublicHandCount(this.playerID) > 0 || (leader != null && leader.canBeUsed) ? ROUND_PLAYER_STATUS_ACTIVE : ROUND_PLAYER_STATUS_DONE;\n            return;\n         }')

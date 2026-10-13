@@ -165,6 +165,58 @@ function GwaiNpcDeckVariant(deck : SDeckDefinition) : int
     return 0;
 }
 
+// The game appends the quest's extra NPC cards (GetAdditionalCards, its prize cards) to the deck
+// with no uniqueness check. So the mod-built deck leaves out every hero that is also an extra
+// card (geraltGOG/ciriGOG are the same hero as geralt/ciri) and keeps only the first copies of
+// any other card so that deck plus extra copies stay within 3. The extra cards are not changed.
+// As npc_balance.without_extra_duplicates.
+function GwaiNpcDeckWithoutExtras(cards : array<name>, extras : array<name>) : array<name>
+{
+    var manager : CR4GwintManager = theGame.GetGwintManager();
+    var kept : array<name>;
+    var card : SCardDefinition;
+    var hero : string;
+    var i, j, copies : int;
+    var skip : bool;
+    for (i = 0; i < cards.Size(); i += 1)
+    {
+        skip = false;
+        if (manager.GetGwentCard(cards[i], card) && (card.typeFlags & GwintType_Hero) == GwintType_Hero)
+        {
+            hero = StrReplaceAll(NameToString(cards[i]), "GOG", "");
+            for (j = 0; j < extras.Size(); j += 1)
+            {
+                if (StrReplaceAll(NameToString(extras[j]), "GOG", "") == hero)
+                {
+                    skip = true;
+                }
+            }
+        }
+        else
+        {
+            copies = 0;
+            for (j = 0; j < extras.Size(); j += 1)
+            {
+                if (extras[j] == cards[i]) { copies += 1; }
+            }
+            for (j = 0; j < kept.Size(); j += 1)
+            {
+                if (kept[j] == cards[i]) { copies += 1; }
+            }
+            skip = copies >= 3;
+        }
+        if (skip)
+        {
+            LogChannel('GwentAI', "NPC decks: left out " + NameToString(cards[i]) + ", also an extra NPC card");
+        }
+        else
+        {
+            kept.PushBack(cards[i]);
+        }
+    }
+    return kept;
+}
+
 @wrapMethod(CR4GwintManager)
 function GetCurrentAIDeck() : SDeckDefinition
 {
@@ -204,8 +256,8 @@ function GetCurrentAIDeck() : SDeckDefinition
         }
         chosen.PushBack(card.cardName);
     }
-    deck.cards = chosen;
-    // The chosen deck replaces the extra NPC cards: they are looked up by deck name.
+    // The game still appends the quest's extra NPC cards: no duplicate hero, at most 3 copies.
+    deck.cards = GwaiNpcDeckWithoutExtras(chosen, GetAdditionalCards());
     deck.deckName = 'gwai_npc_deck';
     return deck;
 }

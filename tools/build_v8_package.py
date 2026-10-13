@@ -86,7 +86,8 @@ def main():
     for path in ['mod/settings/modGwentAISettings/content/scripts/local/gwai_settings.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_betting.ws',
         'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks.ws',
-        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws']+(
+        'mod/settings/modGwentAISettings/content/scripts/local/gwai_npc_decks_data.ws',
+        'mod/settings/modGwentAISettings/content/scripts/local/gwai_glossary.ws']+(
         ['mod/recorder/modGwentAIRecorder/content/scripts/local/gwai_recorder.ws'] if variant=='recorder' else []):
         shutil.copyfile(ROOT/path,scripts/Path(path).name);inputs[path]=sha(ROOT/path)
     for language in LANGUAGES:(content/(language+'.w3strings')).write_bytes(build(language_labels(language)))

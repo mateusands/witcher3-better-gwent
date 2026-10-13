@@ -240,6 +240,27 @@ def hero_identity(t, names):
     return names.get(t.index, str(t.index)).replace('GOG', '')
 
 
+def without_extra_duplicates(templates, names, cards, extra_cards):
+    """The mod-built NPC deck `cards` (indices) minus what the quest's extra NPC cards
+    (`extra_cards`, card names as GetAdditionalCards() gives them) would duplicate: the game
+    appends the extra cards without a uniqueness check. A hero that is also an extra card is left
+    out (GOG versions are the same hero); any other card keeps its first copies so that deck plus
+    extra copies stay within 3. The extra cards are not changed. Reference for
+    GwaiNpcDeckWithoutExtras in gwai_npc_decks.ws."""
+    extra_heroes = {n.replace('GOG', '') for n in extra_cards}
+    kept, count = [], defaultdict(int)
+    for i in cards:
+        name = names.get(i, str(i))
+        if templates[i].is_type(C.CardType_Hero):
+            if hero_identity(templates[i], names) in extra_heroes:
+                continue
+        elif count[name] + extra_cards.count(name) >= 3:
+            continue
+        count[name] += 1
+        kept.append(i)
+    return kept
+
+
 def packages(templates, faction, names):
     """Units of the faction plus neutrals, grouped so synergies stay whole.
 
