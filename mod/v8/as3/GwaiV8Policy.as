@@ -65,7 +65,30 @@ internal class GwaiV8Policy
         if(a.move.source != b.move.source) return a.move.source-b.move.source;
         return a.order-b.order;
     }
+    // Single non-spy plays after which the round is ours, cheapest first ({cost, negative_gain, move});
+    // same as response_v8.securing_plays (Blunder Fix #2, and overkill-trim against a passed opponent).
+    public static function securingPlays(state:Object,context:Object):Array
+    {
+        var own:int = state.player; var other:int = 1-own; var scores:Array = state.scores();
+        var ties:Boolean = GwaiV8Sequence.winsTies(context) || GwaiV8Response.tieMatch(context);
+        var candidates:Array = []; var initial:Number = state.reserve(); var moves:Array = state.actions();
+        for(var i:int = 0; i < moves.length; ++i)
+        {
+            var card:Object = state.cards[moves[i].source]; if(card == null || GwaiV8Position.isType(card,256)) continue;
+            try
+            {
+                var after:Object = state.apply(moves[i]); var sc:Array = after.scores();
+                if(sc[own] > sc[other] || (sc[own] == sc[other] && ties))
+                    candidates.push({cost:initial-after.reserve(),negative_gain:-((sc[own]-sc[other])-(scores[own]-scores[other])),move:moves[i],order:candidates.length});
+            }
+            catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; }
+        }
+        candidates.sort(winningCostOrder); return candidates;
+    }
+    // The V8 guards, then the shipped NPC rules (same order as response_v8.choose_response_v8).
     public static function guards(state:Object,context:Object,base:Object):Object
+    { return GwaiV8Policy.rules(state,context,GwaiV8Policy.fixes(state,context,base)); }
+    public static function fixes(state:Object,context:Object,base:Object):Object
     {
         var move:Object = base.action; var card:Object; var after:Object; var safe:Boolean = false; var i:int; var key:int;
         var secure:Boolean = GwaiV8Response.secured(state,context);
@@ -81,20 +104,9 @@ internal class GwaiV8Policy
         var ties:Boolean = GwaiV8Sequence.winsTies(context) || GwaiV8Response.tieMatch(context);
         if(context.opponent_passed && (move == null || ["pass_for_match_resources","proven_no_supported_overtake"].indexOf(base.reason) >= 0) && !secure)
         {
-            scores = state.scores(); var candidates:Array = []; var initial:Number = state.reserve(); var moves:Array = state.actions();
-            for(i = 0; i < moves.length; ++i)
-            {
-                card = state.cards[moves[i].source]; if(card == null || GwaiV8Position.isType(card,256)) continue;
-                try
-                {
-                    after = state.apply(moves[i]); var sc:Array = after.scores();
-                    if(sc[own] > sc[other] || (sc[own] == sc[other] && ties))
-                        candidates.push({cost:initial-after.reserve(),negative_gain:-((sc[own]-sc[other])-(scores[own]-scores[other])),move:moves[i],order:candidates.length});
-                }
-                catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; }
-            }
+            var candidates:Array = GwaiV8Policy.securingPlays(state,context);
             if(candidates.length > 0 && (context.opponent_losses >= 1 || context.round_index >= 2 || context.own_losses >= 1 || (context.round_index == 0 && state.hand.length >= 2)))
-            { candidates.sort(winningCostOrder); return GwaiV8Policy.finish(base,candidates[0].move,"overtake_passed_opponent_win"); }
+                return GwaiV8Policy.finish(base,candidates[0].move,"overtake_passed_opponent_win");
         }
         if(context.opponent_passed && move != null && !secure && context.own_losses == 0 && context.round_index < 2)
         {
@@ -195,17 +207,201 @@ internal class GwaiV8Policy
     // opponent right now, and a Horn (card or leader) that adds nothing on an empty row.
     public static function wastedMove(state:Object,move:Object):Boolean
     {
-        var card:Object = state.cards[move.source]; if(card == null) return false;
+        var kinds:Array = GwaiV8Policy.weatherOrHorn(state,move); var weather:Boolean = kinds[0];
+        if(!weather && !kinds[1]) return false;
+        var gain:Number = GwaiV8Policy.scoreGain(state,move); if(isNaN(gain)) return false;
+        return weather ? gain < 0 : gain <= 0;
+    }
+    // [weather, horn] (response_v8.weather_or_horn): a weather card or leader "pick weather", a Horn card or leader Horn.
+    public static function weatherOrHorn(state:Object,move:Object):Array
+    {
+        var card:Object = state.cards[move.source]; if(card == null) return [false,false];
         var own:int = state.player; var leader:Boolean = state.leaders != null && move.source == state.leaders[own];
         var effect:int = leader ? int(state.leaderEffect(own)) : -1;
         var weather:Boolean = (!leader && GwaiV8Position.isType(card,16) && !GwaiV8Position.has(card,30)) || [12,13,11,10].indexOf(effect) >= 0;
         var horn:Boolean = (!leader && GwaiV8Position.isType(card,64) && GwaiV8Position.has(card,27)) || [18,19,20].indexOf(effect) >= 0;
-        if(!weather && !horn) return false;
+        return [weather,horn];
+    }
+    // Change of our score lead made by the move now; NaN when it cannot be projected (response_v8.score_gain).
+    public static function scoreGain(state:Object,move:Object):Number
+    {
         var after:Object;
         try { after = state.apply(move); }
-        catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; return false; }
-        var other:int = 1-own; var before:Array = state.scores(); var later:Array = after.scores();
-        var gain:Number = (later[own]-later[other])-(before[own]-before[other]);
-        return weather ? gain < 0 : gain <= 0;
+        catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; return NaN; }
+        var own:int = state.player; var other:int = 1-own; var before:Array = state.scores(); var later:Array = after.scores();
+        return (later[own]-later[other])-(before[own]-before[other]);
+    }
+
+    // ---- Shipped NPC rules from in-game matches g152-g157 (same as response_v8.npc_switches with
+    // weather-guard, medic-hold, overkill-trim and agile-dry, in that order; the Lab-only switches
+    // are not in the game). ----
+    // Moves of earlier fixes that the rules leave alone (only agile-dry may still move their row).
+    public static var PROTECTED:Array = ["proactive_decoy_spy","decoy_spy_retarget","medic_spy_retarget","proactive_medic_spy"];
+    public static function rules(state:Object,context:Object,result:Object):Object
+    {
+        var move:Object = result.action; if(move == null) return result;
+        var found:Object;
+        if(GwaiV8Policy.PROTECTED.indexOf(result.reason) < 0)
+        {
+            // weather-guard: no weather that gains nothing now, no unit into our own weather.
+            if(GwaiV8Policy.uselessWeather(state,context,move))
+            {
+                found = GwaiV8Policy.replacement(state,context,result,false,0);
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard"));
+            }
+            if(GwaiV8Policy.wetUnit(state,move))
+            {
+                found = GwaiV8Policy.replacement(state,context,result,true,GwaiV8Policy.ownValue(result));
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard_dry_unit"));
+            }
+            // medic-hold: keep a Medic until the graveyard holds a unit to revive.
+            if(GwaiV8Policy.emptyMedic(state,context,move))
+            {
+                found = GwaiV8Policy.replacement(state,context,result,false,0);
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"medic_hold"));
+            }
+            // overkill-trim: win the round with the smallest commitment.
+            if(result.reason != "overkill_trim")
+            {
+                var trimmed:Object = GwaiV8Policy.overkillTrim(state,context,result);
+                if(trimmed != null) return GwaiV8Policy.rules(state,context,trimmed);
+            }
+        }
+        // agile-dry: an agile unit goes to its dry row unless the weathered one is strictly better now.
+        var moved:Object = GwaiV8Policy.dryRows(state,move);
+        if(moved != null)
+        {
+            var wet:Number = GwaiV8Policy.scoreGain(state,move); var dry:Number = GwaiV8Policy.scoreGain(state,moved);
+            if(!isNaN(wet) && !isNaN(dry) && dry >= wet) return GwaiV8Policy.finish(result,moved,"agile_dry");
+        }
+        return result;
+    }
+    // overkill-trim (response_v8.overkill_trim): when the round is won or being won, the cheapest play
+    // that keeps it. Opponent passed: the cheapest securing play replaces a dearer one. Opponent still
+    // playing, we lead and a later round exists: the searched non-spy unit from the hand valued above
+    // passing, that keeps the lead and that no rule vetoes, costing the least reserve.
+    public static function overkillTrim(state:Object,context:Object,result:Object):Object
+    {
+        var move:Object = result.action; var card:Object = state.cards[move.source];
+        if(card != null && GwaiV8Position.isType(card,256)) return null;
+        var chosen:Number = GwaiV8Policy.commitment(state,move); if(isNaN(chosen)) return null;
+        if(context.opponent_passed)
+        {
+            var plays:Array = GwaiV8Policy.securingPlays(state,context);
+            if(plays.length > 0 && plays[0].cost < chosen-1e-9) return GwaiV8Policy.finish(result,plays[0].move,"overkill_trim");
+            return null;
+        }
+        if(context.round_index >= 2 || (context.own_losses > 0 && context.opponent_losses > 0) || !GwaiV8Response.secured(state,context)) return null;
+        var options:Array = result.alternatives == null ? [] : result.alternatives; var best:Object = null;
+        for(var i:int = 0; i < options.length; ++i)
+        {
+            var option:Object = options[i].action; var value:Number = options[i].oneTurnValue;
+            var unit:Object = GwaiV8Policy.inHandCard(state,option);
+            if(GwaiV8Policy.sameMove(option,move) || unit == null || !GwaiV8Position.isType(unit,8) || GwaiV8Position.isType(unit,256)
+                || value <= result.pass_value || GwaiV8Policy.vetoed(state,context,option)) continue;
+            var cost:Number = GwaiV8Policy.commitment(state,option);
+            if(isNaN(cost) || cost >= chosen-1e-9) continue;
+            var keeps:Boolean = false;
+            try { keeps = GwaiV8Response.secured(state.apply(option),context); }
+            catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; }
+            if(keeps && (best == null || cost < best.cost || (cost == best.cost && value > best.value))) best = {cost:cost,value:value,option:options[i]};
+        }
+        return best == null ? null : GwaiV8Policy.replaced(result,best.option,"overkill_trim");
+    }
+    // Reserve the move spends (our hand's worth for later rounds); NaN when it cannot be projected.
+    public static function commitment(state:Object,move:Object):Number
+    {
+        try { return state.reserve()-state.apply(move).reserve(); }
+        catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; }
+        return NaN;
+    }
+    public static function replaced(result:Object,option:Object,reason:String):Object
+    { var out:Object = GwaiV8Policy.finish(result,option.action,reason); out.value = option.oneTurnValue; return out; }
+    // Best searched alternative, in the search's own order, that no rule vetoes (response_v8.replacement);
+    // dryOnly: only a non-hero unit from the hand, not into our weather, valued at least `floor`.
+    public static function replacement(state:Object,context:Object,result:Object,dryOnly:Boolean,floor:Number):Object
+    {
+        var options:Array = result.alternatives == null ? [] : result.alternatives;
+        for(var i:int = 0; i < options.length; ++i)
+        {
+            var option:Object = options[i].action;
+            if(GwaiV8Policy.sameMove(option,result.action)) continue;
+            if(dryOnly)
+            {
+                var card:Object = GwaiV8Policy.inHandCard(state,option);
+                if(!(options[i].oneTurnValue >= floor && card != null && GwaiV8Position.isType(card,8)
+                    && !GwaiV8Position.isType(card,128) && !GwaiV8Policy.wetUnit(state,option))) continue;
+            }
+            if(!GwaiV8Policy.vetoed(state,context,option)) return options[i];
+        }
+        return null;
+    }
+    public static function ownValue(result:Object):Number
+    {
+        var options:Array = result.alternatives == null ? [] : result.alternatives;
+        for(var i:int = 0; i < options.length; ++i)
+            if(GwaiV8Policy.sameMove(options[i].action,result.action)) return options[i].oneTurnValue;
+        return result.value;
+    }
+    public static function vetoed(state:Object,context:Object,move:Object):Boolean
+    {
+        return GwaiV8Policy.uselessWeather(state,context,move) || GwaiV8Policy.wetUnit(state,move)
+            || GwaiV8Policy.emptyMedic(state,context,move) || GwaiV8Policy.wastedMove(state,move);
+    }
+    // The hand card a move plays (null for the leader).
+    public static function inHandCard(state:Object,move:Object):Object
+    {
+        if((state.leaders != null && move.source == state.leaders[state.player]) || state.hand.indexOf(move.source) < 0) return null;
+        var card:Object = state.cards[move.source]; return card == null ? null : card;
+    }
+    public static function weathered(state:Object,side:int,row:int):Boolean
+    {
+        var list:Array = state.effects[GwaiV8Position.slot(side,row)]; if(list == null) return false;
+        for(var i:int = 0; i < list.length; ++i) if(GwaiV8Position.isType(state.cards[list[i]],16)) return true;
+        return false;
+    }
+    // weather-guard: a weather play (card or leader pick) whose swing now is not positive.
+    public static function uselessWeather(state:Object,context:Object,move:Object):Boolean
+    {
+        if(context.opponent_passed || !GwaiV8Policy.weatherOrHorn(state,move)[0]) return false;
+        var gain:Number = GwaiV8Policy.scoreGain(state,move); return !isNaN(gain) && gain <= 0;
+    }
+    // weather-guard: a non-hero unit placed into our own row under weather, where it loses power.
+    public static function wetUnit(state:Object,move:Object):Boolean
+    {
+        var card:Object = GwaiV8Policy.inHandCard(state,move); var row:int = int(move.slot);
+        if(card == null || !GwaiV8Position.isType(card,8) || GwaiV8Position.isType(card,128) || GwaiV8Position.isType(card,256)
+            || GwaiV8Position.ROWS.indexOf(row) < 0) return false;
+        return GwaiV8Policy.weathered(state,state.player,row) && card.power > (state.half_weather[state.player] ? 0 : 1);
+    }
+    // medic-hold: a Medic (unit or hero) with no unit to revive, outside the final round.
+    public static function emptyMedic(state:Object,context:Object,move:Object):Boolean
+    {
+        var card:Object = GwaiV8Policy.inHandCard(state,move);
+        if(card == null || !GwaiV8Position.has(card,33) || state.recoveryTargets(state.player).length > 0) return false;
+        return !(context.round_index >= 2 || (context.own_losses > 0 && context.opponent_losses > 0));
+    }
+    // agile-dry: the same play with every agile unit it places (the card and its Medic chain) moved
+    // from a row under weather to its other row when that one is dry; null if nothing moves.
+    public static function dryRows(state:Object,move:Object):Object
+    {
+        var card:Object = GwaiV8Policy.inHandCard(state,move);
+        if(card == null || !GwaiV8Position.isType(card,8) || GwaiV8Position.isType(card,256)) return null;
+        var slot:int = GwaiV8Policy.dryRow(state,move.source,int(move.slot)); var changed:Boolean = slot != int(move.slot);
+        var source:Array = move.chain == null ? [] : move.chain; var chain:Array = [];
+        for(var i:int = 0; i < source.length; ++i)
+        {
+            var row:int = GwaiV8Policy.dryRow(state,source[i][0],int(source[i][1]));
+            if(row != int(source[i][1])) changed = true;
+            chain.push([source[i][0],row]);
+        }
+        if(!changed) return null;
+        var out:Object = GwaiV8Position.copyMap(move); out.slot = slot; out.chain = chain; return out;
+    }
+    public static function dryRow(state:Object,key:int,row:int):int
+    {
+        var own:int = state.player;
+        if((row == 4 || row == 5) && state.agileUnit(key) && GwaiV8Policy.weathered(state,own,row) && !GwaiV8Policy.weathered(state,own,9-row)) return 9-row;
+        return row;
     }
 }

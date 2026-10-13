@@ -8,7 +8,7 @@ asked what it would play from the same public position, so in-game decisions can
 with the reference and judged with luck continuations (see judge()).
 
 Usage: python3 sim/record_review.py game/records/g138.json [--judge INDEX ...]
-       python3 sim/record_review.py game/records/g15*.json --switches agile-dry+weather-guard [--changes]
+       python3 sim/record_review.py game/records/g15*.json --switches careless [--changes]
 
 --switches enables Lab experiment switches (response_v8.VARIANT) for the NPC seat only; with
 --changes only the decisions where the switches change the Python reference are listed.
@@ -301,7 +301,7 @@ def review(path, switches=None):
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('record', nargs='+')
-    parser.add_argument('--switches', help='Lab switches for the NPC seat, e.g. agile-dry+weather-guard')
+    parser.add_argument('--switches', help='Lab switches for the NPC seat, e.g. careless or r1-chase')
     parser.add_argument('--changes', action='store_true', help='with --switches: only the changed decisions')
     parser.add_argument('--judge', type=int, nargs='*', default=[], help='NPC decision event indices to judge')
     parser.add_argument('--continuations', type=int, default=16)

@@ -1,7 +1,8 @@
-"""NPC experiment switches from in-game matches g152-g157 (Lab only, all off by default).
+"""NPC rules from in-game matches g152-g157.
 
-agile-dry, weather-guard, medic-hold, r1-chase and overkill-trim post-process a V8 decision;
-each is checked on a constructed position, with the switch off (unchanged) and on.
+agile-dry, weather-guard, medic-hold and overkill-trim ship (on by default; the Lab switch
+'careless' restores the behaviour before them); r1-chase is a Lab switch, off by default. Each
+post-processes a V8 decision and is checked on a constructed position, off (unchanged) and on.
 """
 from dataclasses import asdict
 
@@ -48,11 +49,23 @@ def frozen(board, horned=False):
     return state.apply(Action(frost.instanceId, 9))
 
 
-def test_switches_are_off_by_default_and_named():
-    assert not v8.VARIANT & v8.NPC_SWITCHES
-    policy = 'player-mulligan+base-mulligan+agile-dry+weather-guard+medic-hold'   # "rules3" in round 8
-    flags = frozenset(f for f in policy.split('+') if f)                          # as lab/core.py reads it
-    assert flags & v8.NPC_SWITCHES == {'agile-dry', 'weather-guard', 'medic-hold'}
+CARELESS = {'careless'}                                        # the Lab switch: rules off
+
+
+def test_shipped_rules_on_by_default_and_lab_switches_off():
+    assert v8.SHIPPED_RULES == {'agile-dry', 'weather-guard', 'medic-hold', 'overkill-trim'}
+    assert v8.NPC_SWITCHES == {'r1-chase'}
+    assert not v8.VARIANT and not v8.SHIPPED_RULES & v8.NPC_SWITCHES
+    assert all(v8.rule(name, 0) for name in v8.SHIPPED_RULES)
+    assert not any(v8.rule(name, 0) for name in v8.NPC_SWITCHES)
+
+
+def test_careless_turns_the_shipped_rules_off_for_the_npc_seat_only(monkeypatch):
+    policy = 'player-mulligan+base-mulligan+careless'                         # as lab/core.py reads it
+    monkeypatch.setattr(v8, 'VARIANT', frozenset(f for f in policy.split('+') if f))
+    monkeypatch.setattr(v8, 'NPC_SEAT', 1)
+    assert not any(v8.rule(name, 1) for name in v8.SHIPPED_RULES)
+    assert all(v8.rule(name, 0) for name in v8.SHIPPED_RULES)                 # the stand-in player
 
 
 # ---- agile-dry ---------------------------------------------------------------------------------
@@ -62,9 +75,10 @@ def test_agile_dry_moves_an_agile_unit_out_of_the_frost(board, monkeypatch):
     position = frozen(board)
     wet = Action(scout.instanceId, 5)
     decided(monkeypatch, wet, [(wet, .8), (Action(scout.instanceId, 4), .8)])
-    assert switched(monkeypatch, position, ctx(), ()).action == wet                  # switch off
-    result = switched(monkeypatch, position, ctx(), {'agile-dry'})
-    assert result.action == Action(scout.instanceId, 4) and result.reason == 'agile_dry'
+    assert switched(monkeypatch, position, ctx(), CARELESS).action == wet            # rules off
+    result = switched(monkeypatch, position, ctx(), ())
+    # With every shipped rule on, weather-guard can move the unit first: both pick the dry row.
+    assert result.action == Action(scout.instanceId, 4) and result.reason in ('agile_dry', 'weather_guard_dry_unit')
 
 
 def test_agile_dry_keeps_a_horned_frozen_row_that_is_strictly_better(board, monkeypatch):
@@ -73,7 +87,7 @@ def test_agile_dry_keeps_a_horned_frozen_row_that_is_strictly_better(board, monk
     wet = Action(scout.instanceId, 5)
     assert v8.score_gain(position, wet) > v8.score_gain(position, Action(scout.instanceId, 4))
     decided(monkeypatch, wet)
-    assert switched(monkeypatch, position, ctx(), {'agile-dry'}).action == wet
+    assert switched(monkeypatch, position, ctx(), ()).action == wet
 
 
 # ---- weather-guard -----------------------------------------------------------------------------
@@ -84,11 +98,15 @@ def test_weather_guard_skips_a_frost_on_an_empty_board(board, monkeypatch):
     position = capture(board)
     play_frost, play_unit = Action(frost.instanceId, 9), Action(soldier.instanceId, 5)
     decided(monkeypatch, play_frost, [(play_frost, .9), (play_unit, .8)])
-    assert switched(monkeypatch, position, ctx(), ()).action == play_frost
-    result = switched(monkeypatch, position, ctx(), {'weather-guard'})
+    assert switched(monkeypatch, position, ctx(), CARELESS).action == play_frost
+    result = switched(monkeypatch, position, ctx(), ())
     assert result.action == play_unit and result.reason == 'weather_guard'
-    # Against a passed opponent the weather card is left to the passed-round search.
-    assert switched(monkeypatch, position, ctx(passed=True), {'weather-guard'}).action == play_frost
+    # Against a passed opponent weather-guard leaves the weather card to the passed-round search
+    # (overkill-trim may still swap it for the cheapest play that wins the round).
+    result = switched(monkeypatch, position, ctx(passed=True), ())
+    assert result.reason != 'weather_guard'
+    assert result.action == play_frost or result.reason == 'overkill_trim'
+    assert switched(monkeypatch, position, ctx(passed=True), CARELESS).action == play_frost
 
 
 def test_weather_guard_keeps_a_frost_that_hits_the_opponent(board, monkeypatch):
@@ -98,7 +116,7 @@ def test_weather_guard_keeps_a_frost_that_hits_the_opponent(board, monkeypatch):
     position = capture(board)
     play_frost = Action(frost.instanceId, 9)
     decided(monkeypatch, play_frost, [(play_frost, .9), (Action(soldier.instanceId, 5), .8)])
-    assert switched(monkeypatch, position, ctx(), {'weather-guard'}).action == play_frost
+    assert switched(monkeypatch, position, ctx(), ()).action == play_frost
 
 
 @pytest.mark.parametrize('dry_value,expected', [(.8, 'dry'), (.7, 'wet')])
@@ -108,7 +126,8 @@ def test_weather_guard_plays_a_dry_unit_instead_of_a_frozen_one(board, monkeypat
     position = frozen(board)
     wet, dry = Action(knight.instanceId, 5), Action(archer.instanceId, 4)
     decided(monkeypatch, wet, [(wet, .8), (dry, dry_value)])
-    result = switched(monkeypatch, position, ctx(), {'weather-guard'})
+    assert switched(monkeypatch, position, ctx(), CARELESS).action == wet
+    result = switched(monkeypatch, position, ctx(), ())
     assert result.action == (dry if expected == 'dry' else wet)
 
 
@@ -133,8 +152,8 @@ def test_medic_hold(board, monkeypatch, grave_unit, context, held):
     play_medic = next(a for a in position.actions() if a.source == medic.instanceId)
     play_unit = Action(soldier.instanceId, 5)
     decided(monkeypatch, play_medic, [(play_medic, .9), (play_unit, .8)])
-    assert switched(monkeypatch, position, context, ()).action == play_medic
-    result = switched(monkeypatch, position, context, {'medic-hold'})
+    assert switched(monkeypatch, position, context, CARELESS).action == play_medic
+    result = switched(monkeypatch, position, context, ())
     assert result.action == (play_unit if held else play_medic)
 
 
@@ -181,7 +200,7 @@ def test_r1_chase_keeps_a_winnable_round(board, monkeypatch):
     assert not v8.hopeless_chase(position, ctx(opponent_hand=3))
 
 
-# ---- overkill-trim -----------------------------------------------------------------------------
+# ---- overkill-trim (shipped) -------------------------------------------------------------------
 
 def test_overkill_trim_against_a_passed_opponent(board, monkeypatch):
     unit(board, 10, 5)
@@ -192,8 +211,8 @@ def test_overkill_trim_against_a_passed_opponent(board, monkeypatch):
     big = Action(hero.instanceId, 5)
     decided(monkeypatch, big)
     context = ctx(passed=True, opponent_hand=4)
-    assert switched(monkeypatch, position, context, ()).action == big
-    result = switched(monkeypatch, position, context, {'overkill-trim'})
+    assert switched(monkeypatch, position, context, CARELESS).action == big          # rules off
+    result = switched(monkeypatch, position, context, ())                            # default
     assert result.action == Action(small.instanceId, 5) and result.reason == 'overkill_trim'
 
 
@@ -209,8 +228,11 @@ def test_overkill_trim_while_leading(board, monkeypatch, context, trimmed):
     position = capture(board)
     big, cheap = Action(hero.instanceId, 5), Action(small.instanceId, 5)
     decided(monkeypatch, big, [(big, .9), (cheap, .85)], pass_value=.8)
-    result = switched(monkeypatch, position, context, {'overkill-trim'})
+    assert switched(monkeypatch, position, context, CARELESS).action == big          # rules off
+    result = switched(monkeypatch, position, context, ())                            # default
     assert result.action == (cheap if trimmed else big)
+    if trimmed:
+        assert result.reason == 'overkill_trim' and result.value == pytest.approx(.85)
 
 
 def test_overkill_trim_needs_a_play_valued_above_passing(board, monkeypatch):
@@ -221,4 +243,15 @@ def test_overkill_trim_needs_a_play_valued_above_passing(board, monkeypatch):
     position = capture(board)
     big, cheap = Action(hero.instanceId, 5), Action(small.instanceId, 5)
     decided(monkeypatch, big, [(big, .9), (cheap, .75)], pass_value=.8)
-    assert switched(monkeypatch, position, ctx(opponent_hand=6), {'overkill-trim'}).action == big
+    assert switched(monkeypatch, position, ctx(opponent_hand=6), ()).action == big
+
+
+def test_overkill_trim_needs_the_round_led(board, monkeypatch):
+    unit(board, 4, 5)
+    card(board, 5, 5, MELEE, player=1)                       # behind: nothing to trim
+    hero = card(board, 10, 1, MELEE | C.CardType_Hero)
+    small = card(board, 2, 1, MELEE)
+    position = capture(board)
+    big, cheap = Action(hero.instanceId, 5), Action(small.instanceId, 5)
+    decided(monkeypatch, big, [(big, .9), (cheap, .85)], pass_value=.8)
+    assert switched(monkeypatch, position, ctx(opponent_hand=6), ()).action == big

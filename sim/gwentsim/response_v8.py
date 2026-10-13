@@ -40,10 +40,8 @@ def safe_lead_pass(position, context):
 
 
 def choose_response_v8(position, context, profile):
-    result = _choose_response_v8(position, context, profile)
-    if VARIANT & NPC_SWITCHES:
-        result = npc_switches(position, context, result)
-    return result
+    # The shipped NPC rules (SHIPPED_RULES) always run; Lab switches add to them or turn them off.
+    return npc_switches(position, context, _choose_response_v8(position, context, profile))
 
 
 def _choose_response_v8(position, context, profile):
@@ -335,11 +333,24 @@ def wasted_move(position, action):
 
 
 
-# ---- NPC experiment switches from in-game matches g152-g157 (Lab only, all off by default) ------
-# Each is read with flag(name, seat); with none in VARIANT, choose_response_v8 is unchanged.
-NPC_SWITCHES = frozenset({'agile-dry', 'weather-guard', 'medic-hold', 'r1-chase', 'overkill-trim'})
+# ---- NPC rules from in-game matches g152-g157 -------------------------------------------------
+# agile-dry, weather-guard and medic-hold ship (test, 12 October 2026: no change in strength, and
+# they remove moves that look careless), and so does overkill-trim (test, 12 October 2026: positive
+# in all four measured cells, combined z about 2.0); the Lab switch 'careless' turns all four off
+# for that seat, the behaviour before them. Mirrored in AS3 by GwaiV8Policy.rules.
+SHIPPED_RULES = frozenset({'agile-dry', 'weather-guard', 'medic-hold', 'overkill-trim'})
+# Lab experiment switches, off by default (not in the game).
+NPC_SWITCHES = frozenset({'r1-chase'})
 # Moves of earlier fixes that the switches leave alone (only agile-dry may still move their row).
 PROTECTED = frozenset({'proactive_decoy_spy', 'decoy_spy_retarget', 'medic_spy_retarget', 'proactive_medic_spy'})
+
+
+def rule(name, seat):
+    """Whether an NPC rule is active for this seat: a shipped rule unless 'careless' is set, any
+    other only when its Lab switch is set."""
+    if name in SHIPPED_RULES:
+        return not flag('careless', seat)
+    return flag(name, seat)
 
 
 def score_gain(position, action):
@@ -392,11 +403,11 @@ def empty_medic(position, context, action):
 
 
 def vetoed(position, context, action):
-    """Moves a replacement must not be: what the active switches remove, and a wasted move."""
+    """Moves a replacement must not be: what the active rules remove, and a wasted move."""
     seat = position.player
-    if flag('weather-guard', seat) and (useless_weather(position, context, action) or wet_unit(position, action)):
+    if rule('weather-guard', seat) and (useless_weather(position, context, action) or wet_unit(position, action)):
         return True
-    if flag('medic-hold', seat) and empty_medic(position, context, action):
+    if rule('medic-hold', seat) and empty_medic(position, context, action):
         return True
     return wasted_move(position, action)
 
@@ -514,22 +525,23 @@ def hopeless_chase(position, context, samples=4):
 
 
 def npc_switches(position, context, result, again=False):
-    """Apply the active NPC switches to a V8 decision (see NPC_SWITCHES). `again`: a switch has
-    already replaced the move, so the pass check of r1-chase is not repeated."""
+    """Apply the active NPC rules to a V8 decision (SHIPPED_RULES, and NPC_SWITCHES when set in the
+    Lab). `again`: a rule has already replaced the move, so the pass check of r1-chase is not
+    repeated."""
     seat = position.player
     action = result.action
     if action is not None and result.reason not in PROTECTED:
         # r1-chase: stop spending on a first round that is not realistically ours.
-        if flag('r1-chase', seat) and not again and hopeless_chase(position, context):
+        if rule('r1-chase', seat) and not again and hopeless_chase(position, context):
             return replace(result, action=None, value=result.pass_value, reason='pass_for_match_resources',
                            revision='response-v8+r1-chase')
         # weather-guard: no weather that gains nothing now, no unit into our own weather.
-        if flag('weather-guard', seat) and useless_weather(position, context, action):
+        if rule('weather-guard', seat) and useless_weather(position, context, action):
             found = replacement(position, context, result)
             if found:
                 return npc_switches(position, context, again=True, result=replace(result, action=found[0], value=found[1],
                                                                  reason='weather_guard'))
-        if flag('weather-guard', seat) and wet_unit(position, action):
+        if rule('weather-guard', seat) and wet_unit(position, action):
             floor = own_value(result)
 
             def dry_unit(other, value):
@@ -541,17 +553,17 @@ def npc_switches(position, context, result, again=False):
                 return npc_switches(position, context, again=True, result=replace(result, action=found[0], value=found[1],
                                                                  reason='weather_guard_dry_unit'))
         # medic-hold: keep a Medic until the graveyard holds a unit to revive.
-        if flag('medic-hold', seat) and empty_medic(position, context, action):
+        if rule('medic-hold', seat) and empty_medic(position, context, action):
             found = replacement(position, context, result)
             if found:
                 return npc_switches(position, context, again=True, result=replace(result, action=found[0], value=found[1],
                                                                  reason='medic_hold'))
         # overkill-trim: win the round with the smallest commitment.
-        if flag('overkill-trim', seat) and result.reason not in ('overkill_trim',):
+        if rule('overkill-trim', seat) and result.reason not in ('overkill_trim',):
             trimmed = overkill_trim(position, context, result)
             if trimmed is not None:
                 return npc_switches(position, context, trimmed, again=True)
-    if action is not None and flag('agile-dry', seat):
+    if action is not None and rule('agile-dry', seat):
         moved = dry_rows(position, action)
         if moved is not None:
             wet, dry = score_gain(position, action), score_gain(position, moved)

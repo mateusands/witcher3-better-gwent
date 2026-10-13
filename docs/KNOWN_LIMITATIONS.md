@@ -24,11 +24,11 @@ Seen in recorded matches:
 
 - Spending too many cards to win round 1, or to chase a round it cannot win. A first rule for
   round 1 was tested and dropped (it made the NPC weaker on Hard).
-- Winning a round by far more than needed. A fix is being measured.
-- Fixed in the simulator, not yet in the game: a leader weather ability or weather card that
-  gains nothing (for example a first-move Biting Frost on an empty board), units played into
-  their own weathered row, an agile unit placed in a weathered row while its other row is free,
-  and a Medic played with nothing in the graveyard to revive.
+- Fixed, shipping in the next package: a leader weather ability or weather card that gains
+  nothing (for example a first-move Biting Frost on an empty board), units played into their own
+  weathered row, an agile unit placed in a weathered row while its other row is free, a Medic
+  played with nothing in the graveyard to revive, and winning a round by far more than needed
+  (the NPC now keeps a won round with the cheapest play the search values above passing).
 
 ## Card art
 
