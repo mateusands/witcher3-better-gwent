@@ -192,6 +192,15 @@ def parse_record(r):
             raise RecError('invalid FX trace values %r' % r)
         return dict(k='Y', phase=f[0], fxId=int(f[1]), card=inst(f[2]),
                     **dict(zip(('timeMs', 'frame', 'clipFrame', 'totalFrames', 'depth', 'children', 'activeFX'), values)))
+    if k == 'Q':
+        # Frame times of the Gwent screen in one window: the NPC thinking, or not (idle).
+        f = b.split(':')
+        if len(f) != 6 or f[0] not in ('think', 'idle'):
+            raise RecError('bad frame window %r' % r)
+        frames, total, peak, over33, over50 = map(int, f[1:])
+        if min(frames, total, peak, over33, over50) < 0 or peak > total or not over50 <= over33 <= frames:
+            raise RecError('invalid frame window %r' % r)
+        return dict(k='Q', phase=f[0], frames=frames, totalMs=total, maxMs=peak, over33=over33, over50=over50)
     if k == 'X':
         # The recorder caught an error while building a record (the match itself went on).
         return {'k': 'X', 'where': b}
@@ -292,6 +301,11 @@ def structure(info, records):
             del trace['k']
             trace['eventIndex'] = len(out['events'])
             out.setdefault('fxTrace', []).append(trace)
+        elif r['k'] == 'Q':
+            window = dict(r)
+            del window['k']
+            window['eventIndex'] = len(out['events'])
+            out.setdefault('frames', []).append(window)
         elif r['k'] == 'V':
             out['cardValues'] = r['values']
         else:
