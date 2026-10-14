@@ -1,6 +1,6 @@
 """Original native public-context/settings bridge patches, not a decision hook."""
 import re
-NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance','CardSlot','CardFXManager']
+NATIVE_CLASSES = ['BasePlayerController','GwintGameFlowController','CardManager','GwintGameMenu','CardInstance','CardLeaderInstance','CardSlot']
 
 # Tight Bond art: the game ships one texture per copy, but the card definitions give every
 # copy the same picture. Card index -> (picture in the card definitions, picture we show).
@@ -162,20 +162,6 @@ def patch(name, source):
         if source.count('playSound("gui_gwint_skellige_ability")')!=2:
             raise ValueError('native patch anchor count: skellige ability sound')
         source=source.replace('playSound("gui_gwint_skellige_ability")','playSound("gui_gwint_resurrect")')
-    if name=='CardFXManager':
-        # The game ships a sound for agile cards that nothing plays: an agile unit plays it
-        # instead of the plain row sound. Nothing else in the effect manager changes.
-        return once(source,'''            switch(cardInstance.inList)
-            {
-               case CardManager.CARD_LIST_LOC_MELEE:
-                  GwintGameMenu.mSingleton.playSound("gui_gwint_close_combat");
-                  break;
-               case CardManager.CARD_LIST_LOC_RANGED:
-                  GwintGameMenu.mSingleton.playSound("gui_gwint_long_range");
-            }
-            return this._placeRangedFXClassRef;''','''            // gwai: the game's unused agile card sound
-            GwintGameMenu.mSingleton.playSound("gui_gwint_agile");
-            return this._placeRangedFXClassRef;''')
     if name in ('CardInstance','CardLeaderInstance'):
         # The game's revive dialog (Medic, reviving leaders) asks for a misspelled text key, so it
         # opens without its title; the game's text files hold the key spelled "resurrect".

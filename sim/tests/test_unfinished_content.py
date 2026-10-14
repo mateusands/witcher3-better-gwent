@@ -3,8 +3,9 @@
 Spec (owner, 13 October 2026). Everything stays removable at any time: the sounds live in Better
 Gwent's copy of the Gwent screen; the glossary entries are the game's own entries (unlocking one
 only marks a game entry as read, like playing the base game does).
-- Agile sound: the game ships a sound for agile cards that nothing plays. When an agile unit
-  (melee or ranged) is placed, Better Gwent plays it instead of the plain row sound.
+- Agile sound (dropped, 14 October 2026): the game's unused agile event plays a sound of 0.083 s
+  (gui.bnk, 2,319 bytes), too short to hear; in game agile units went silent. Agile units keep
+  the game's row sound (1.3 s and 1.7 s), as in vanilla.
 - Skellige sound: the Skellige faction ability calls a sound that does not exist in any sound
   bank, so it is silent. Better Gwent plays the game's revive sound (the ability brings units
   back from the discard pile), which every installation has.
@@ -36,18 +37,11 @@ def agile_branch(source):
     return source[start:source.index('return this._placeRangedFXClassRef;', start)]
 
 
-def test_agile_units_play_the_agile_sound():
-    # Given the game's effect manager, where an agile unit plays the plain row sound
-    vanilla = native('CardFXManager')
-    assert 'gui_gwint_agile' not in vanilla
-    # When Better Gwent patches it, then an agile unit plays the agile sound on either row
-    assert 'CardFXManager' in NATIVE_CLASSES
-    branch = agile_branch(patch('CardFXManager', vanilla))
-    assert branch.count('playSound("gui_gwint_agile")') == 1
-    assert 'gui_gwint_close_combat' not in branch and 'gui_gwint_long_range' not in branch
-    # Other units keep their row sounds
-    patched = patch('CardFXManager', vanilla)
-    assert patched.count('gui_gwint_siege_weapon') == vanilla.count('gui_gwint_siege_weapon')
+def test_agile_units_keep_the_row_sound():
+    # Given the game's effect manager, where an agile unit plays the sound of its row,
+    # then Better Gwent leaves the effect manager as the game ships it: no 0.083 s agile sound
+    assert 'CardFXManager' not in NATIVE_CLASSES
+    assert 'gui_gwint_close_combat' in agile_branch(native('CardFXManager'))
 
 
 def test_skellige_ability_plays_an_existing_sound():

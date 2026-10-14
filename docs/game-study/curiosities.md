@@ -19,7 +19,8 @@
 
 - **A card type that plays on the opponent's row,** like a Horn placed on the enemy's side: the
   rules for placing it are written, but no card uses it.
-- **A sound for agile cards** that nothing plays.
+- **A sound for agile cards** that nothing plays. It lasts 0.08 s, too short to hear, so agile
+  units keep the sound of their row.
 - **A first version of the Gwent tutorial** (16 entries: the discard pile, faction abilities,
   inspecting a card, skipping the tutorial, one about the Crinfrid Reavers) that nothing uses, and
   a ready glossary page about leader cards that nothing unlocks.
