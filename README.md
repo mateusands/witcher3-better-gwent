@@ -72,7 +72,7 @@ and luck, and then played in real matches in the game. Methods and all results:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/kpis-dark.svg">
-  <img src="docs/img/kpis-light.svg" alt="1,253,132 simulated matches, 1,286 hours of Lab CPU time, 123 recorded matches, 357 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
+  <img src="docs/img/kpis-light.svg" alt="1,293,638 simulated matches, 1,370 hours of Lab CPU time, 91 recorded matches, 410 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
 </picture>
 
 <picture>

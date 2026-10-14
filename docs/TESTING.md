@@ -120,6 +120,14 @@ confirmation tests on new matchups (about 1 in 20 passes is luck, and many tests
 a report of promoted, rejected and waiting ideas. Only promoted ideas are turned into changes of
 the mod, and nothing needs testing move by move in the game.
 
+Test, 14 October 2026, cloud server (about 92,000 tasks in 24 hours): no new idea passed. A
+ceiling on round-1 spending on Original passed its first test (+4.7%, 1,116 matches) and failed one
+of its two confirmations; fusion35 on Original stayed undecided after 5,998 matches (+0.7%);
+fusion10 and fusion40 on Adaptive were worse (-4.1% and -2.6%). The fusion family is nearly done,
+so the autopilot now retries on Original and Strong the search switches tried only on Adaptive
+(imagined hands, second-ply width, pass margin, caution, round-1 ceiling): the deck mode changed a
+verdict before (spy-first, worse on Adaptive, better on Original).
+
 ### Automatic deck tuner
 
 A small self-improving search for NPC decks, running around the clock on a cloud server (`lab/core.py`,
@@ -150,7 +158,7 @@ charts come from `python3 lab/dashboard.py <lab databases>`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/kpis-dark.svg">
-  <img src="img/kpis-light.svg" alt="1,253,132 simulated matches, 1,286 hours of Lab CPU time, 123 recorded matches, 357 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
+  <img src="img/kpis-light.svg" alt="1,293,638 simulated matches, 1,370 hours of Lab CPU time, 91 recorded matches, 410 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
 </picture>
 
 <picture>
