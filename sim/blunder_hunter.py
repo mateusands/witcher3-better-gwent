@@ -138,7 +138,7 @@ def play(spec, override=None, branch=None):
             # NPC seat's decisions are logged and judged (see search() above). Same scene as the
             # benchmarks: NPC switches on the NPC seat, opening exchanges from the policy switches.
             from evaluate_pool import scene
-            with scene(seat, spec['seed'], spec.get('policy', 'response-v8')):
+            with scene(seat, spec['seed'], spec.get('policy', 'response-v8'), spec.get('npc_decks')):
                 _, flow = run_match(match.templates.values(), decks, match.card_values, source,
                                     coin_toss_choice=lambda: True, candidate_profile=profile,
                                     seat_policies=tuple(spec.get('policy', 'response-v8') if p == seat else 'response-v8'

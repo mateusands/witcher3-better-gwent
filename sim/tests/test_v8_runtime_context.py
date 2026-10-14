@@ -98,11 +98,13 @@ def test_fair_context_uses_only_public_status_count_results_and_leaders(side,win
     var controller={gwaiObservedRoundStatus:2,get currentRoundStatus(){throw new Error("private status getter");}};
     var manager={roundResults:winners.map(w=>({played:true,getRoundWinner:()=>w})),gwaiPublicHandCount:side=>7,
        get playerDeckDefinitions(){throw new Error("private deck access");}};
-    var flow={gwaiRoundIndex:winners.length,playerControllers:[controller,controller]};
+    var flow={gwaiRoundIndex:winners.length,playerControllers:[controller,controller],gwaiNpcDeckMode:()=>0};
     console.log(JSON.stringify(GwaiV8Context.capture(manager,flow,state)));
     ''' % (side,json.dumps(winners))
     losses=[sum(w!=s for w in winners) for s in (0,1)]
-    expected=Context(len(winners),losses[side],losses[1-side],True,7,[3,2][side],[3,2][1-side],side==1,side!=1)
+    # Original NPC decks (mode 0): original_decks for the NPC side only.
+    expected=Context(len(winners),losses[side],losses[1-side],True,7,[3,2][side],[3,2][1-side],side==1,side!=1,
+                     original_decks=side==1)
     assert execute(script)==json.loads(json.dumps(asdict(expected)))
 
 

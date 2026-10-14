@@ -70,14 +70,61 @@ def self_harm(before,after,action):
     return all(before.board[other,row]==after.board[other,row] for row in ROWS)
 
 
+@dataclass(frozen=True)
+class SearchSettings:
+    samples:int
+    budget:int
+    beam:int
+    pass_margin:float
+    caution:float
+    fusion:float=1.0
+
+
+def search_settings(difficulty,seat,context=None):
+    """Search size for this seat: the shipped values, changed only by Lab switches on the NPC seat
+    (beliefsN, nodesN, budget-half, beamN, passN, cautionN, fusionN). With the Original NPC decks the
+    second ply keeps 20% of its gain (fusion20, proven there)."""
+    from . import response_v8
+    difficulty=Difficulty(difficulty)
+    samples=2 if difficulty==Difficulty.EASY else 4 if difficulty!=Difficulty.EXPERT else 6
+    budget=(512,768,2048,8192)[int(difficulty)]
+    beam=PROFILES[difficulty].beam_width;pass_margin=0.0;caution=0.0
+    fusion=0.2 if context is not None and getattr(context,'original_decks',False) else 1.0
+    if response_v8.flag('budget-half',seat):budget//=2  # experiment: thinking time vs strength
+    for f in response_v8.VARIANT:
+        if not response_v8.flag(f,seat):continue
+        for prefix in ('nodes','beliefs','beam','pass','caution','fusion'):
+            if f.startswith(prefix) and f[len(prefix):].isdigit():
+                n=int(f[len(prefix):])
+                if prefix=='nodes':budget=n  # e.g. nodes1024 (difficulty ladder study)
+                elif prefix=='beliefs':samples=n
+                elif prefix=='beam':beam=n
+                elif prefix=='pass':pass_margin=n/1000
+                elif prefix=='caution':caution=n/100
+                else:fusion=n/100
+    return SearchSettings(samples,budget,beam,pass_margin,caution,fusion)
+
+
+def combine(values,caution):
+    """Value over the imagined hands: the mean, moved towards the worst hand by `caution`."""
+    mean=sum(values)/len(values)
+    return mean-caution*(mean-min(values))
+
+
+def second_ply(one,two,fusion):
+    """A move's value in one imagined hand after the second ply: the one-ply value plus the share
+    `fusion` of what the second ply adds (that gain assumes the search knows the hand)."""
+    return one+fusion*(two-one)
+
+
 def choose_response(position,context,difficulty=Difficulty.HARD):
     profile=PROFILES[Difficulty(difficulty)]
+    settings=search_settings(difficulty,position.player,context)
     if context.opponent_passed:
         exact=choose_sequence(position,context,difficulty)
         return ResponseResult(exact.action,exact.utility,exact.pass_utility,0,exact.nodes,
             exact.unsupported,False,exact.reason)
-    samples=2 if difficulty==Difficulty.EASY else 4 if difficulty!=Difficulty.EXPERT else 6
-    beliefs=hypotheses(position,context,samples)
+    beliefs=hypotheses(position,context,settings.samples)
     if not beliefs:
         return ResponseResult(None,0,0,0,0,0,context.opponent_leader_available,'insufficient_public_catalog')
     mean=public_opponent_average(position);reserve_cache={}
@@ -86,12 +133,7 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
         if key not in reserve_cache:reserve_cache[key]=state.reserve()
         return reserve_cache[key]
     nodes=0;unsupported=sum(h.unsupported for h in beliefs);exhausted=False
-    budget=(512,768,2048,8192)[int(difficulty)]
-    from . import response_v8
-    if response_v8.flag('budget-half',position.player):budget//=2  # experiment: thinking time vs strength
-    for f in response_v8.VARIANT:
-        # Experiment "nodesN": this node budget, e.g. nodes1024 (difficulty ladder study).
-        if f.startswith('nodes') and f[5:].isdigit() and response_v8.flag(f,position.player):budget=int(f[5:])
+    budget=settings.budget
     def charge():
         nonlocal nodes
         if nodes>=budget:raise SearchBudgetReached()
@@ -136,10 +178,10 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
     except SearchBudgetReached:
         return ResponseResult(None,0,0,len(beliefs),nodes,unsupported,
             context.opponent_leader_available,'no_supported_plan',budget_exhausted=True)
-    pass_value=sum(pass_values)/len(beliefs)
+    pass_value=combine(pass_values,settings.caution)
     can_pass=not context.own_losses and not context.own_leader_available
     if any(not position.supported(position.cards[k]) for k in position.hand):can_pass=False
-    best_value=pass_value if can_pass else -1;best=None
+    best_value=pass_value+settings.pass_margin if can_pass else -1;best=None
     roots=[]
     for action in position.actions():
         try:charge()
@@ -152,14 +194,14 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
         if self_harm(position,state,action):continue
         try:outcomes=[response(state,h) for h in beliefs]
         except SearchBudgetReached:exhausted=True;break
-        value=sum(x[0] for x in outcomes)/len(outcomes)
+        value=combine([x[0] for x in outcomes],settings.caution)
         roots.append((value,action,state,outcomes))
         if value>best_value+1e-12:best_value,best=value,action
     # Beam limits root continuations. Every explored own continuation receives a
     # further concrete reply; no imaginary uncontested own-turn sequence.
     roots.sort(key=lambda item:item[0],reverse=True)
     if profile.search_depth>=2 and not exhausted:
-        for _,root,state,outcomes in roots[:profile.beam_width]:
+        for _,root,state,outcomes in roots[:settings.beam]:
             values=[]
             for value,public,h,enemy_passed in outcomes:
                 if public.unknown_draws or not public.hand:
@@ -178,9 +220,9 @@ def choose_response(position,context,difficulty=Difficulty.HARD):
                     try:future=max(future,response(after,h)[0])
                     except SearchBudgetReached:exhausted=True;break
                 if exhausted:break
-                values.append(future)
+                values.append(second_ply(value,future,settings.fusion))
             if exhausted:break
-            value=sum(values)/len(values)
+            value=combine(values,settings.caution)
             if value>best_value+1e-12:best_value,best=value,root
     alternatives=tuple(dict(action=asdict(action),oneTurnValue=value)
         for value,action,state,outcomes in roots)

@@ -45,7 +45,8 @@ class SequenceAIPlayerController(TacticalPlanningAIPlayerController):
             cm.playerDeckDefinitions[other].getDeckFaction(),
             # Only leaders the model cannot search block passing / keep the
             # generic credit; modeled leaders are explicit actions and reserve.
-            position.leader_unmodeled(own),position.leader_unmodeled(other))
+            position.leader_unmodeled(own),position.leader_unmodeled(other),
+            original_decks=response_v8.original_decks_for(own))
         from .. import response_v8
         if response_v8.flag('known-hand',own):
             from ..known_hand import known_templates

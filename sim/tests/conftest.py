@@ -22,7 +22,8 @@ def lab_globals():
     tuning weights) for the task they run; a test never leaves them to the next test."""
     import gwentsim.response_v8 as v8
     from gwentsim import npc_balance, tuning
-    saved = v8.VARIANT, v8.NPC_SEAT, npc_balance.GENOME, dict(tuning.SEAT_PARAMS)
+    saved = v8.VARIANT, v8.NPC_SEAT, npc_balance.GENOME, dict(tuning.SEAT_PARAMS), v8.ORIGINAL_DECKS
     yield
     v8.VARIANT, v8.NPC_SEAT, npc_balance.GENOME = saved[:3]
+    v8.ORIGINAL_DECKS = saved[4]
     tuning.SEAT_PARAMS.clear(); tuning.SEAT_PARAMS.update(saved[3]); tuning.reset()

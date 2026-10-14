@@ -61,15 +61,18 @@ def player_seats(pair_index, swap, npc_mode=None, difficulty=2):
     return seats, (0 if swap else 1)
 
 
-def scene(npc_seat, seed, npc_policy):
-    """The match scene of player-deck tasks: NPC switches bound to the NPC seat and the opening
-    exchanges the policy switches ask for. Returns a context manager around run_match."""
+def scene(npc_seat, seed, npc_policy, npc_mode=None):
+    """The match scene of player-deck tasks: NPC switches bound to the NPC seat, the Original deck
+    mode as the game sees it (no mode = Original), and the opening exchanges the policy switches
+    ask for. Returns a context manager around run_match."""
     from contextlib import ExitStack
     import gwentsim.response_v8 as v8
     from evaluate_mulligan import exchange_hook
     hook = ExitStack()
     # Experiment switches change the NPC only; the stand-in player keeps the shipped AI.
     v8.NPC_SEAT = npc_seat
+    v8.ORIGINAL_DECKS = npc_mode in (None, 'original')
+    hook.callback(setattr, v8, 'ORIGINAL_DECKS', False)
     if 'player-mulligan' in v8.VARIANT:
         # As in the game, the player may exchange up to two opening cards (same evaluated rule),
         # for the native and the Better AI NPC alike.
@@ -95,7 +98,7 @@ def run_player(pair_index, seed, swap, npc_policy, profile, npc_mode=None):
     seats, npc_seat = player_seats(pair_index, swap, npc_mode, profile)
     decks = [seats[0].for_player(0), seats[1].for_player(1)]
     policies = tuple(npc_policy if p == npc_seat else 'response-v8' for p in (0, 1))
-    hook = scene(npc_seat, seed, npc_policy)
+    hook = scene(npc_seat, seed, npc_policy, npc_mode)
     with hook:
         recorder, flow = run_match(match.templates.values(), decks, match.card_values, SeededRandom(seed),
                                    coin_toss_choice=lambda: True, seat_policies=policies, candidate_profile=profile)

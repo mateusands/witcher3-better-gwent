@@ -309,7 +309,8 @@ def patch(name, source):
          var level:int = 2;
          if(data.difficulty === 0 || data.difficulty === 1 || data.difficulty === 2) level = int(data.difficulty);   // Expert (3) is Hard
          var enabled:Boolean = data.enabled === true;
-         this._gwaiMatchSettings = {enabled:enabled,difficulty:level,autoplay:enabled && data.autoplay === true};
+         var npcDecks:int = data.npcdecks === 0 || data.npcdecks === 1 || data.npcdecks === 2 ? int(data.npcdecks) : -1;
+         this._gwaiMatchSettings = {enabled:enabled,difficulty:level,autoplay:enabled && data.autoplay === true,npcDecks:npcDecks};
          return true;
       }
       public function gwaiApplyControllers() : void
@@ -343,6 +344,9 @@ def patch(name, source):
          if(side == 0 && !this._gwaiMatchSettings.autoplay) return -1;
          return int(this._gwaiMatchSettings.difficulty);
       }
+      // NPC decks option of this match: 0 Original, 1 Adaptive, 2 Strong, -1 unknown.
+      public function gwaiNpcDeckMode() : int
+      { return this._gwaiMatchSettings == null ? -1 : int(this._gwaiMatchSettings.npcDecks); }
       public function gwaiSettingsSnapshot() : Object
       {
          if(this._gwaiMatchSettings == null) return null;

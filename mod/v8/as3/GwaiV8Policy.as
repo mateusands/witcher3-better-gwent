@@ -237,34 +237,41 @@ internal class GwaiV8Policy
     // are not in the game). ----
     // Moves of earlier fixes that the rules leave alone (only agile-dry may still move their row).
     public static var PROTECTED:Array = ["proactive_decoy_spy","decoy_spy_retarget","medic_spy_retarget","proactive_medic_spy"];
-    public static function rules(state:Object,context:Object,result:Object):Object
+    public static function rules(state:Object,context:Object,result:Object,again:Boolean = false):Object
     {
         var move:Object = result.action; if(move == null) return result;
         var found:Object;
         if(GwaiV8Policy.PROTECTED.indexOf(result.reason) < 0)
         {
+            // spy-first, Original NPC decks only (Lab, 13 October 2026): a spy before other cards
+            // while later rounds remain.
+            if(context.original_decks === true && !again)
+            {
+                var spyMove:Object = GwaiV8Policy.spyFirst(state,context,result);
+                if(spyMove != null) return spyMove;
+            }
             // weather-guard: no weather that gains nothing now, no unit into our own weather.
             if(GwaiV8Policy.uselessWeather(state,context,move))
             {
                 found = GwaiV8Policy.replacement(state,context,result,false,0);
-                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard"));
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard"),true);
             }
             if(GwaiV8Policy.wetUnit(state,move))
             {
                 found = GwaiV8Policy.replacement(state,context,result,true,GwaiV8Policy.ownValue(result));
-                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard_dry_unit"));
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"weather_guard_dry_unit"),true);
             }
             // medic-hold: keep a Medic until the graveyard holds a unit to revive.
             if(GwaiV8Policy.emptyMedic(state,context,move))
             {
                 found = GwaiV8Policy.replacement(state,context,result,false,0);
-                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"medic_hold"));
+                if(found != null) return GwaiV8Policy.rules(state,context,GwaiV8Policy.replaced(result,found,"medic_hold"),true);
             }
             // overkill-trim: win the round with the smallest commitment.
             if(result.reason != "overkill_trim")
             {
                 var trimmed:Object = GwaiV8Policy.overkillTrim(state,context,result);
-                if(trimmed != null) return GwaiV8Policy.rules(state,context,trimmed);
+                if(trimmed != null) return GwaiV8Policy.rules(state,context,trimmed,true);
             }
         }
         // agile-dry: an agile unit goes to its dry row unless the weathered one is strictly better now.
@@ -275,6 +282,41 @@ internal class GwaiV8Policy
             if(!isNaN(wet) && !isNaN(dry) && dry >= wet) return GwaiV8Policy.finish(result,moved,"agile_dry");
         }
         return result;
+    }
+    // spy-first (response_v8.spy_first): outside the final round, against an opponent still playing,
+    // the cheapest supported spy in hand instead of a non-spy card. Null when not applicable.
+    public static function spyFirst(state:Object,context:Object,result:Object):Object
+    {
+        var finalRound:Boolean = context.round_index >= 2 || (context.own_losses > 0 && context.opponent_losses > 0);
+        if(finalRound || context.opponent_passed) return null;
+        var chosen:Object = GwaiV8Policy.inHandCard(state,result.action);
+        if(chosen != null && GwaiV8Position.isType(chosen,256)) return null;
+        var spies:Array = [];
+        for(var i:int = 0; i < state.hand.length; ++i)
+        {
+            var key:int = state.hand[i]; var card:Object = state.cards[key];
+            if(card != null && GwaiV8Position.isType(card,256) && state.supported(card)) spies.push(key);
+        }
+        if(spies.length == 0) return null;
+        var actions:Array;
+        try { actions = state.actions(); }
+        catch(error:Error) { if(!GwaiV8Policy.projectionFailure(error)) throw error; return null; }
+        var best:Object = null;
+        for(var j:int = 0; j < actions.length; ++j)
+        {
+            var a:Object = actions[j];
+            if(spies.indexOf(a.source) < 0 || (a.chain != null && a.chain.length > 0)) continue;
+            if(best == null || GwaiV8Policy.spyOrder(state,a,best) < 0) best = a;
+        }
+        return best == null ? null : GwaiV8Policy.finish(result,best,"spy_first");
+    }
+    // Python sort key (power, source, slot).
+    public static function spyOrder(state:Object,a:Object,b:Object):int
+    {
+        var pa:Number = state.cards[a.source].power; var pb:Number = state.cards[b.source].power;
+        if(pa != pb) return pa < pb ? -1 : 1;
+        if(a.source != b.source) return a.source < b.source ? -1 : 1;
+        return a.slot < b.slot ? -1 : a.slot > b.slot ? 1 : 0;
     }
     // overkill-trim (response_v8.overkill_trim): when the round is won or being won, the cheapest play
     // that keeps it. Opponent passed: the cheapest securing play replaces a dearer one. Opponent still

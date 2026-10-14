@@ -24,6 +24,8 @@ internal class GwaiV8Context
             // passing / keeps the generic credit. Using leader_ready here forbade every pass while
             // a modeled leader was unused (in-game round-one overcommit, in-game match g126).
             own_leader_available:state.leaderUnmodeled(own),opponent_leader_available:state.leaderUnmodeled(other),
-            opponent_known:GwaiV8Context.USE_KNOWN_HAND ? manager.gwaiKnownHand(other) : []};
+            opponent_known:GwaiV8Context.USE_KNOWN_HAND ? manager.gwaiKnownHand(other) : [],
+            // The NPC (side 1) with the Original NPC decks: spy-first and fusion20.
+            original_decks:flow.gwaiNpcDeckMode() == 0 && own == 1};
     }
 }

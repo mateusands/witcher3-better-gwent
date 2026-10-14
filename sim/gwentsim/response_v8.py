@@ -12,6 +12,13 @@ VARIANT = frozenset()
 # Seat of the NPC in a player-deck A/B (set by evaluate_pool.run_player): switches apply to that
 # seat only, so the Better AI stand-in for the player keeps playing the shipped AI. None = all seats.
 NPC_SEAT = None
+# The NPC plays the Original NPC decks (Lab scene of player-deck matches): the game then uses
+# spy-first and fusion20 for the NPC (Context.original_decks), proven with those decks.
+ORIGINAL_DECKS = False
+
+
+def original_decks_for(seat):
+    return bool(ORIGINAL_DECKS) and NPC_SEAT is not None and seat == NPC_SEAT
 
 
 def flag(name, seat):
@@ -560,11 +567,40 @@ def hopeless_chase(position, context, samples=4):
     return 2 * hopeless > len(beliefs)
 
 
+def r1_cap_lead(variant, npc_seat, seat):
+    """The lead N of the Lab switch r1capN for this seat, or None."""
+    if npc_seat is not None and seat != npc_seat:
+        return None
+    for f in variant:
+        if f.startswith('r1cap') and f[5:].isdigit():
+            return int(f[5:])
+    return None
+
+
+def r1_cap(position, context, result):
+    """r1capN: in round 1, while the opponent plays, pass instead of spending another card when
+    already N points ahead with no more cards than the opponent (from match g167)."""
+    lead = r1_cap_lead(VARIANT, NPC_SEAT, position.player)
+    if lead is None or result.action is None or context.opponent_passed:
+        return None
+    if context.round_index != 0 or context.own_losses or context.opponent_losses:
+        return None
+    scores = position.scores()
+    if scores[position.player] - scores[1 - position.player] < lead:
+        return None
+    if len(position.hand) > context.opponent_hand_count:
+        return None
+    return replace(result, action=None, value=result.pass_value, reason='r1_cap')
+
+
 def npc_switches(position, context, result, again=False):
     """Apply the active NPC rules to a V8 decision (SHIPPED_RULES, and NPC_SWITCHES when set in the
     Lab). `again`: a rule has already replaced the move, so the pass check of r1-chase is not
     repeated."""
     seat = position.player
+    capped = r1_cap(position, context, result)
+    if capped is not None:
+        return capped
     action = result.action
     if action is not None and result.reason not in PROTECTED:
         # r1-chase: stop spending on a first round that is not realistically ours.
@@ -572,7 +608,7 @@ def npc_switches(position, context, result, again=False):
             return replace(result, action=None, value=result.pass_value, reason='pass_for_match_resources',
                            revision='response-v8+r1-chase')
         # spy-first: a spy before other cards while later rounds remain.
-        if rule('spy-first', seat) and not again:
+        if (rule('spy-first', seat) or context.original_decks) and not again:
             spy = spy_first(position, context, result)
             if spy is not None:
                 return spy

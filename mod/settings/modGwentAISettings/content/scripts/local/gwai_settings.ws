@@ -175,6 +175,9 @@ function OnConfigUI()
     packet.SetMemberFlashBool("enabled", gwaiAIEnabledForMatch);
     packet.SetMemberFlashInt("difficulty", gwaiAIDifficultyForMatch);
     packet.SetMemberFlashBool("autoplay", gwaiAIAutoPlayForMatch);
+    // NPC decks option (0 Original, 1 Adaptive, 2 Strong): the AI plays a little differently with
+    // the game's own decks (spy-first and fusion20, proven there in the Lab).
+    packet.SetMemberFlashInt("npcdecks", GwaiSettingsNpcDecks());
     m_flashValueStorage.SetFlashObject("gwai.match.settings", packet);
     // Native controller replacement and decision execution remain separate hooks.
     // No vanilla difficulty fact is read, replaced or written by this settings layer.

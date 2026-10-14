@@ -25,6 +25,9 @@ class Context:
     opponent_leader_available:bool=False
     # Templates publicly known to be in the opponent's hand (returned by Decoy etc.).
     opponent_known:tuple=()
+    # The NPC decks option is Original: the game's own NPC decks, where the Lab proved spy-first
+    # and fusion20 (13 October 2026).
+    original_decks:bool=False
 
     @property
     def wins_ties(self):

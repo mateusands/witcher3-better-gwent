@@ -97,6 +97,9 @@ internal class GwaiV8Response
             return GwaiV8Response.result(exact.action,exact.utility,exact.pass_utility,0,exact.nodes,exact.unsupported,false,exact.reason);
         }
         var samples:int = level == 0 ? 2 : level == 3 ? 6 : 4;
+        // Second-ply share of the gain (response_search.second_ply): 20% with the Original NPC decks
+        // (fusion20, Lab 13 October 2026), else all of it.
+        var fusion:Number = context.original_decks === true ? 0.2 : 1.0;
         var beliefs:Array = GwaiV8Belief.hypotheses(position,context,samples);
         if(beliefs.length == 0) return GwaiV8Response.result(null,0,0,0,0,0,context.opponent_leader_available,"insufficient_public_catalog");
         mean = GwaiV8Sequence.opponentAverage(position); budget = [512,768,2048,8192][level];
@@ -158,7 +161,7 @@ internal class GwaiV8Response
                         try { future = Math.max(future,response(after,h).value); }
                         catch(error:Error) { if(!(error is GwaiV8Budget)) throw error; exhausted = true; break; }
                     }
-                    if(exhausted) break; values.push(future);
+                    if(exhausted) break; values.push(entry.value+fusion*(future-entry.value));
                 }
                 if(exhausted) break;
                 total = 0; for(j = 0; j < values.length; ++j) total += values[j]; value = total/values.length;
