@@ -78,7 +78,9 @@ def test_begin_captures_selected_profile_and_yields_in_native_state(side,level):
     controller.state_update_ChooseMove();
     console.log(JSON.stringify([captures,contexts,runner.level,runner.slices,states,controller.attitude,cleared]));
     ''',side,level)
-    assert actual==[1,1,level,[[1024,20,0]],[],0,[side]]
+    # 10 ms per Gwent-screen frame (14 October 2026 trial): 20 ms dropped the game to about 42 fps
+    # while the NPC thinks (MangoHud, 3 matches on Hard).
+    assert actual==[1,1,level,[[1024,10,0]],[],0,[side]]
 
 
 def test_off_returns_to_original_begin_without_capture():
@@ -249,3 +251,14 @@ def test_shutdown_cancels_search_delay_and_transaction_before_idle():
         controller.transactionCard,controller._decidedCardTransaction,controller.attitude,controller._turnOver,states]));
     ''')
     assert result==[True,['stop','timerComplete'],None,False,None,None,0,True,['Idle']]
+
+
+@pytest.mark.parametrize('level',range(4))
+def test_time_limit_is_a_safety_net_for_the_10_ms_slice(level):
+    # Spec (14 October 2026): with 10 ms per Gwent-screen frame the search takes about twice as
+    # long; it is capped by nodes, so the time limit only guards rare long searches. The limits
+    # double with the slice, so the smaller slice never trades a move for time.
+    actual=run('''
+    controller._gwaiLevel=level;console.log(JSON.stringify(controller.gwaiTimeLimit()));
+    ''',0,level)
+    assert actual==[4000,8000,12000,16000][level]

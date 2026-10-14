@@ -182,7 +182,7 @@ def patch_ai(source):
       // evaluated root move is played (v8_timeout_partial); only an empty search hands over.
       private function gwaiTimeLimit() : int
       {
-         return [2000,4000,6000,8000][Math.max(0,Math.min(3,this._gwaiLevel))];
+         return [4000,8000,12000,16000][Math.max(0,Math.min(3,this._gwaiLevel))];
       }
       // Recorded with every decision so in-game speed can be measured per difficulty.
       private function gwaiDecisionStats() : String
@@ -193,7 +193,10 @@ def patch_ai(source):
       private function gwaiPumpV8Step(flow:GwintGameFlowController) : Boolean
       {
          this._gwaiStage = "advance";
-         if(!this._gwaiRunner.advance(1024,20,getTimer)) return true;
+         // 10 ms of search per Gwent-screen frame (24 per second). Test, 14 October 2026 (MangoHud,
+         // Hard): 20 ms held the game at about 41 fps while the NPC thought, 10 ms at about 63 fps;
+         // the search is capped by nodes, so the move is the same, it only takes longer.
+         if(!this._gwaiRunner.advance(1024,10,getTimer)) return true;
          this._gwaiStage = "result";
          var result:Object = this._gwaiRunner.output;
          if(result == null) throw new Error("V8 runner completed without result");

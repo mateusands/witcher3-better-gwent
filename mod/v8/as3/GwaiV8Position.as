@@ -428,22 +428,36 @@ internal class GwaiV8Position
     }
     public static function firstKeyOrder(a:Array,b:Array):Number
     { return a[0]-b[0]; }
+    // The reserve-cache key: the same text as GwaiV8Hash.text([player,held,remaining,unknown_draws,
+    // draw_value,leaderModeled(player),recovery]), with held = [key,template] pairs and remaining =
+    // [template,count] pairs sorted by their first number, built directly. The nested arrays and the
+    // generic serializer took about a quarter of the search time (14 October 2026).
     public function reserveKey():String
     {
-        var held:Array = []; var remaining:Array = []; var recovery:Array = [];
-        for(var i:int = 0; i < hand.length; ++i) held.push([hand[i],cards[hand[i]].template]);
-        held.sort(firstKeyOrder);
-        for(var key:String in counts) remaining.push([int(key),counts[key]]);
-        remaining.sort(firstKeyOrder);
+        var held:Array = hand.slice(); held.sort(Array.NUMERIC);
+        var out:String = "[" + GwaiV8Position.number(player) + ",[";
+        for(var i:int = 0; i < held.length; ++i)
+            out += (i > 0 ? ",[" : "[") + GwaiV8Position.number(held[i]) + "," + GwaiV8Position.number(cards[held[i]].template) + "]";
+        var remaining:Array = [];
+        for(var key:String in counts) remaining.push(int(key));
+        remaining.sort(Array.NUMERIC);
+        out += "],[";
+        for(i = 0; i < remaining.length; ++i)
+            out += (i > 0 ? ",[" : "[") + GwaiV8Position.number(remaining[i]) + "," + GwaiV8Position.number(counts[remaining[i]]) + "]";
+        out += "]," + GwaiV8Position.number(unknown_draws) + "," + GwaiV8Position.number(draw_value) + "," + (leaderModeled(player) ? "true" : "false") + ",";
         if(recoveryRelevant())
         {
             var rows:Array = [];
             for(var side:int = 0; side < 2; ++side)
                 for(var r:int = 0; r < ROWS.length; ++r) rows.push(board[GwaiV8Position.slot(side,ROWS[r])]);
-            recovery = [grave[0],grave[1],rows];
+            out += GwaiV8Hash.text([grave[0],grave[1],rows]);
         }
-        return GwaiV8Hash.text([player,held,remaining,unknown_draws,draw_value,leaderModeled(player),recovery]);
+        else out += "[]";
+        return out + "]";
     }
+    // GwaiV8Hash.text of a Number.
+    public static function number(value:Number):String
+    { return isFinite(value) ? String(value) : "null"; }
     public function leaderEffect(side:int):int
     {
         var key:Object = leaders[side]; var card:Object = key == null ? null : cards[key];

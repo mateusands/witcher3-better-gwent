@@ -167,9 +167,10 @@ internal class GwaiV8Sequence
     }
     public static function cachedReserve(state:Object,cache:Object):Number
     {
-        var key:String = state.reserveKey();
-        if(cache[key] == null) cache[key] = state.reserve();
-        return cache[key];
+        // One lookup of the long key instead of three (same value).
+        var key:String = state.reserveKey(); var value:Object = cache[key];
+        if(value == null) { value = state.reserve(); cache[key] = value; }
+        return Number(value);
     }
     public static function result(move:Object,path:Array,value:Number,passValue:Number,nodes:int,label:String,unsupported:int,reason:String):Object
     { return {action:move,sequence:path,utility:value,pass_utility:passValue,nodes:nodes,profile:label,unsupported:unsupported,reason:reason,revision:"sequence-v6"}; }
