@@ -220,9 +220,9 @@ def styles_chart(t, styles):
             yy = y + j * (h + inner)
             body.append(bar(x0, yy, x0 + (x1 - x0) * pct / 100, h, colour))
             body.append(text(x0 + (x1 - x0) * pct / 100 + 8, yy + 12, '%.1f%%' % pct, t['ink'], 12, 600))
-    return card(bottom + 40, t, ''.join(body), 'NPC decks against player-style decks (8,192-node search)',
-                'Win share of the NPC side; the player side is played by Better AI as a strong stand-in '
-                'for a human. Same decks and luck.')
+    return card(bottom + 40, t, ''.join(body), 'NPC against player-style decks, by deck style',
+                'Win share of the NPC side; the player side is played by Better AI. Same decks and luck. '
+                'Every NPC deck mode and level pooled (test, 14 October 2026).')
 
 
 def rounds_chart(t, rounds):
@@ -350,32 +350,49 @@ def grouped_chart(t, title, subtitle, rows, legend=('NPC played by Better AI', '
     return card(bottom + 40, t, ''.join(body), title, subtitle)
 
 
-def deck_mode_rows(dbs, style_filter):
-    """NPC win share per (difficulty, mode) from player-deck benchmarks of the shipped AI."""
-    import sqlite3
-    sys.path.insert(0, str(ROOT / 'sim'))
-    styles = player_styles()
-    agg = defaultdict(lambda: [0.0, 0.0, 0])
+def shipped_player_matches(dbs):
+    """(params, payload, result) of player-deck benchmarks played by the shipped AI: alone or in the
+    fair scene (player-/base- switches only), NPC decks as shipped, no superseded job."""
     for path in dbs:
         db = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
-        for params, payload, result, _name in db.execute(
-                "SELECT j.params, t.payload, t.result, j.name FROM tasks t JOIN jobs j ON j.id=t.job_id "
+        for params, payload, result in db.execute(
+                "SELECT j.params, t.payload, t.result FROM tasks t JOIN jobs j ON j.id=t.job_id "
                 "WHERE t.status='done' AND j.kind='benchmark' AND j.status != 'superseded'"):
             params, p, r = json.loads(params), json.loads(payload), json.loads(result)
             policy, _, flags = params.get('policy', '').partition(':')
-            # The shipped AI, alone or in the fair scene (player-/base- switches only).
             if p.get('source') != 'player' or policy != 'response-v8' or params.get('weights') or any(
                     not f.startswith(('player-', 'base-')) for f in flags.split('+') if f):
                 continue
             if ':' in (params.get('npc_decks') or ''):
                 continue                              # deck-mode experiments (spies4, decoy3)
-            if style_filter and styles[p['pair']] != style_filter:
-                continue
-            s = r['seats'][0]
-            a = agg[params['profile'], params.get('npc_decks') or 'original']
-            a[0] += score(s['won'], s['winner'])
-            a[1] += score(r['baselineWinner'] == s['seat'], r['baselineWinner'])
-            a[2] += 1
+            yield params, p, r
+
+
+def add_match(a, r):
+    s = r['seats'][0]
+    a[0] += score(s['won'], s['winner'])
+    a[1] += score(r['baselineWinner'] == s['seat'], r['baselineWinner'])
+    a[2] += 1
+
+
+def deck_mode_rows(dbs, style_filter):
+    """NPC win share per (difficulty, mode) from player-deck benchmarks of the shipped AI."""
+    styles = player_styles()
+    agg = defaultdict(lambda: [0.0, 0.0, 0])
+    for params, p, r in shipped_player_matches(dbs):
+        if style_filter and styles[p['pair']] != style_filter:
+            continue
+        add_match(agg[params['profile'], params.get('npc_decks') or 'original'], r)
+    return agg
+
+
+def style_rows(dbs):
+    """NPC win share per player deck style (and 'all'), pooled over every deck mode and level."""
+    styles = player_styles()
+    agg = defaultdict(lambda: [0.0, 0.0, 0])
+    for _params, p, r in shipped_player_matches(dbs):
+        for key in (styles[p['pair']], 'all'):
+            add_match(agg[key], r)
     return agg
 
 
@@ -521,7 +538,8 @@ def main():
     parser.add_argument('--battery', nargs='*', default=None,
                         help='databases for the deck-mode and A/B charts (default: all databases)')
     args = parser.parse_args()
-    levels, styles, rounds = collect(args.dbs)
+    levels, _, rounds = collect(args.dbs)
+    styles = style_rows(args.battery or args.dbs)
     if args.levels_ladder:
         levels = ladder_levels(*args.levels_ladder)
     totals = [report.lab_totals(p) for p in args.dbs]
@@ -541,7 +559,7 @@ def main():
              ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
              (str(recordings + partial), 'Recorded matches', recorded_note),
              (str(findings), 'Mistakes found', 'by the blunder hunter'),
-             ('%+.0f%%' % edge, 'More NPC wins', 'vs native AI, player decks')]
+             ('%+.0f%%' % edge, 'More NPC wins', 'vs native AI, all 9 settings')]
     totals_tiles = [('{:,}'.format(lab_matches), 'Lab matches', 'Gwent AI Lab'),
                     ('{:,}'.format(earlier), 'Earlier matches', 'V1-V8 evaluations'),
                     ('%.0f h' % cpu_hours, 'Lab CPU time', 'one core per task'),
@@ -573,7 +591,7 @@ def main():
             for theme, t in THEMES.items():
                 (out / ('%s-%s.svg' % (key, theme))).write_text(grouped_chart(
                     t, title, 'Win share of the NPC side; the player side is played by Better AI. Same decks and '
-                    'luck. NPC decks as shipped (test, 12 October 2026).',
+                    'luck. Test, 14 October 2026; Original mode with the Original-mode AI.',
                     rows))
             print(key, [(r[0], round(r[2]), round(r[3]), r[1]) for r in rows])
     ab = ab_rows(args.ab or args.battery or args.dbs)
