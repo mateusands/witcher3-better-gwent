@@ -38,4 +38,4 @@ matches and in the deck builder.
 
 The Lost Cards module is planned in the [Roadmap](../ROADMAP.md): new cards built on what the game
 already has (these two cards, the unused icons, the [cut abilities](cut-abilities-and-leaders.md)),
-always as our own documented design, added without touching the game's files or saves.
+always as my own documented design, added without touching the game's files or saves.

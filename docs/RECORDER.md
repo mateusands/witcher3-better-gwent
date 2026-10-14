@@ -1,6 +1,6 @@
 # Recorder edition (for testers)
 
-Not a release. The recorder edition is the same mod plus a **match recorder**, shared only with
+The recorder edition is not a release. It is the same mod plus a **match recorder**, shared only with
 people who want to help with development: recorded matches show where the AI still makes
 mistakes. It is not part of the public downloads; ask for it if you want to help. Everyone else
 should use the normal download.

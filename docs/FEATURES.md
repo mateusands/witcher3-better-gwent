@@ -27,13 +27,13 @@ How the AI decides and what it is built on: [Research](RESEARCH.md). How it is m
 
 ## Fair play: the AI does not see your cards
 
-The AI plays harder by reasoning better, not by cheating. It only uses what a human player could
-see: the board, both graveyards, how many cards you hold, your faction and leader, the cards you
-have already played and cards revealed by an effect. It never reads your hand, your deck list or
-the order of your draws. It samples plausible hidden hands from public information instead, and
-an automated test swaps the hidden hand for different cards and checks that the decision does
-not change. Its opening exchange uses only its own hand and which of its own cards are left in
-its deck, never their order.
+The AI does not cheat. It gets harder only by reasoning better, and it uses only what a human
+player could see: the board, both graveyards, how many cards you hold, your faction and leader,
+the cards you have already played and cards revealed by an effect. It never reads your hand, your
+deck list or the order of your draws. It samples plausible hidden hands from public information
+instead, and an automated test swaps the hidden hand for different cards and checks that the
+decision does not change. Its opening exchange uses only its own hand and which of its own cards
+are left in its deck, never their order.
 
 ## NPC decks: Adaptive (default), Original, Strong
 
@@ -78,4 +78,4 @@ Combinations, from light to heavy:
 ## Card art
 
 While the mod is On, the copies of one card show different pictures, from the game's own art.
-Visual only. Details: [One artwork per card copy](CARD_ART.md).
+The change is visual only. Details: [One artwork per card copy](CARD_ART.md).

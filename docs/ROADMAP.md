@@ -19,16 +19,16 @@ it is measured in the Lab and played in game.
 The game files keep artwork for cards that never made it into Gwent, for example a Northern
 Realms [*Ballista Officer*](img/lost-cards/ballista-officer.png) and
 [*Witch Hunters*](img/lost-cards/witch-hunters.png) (click to see the art). They have no power,
-ability or text in the game. What we found while studying the game is gathered in
+ability or text in the game. What I found while studying the game is gathered in
 [Studying the game](game-study/README.md).
 
-- Give them abilities that fit their faction (our own design, documented as such), starting
+- Give them abilities that fit their faction (my own design, documented as such), starting
   with abilities the game already has (Tight Bond, Medic, Spy, Muster, Morale).
 - **Additive, never stored in the save.** The intended design keeps the game's files and saves
   untouched, like the per-copy card art:
-  - the card definitions are appended by our scripts to the list the game sends to the Gwent
+  - the card definitions are appended by my scripts to the list the game sends to the Gwent
     screens, so the game's card list is not replaced;
-  - the art already ships with the game, and names and texts go in our own string files;
+  - the art already ships with the game, and names and texts go in my own string files;
   - which new cards you own and put in a deck lives in the mod's own data, not in the save,
     and the cards join your deck only when a match starts;
   - removing the module leaves the save and your decks exactly as before.
@@ -37,11 +37,11 @@ ability or text in the game. What we found while studying the game is gathered i
 - **Icons already in the game, kept for these cards.** The game ships inventory icons it never
   uses ([see them](img/lost-cards/unused-icons.png)): faction versions of Decoy, Horn, Scorch and
   Weather (every special card in the game is neutral), soldier icons for Monsters, Northern Realms
-  and Skellige, and a Scoia'tael siege icon (Scoia'tael has no siege unit). They fit new cards
-  naturally: a Scoia'tael siege unit (Scoia'tael is short of good cards), faction special cards.
-  The mod would point to the game's own icons, never copy them, through its scripts (no item
+  and Skellige, and a Scoia'tael siege icon (Scoia'tael has no siege unit). They fit new cards: a
+  Scoia'tael siege unit (Scoia'tael is short of good cards), faction special cards.
+  The mod would point to the game's own icons through its scripts and never copy them (no item
   file of the game overridden).
-- **Abilities the game defines but never uses**, as a starting point for new cards (our own
+- **Abilities the game defines but never uses**, as a starting point for new cards (my own
   design, documented as such): Ambush, Backstab, ToughSkin, a second Morale boost, discard two
   or three cards, and draw one card. They exist only as names in the game's code.
 - **A card type that plays on the opponent's row.** The game already has the placement rule for
@@ -67,8 +67,8 @@ release as Lost Cards.
 - As an On/Off option, each opponent would play the way the developers marked it: a Hard opponent
   always at the strongest level, an aggressive one pressing early, a defensive one keeping its
   cards, "all I have" never giving a round away.
-- Each style must be tuned in the Lab so it stays strong, only different. Test, 13 October 2026:
-  simple "defensive" changes (giving up round 1 early, passing more readily) cost the NPC 2 to 5
+- Each style must be tuned in the Lab so it plays differently without getting weaker. Test,
+  13 October 2026: simple "defensive" changes (giving up round 1 early, passing more readily) cost the NPC 2 to 5
   points of win rate.
 
 ## Core (ongoing)
@@ -102,4 +102,4 @@ files or the save.
 - **Translations** for the menu (18 languages today).
 - **Release:** an in-game check of the normal edition, then a public release.
 
-What we found while studying the game is in [Studying the game](game-study/README.md).
+What I found while studying the game is in [Studying the game](game-study/README.md).

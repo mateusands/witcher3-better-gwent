@@ -17,7 +17,6 @@ What Better Gwent does not do well yet, or cannot do, and why. Items move to the
 - **Factions are uneven.** Test, 12 October 2026, NPC win share against player-style decks:
   Northern Realms 77% (Adaptive) and 84% (Strong), Scoia'tael 53% and 43%. Scoia'tael has many
   low-power cards and the deck builder underrates the cards that could help it.
-
 - **Geralt and Ciri come together too often.** Against a strong player deck, Adaptive's
   fallback allows every hero and takes both witchers (all four NPC decks of the Novigrad
   tournament, matches g158-g161). Taking one out costs strength (test, 13 October 2026: -2.8 on

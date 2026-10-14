@@ -131,8 +131,8 @@ luck and opening exchanges, in small batches, with its own sequential test. A ca
 not better is dropped early; the best one proven better is kept. Then the next race starts.
 
 Fair play: the genome reacts only to what an NPC may know before a match, the player's deck
-faction and deck strength (the game's own NPC decks already follow the strength). Never the
-player's leader or cards.
+faction and deck strength (the game's own NPC decks already follow the strength). It never uses
+the player's leader or cards.
 
 ## 4. In-game validation
 
@@ -150,7 +150,7 @@ charts come from `python3 lab/dashboard.py <lab databases>`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/kpis-dark.svg">
-  <img src="img/kpis-light.svg" alt="250,429 simulated matches, 222 hours of Lab CPU time, 40 in-game matches analysed, 281 mistakes found, 20% more NPC wins than the native AI against player decks" width="880">
+  <img src="img/kpis-light.svg" alt="1,253,132 simulated matches, 1,286 hours of Lab CPU time, 123 recorded matches, 357 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
 </picture>
 
 <picture>

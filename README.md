@@ -23,7 +23,7 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
   from what a human player could see. [Details](docs/FEATURES.md#fair-play-the-ai-does-not-see-your-cards)
 - **NPC decks: Adaptive (default), Original or Strong**: which existing cards an NPC brings,
   rebuilt in memory for each match, safe for saves. [Details](docs/NPC_DECKS.md)
-- **NPC deck strength, a vanilla bug we fix**: the base game gives NPCs their extra cards
+- **NPC deck strength, a vanilla bug I fix**: the base game gives NPCs their extra cards
   whatever your deck; with the mod On they follow your deck's strength again.
   [Details](docs/NPC_DECKS.md#original-the-extra-card-rule-repaired)
 - **The NPC exchanges opening cards** (Normal and Hard), as you can.
@@ -61,7 +61,7 @@ and luck, and then played in real matches in the game. Methods and all results:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/kpis-dark.svg">
-  <img src="docs/img/kpis-light.svg" alt="250,429 simulated matches, 222 hours of Lab CPU time, 40 in-game matches analysed, 281 mistakes found, 20% more NPC wins than the native AI against player decks" width="880">
+  <img src="docs/img/kpis-light.svg" alt="1,253,132 simulated matches, 1,286 hours of Lab CPU time, 123 recorded matches, 357 mistakes found, 25% more NPC wins than the native AI over all 9 deck mode and level settings" width="880">
 </picture>
 
 <picture>
@@ -89,13 +89,13 @@ Detailed research notes and the working log are kept locally, outside the reposi
 
 ## AI disclosure
 
-Transparency matters here: this project is built with AI assistants used as tools
-throughout development and maintenance.
+This project is built with AI assistants, used as tools throughout development and
+maintenance.
 
 In practice the AI takes the repetitive, low-level work: writing code for a direction
 that is already decided, running and reading simulations, building validation scripts,
 tracking down the exact point of a bug, and drafting and updating documentation. Scope,
-design and gameplay decisions are mine, every change is measured in the simulator and
+design and gameplay decisions are mine. Every change is measured in the simulator and
 tested in game before it is kept, and nothing is merged or released without my review,
 including code the AI wrote entirely.
 

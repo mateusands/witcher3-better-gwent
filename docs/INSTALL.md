@@ -1,8 +1,8 @@
 # Better Gwent 0.9.0 beta — installation
 
 A stronger Gwent opponent for The Witcher 3, game patch 5.01 (tested on Steam; GOG untested).
-The mod changes how the NPCs play Gwent; it adds no cards and changes no card. With the mod switched Off the game
-plays Gwent exactly as before.
+The mod changes how the NPCs play Gwent; it adds no cards and changes no card. With the mod
+switched Off the game plays Gwent exactly as before.
 
 ## Install
 
@@ -52,10 +52,9 @@ Close the game and delete `Mods/modBetterGwent`, `modGwentAI.xml` and its lines 
 filelists. Saves stay valid: the mod adds no items, quests or cards. Money won in wagers stays
 yours.
 The per-copy card art (every family of unit cards with several pictures, such as Poor Fucking
-Infantry, Kaedweni Siege Expert, Blue Stripes Commando and Siege Tower), in matches and in the deck
-builder, is drawn by the mod at display time; saves store only card numbers, so
-removing the mod brings back the stock pictures and the stock deck builder (one "x3" tile per
-card again). See [One artwork per card copy](CARD_ART.md).
+Infantry, Kaedweni Siege Expert, Blue Stripes Commando and Siege Tower) is drawn by the mod at
+display time, in matches and in the deck builder. Saves store only card numbers, so removing the
+mod brings back the stock pictures and the stock deck builder (one "x3" tile per card again). See [One artwork per card copy](CARD_ART.md).
 
 ## Known issues
 

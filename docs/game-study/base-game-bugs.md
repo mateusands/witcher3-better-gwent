@@ -1,6 +1,6 @@
 # Bugs of the base game
 
-What we found while reading the base game, and what Better Gwent does about each.
+What I found while reading the base game, and what Better Gwent does about each.
 
 ## Fixed by Better Gwent
 
@@ -23,7 +23,8 @@ What we found while reading the base game, and what Better Gwent does about each
 
 ## Replaced by Better Gwent's AI
 
-The native AI is replaced for the NPC by Better Gwent's AI while the mod is on. Reading it showed:
+While the mod is on, Better Gwent's AI replaces the native AI for the NPC. Reading the native AI
+showed:
 
 - **Much of it is chance.** Whether it passes, waits or plays hard, and whether it plays a spy, is
   often decided by a dice roll rather than by a calculation (a spy is played with a one-in-five
@@ -35,8 +36,8 @@ The native AI is replaced for the NPC by Better Gwent's AI while the mod is on. 
 - **Some counts are used before they are filled in,** so one check about a hand made only of
   Decoys and spies goes wrong.
 - **One leader was never taught to the AI:** Eredin's "discard two, pick one", as the game's own
-  code admits. Better Gwent's AI does not use it either yet: on that leader it still leaves the
-  decision to the native AI. Planned.
+  code admits. Better Gwent's AI does not use it yet either: on that leader it still leaves the
+  decision to the native AI, and teaching it is planned.
 
 ## Not changed (outside the mod's scope)
 

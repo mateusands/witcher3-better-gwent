@@ -47,7 +47,8 @@ The card and item files keep the developers' own notes, for example:
 ## Small facts
 
 - A new game gives Yarpen Zigrin and a Redanian Foot Soldier on top of the starting deck.
-- If a quest asks for an NPC deck that does not exist, the game quietly uses an easy Nilfgaard deck.
+- If a quest asks for an NPC deck that does not exist, the game silently falls back to an
+  easy Nilfgaard deck.
 - Two of the game's own Skellige NPC decks (easy and normal) hold Avallac'h twice, although heroes
   are meant to be unique. Better Gwent's NPC decks never repeat a hero.
 - The game's own NPC decks often hold two copies of a named character that is not a hero

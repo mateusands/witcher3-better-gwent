@@ -21,7 +21,7 @@ explains what a change needs before it can be kept. Local setup, builds and the 
 
 ## AI-assisted contributions
 
-AI tools are allowed; hiding their use is not. As in other open emulation and modding projects
+You may use AI tools, as long as you say so. As in other open emulation and modding projects
 (shadPS4, RPCS3), every contribution says whether AI helped:
 
 - **Commits:** add the trailer `AI-assisted: yes` (or `AI-assisted: no`) at the end of the message.

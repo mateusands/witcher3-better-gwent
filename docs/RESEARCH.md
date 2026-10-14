@@ -1,6 +1,6 @@
 # Research behind Better Gwent
 
-What I studied, what the AI and its tests are built on, what I tried and what I dropped.
+What I studied, what the AI and its tests are built on, and what I tried and dropped.
 Papers are cited as references; the software tools are listed with their licenses.
 
 ## How the AI decides
@@ -55,7 +55,7 @@ information and searches its own moves and the opponent's replies against those 
 
 - **Variance reduction for evaluating agents**
   - Reference: N. Burch, M. Schmid, M. Moravčík, D. Morrill, M. Bowling, [*AIVAT: A New Variance Reduction Technique for Agent Evaluation in Imperfect Information Games*](https://ojs.aaai.org/index.php/AAAI/article/view/11481), AAAI 2018
-  - Why not yet: Needs a calibrated value estimate; a candidate once the value network exists. Our paired matchups (the same deal and luck for both versions) already apply the simpler "Baseline" control variate of the same group (J. Davidson, C. Archibald, M. Bowling, [AAMAS 2013](https://webdocs.cs.ualberta.ca/~bowling/publications/b2hd-13aamas-baseline.html))
+  - Why not yet: Needs a calibrated value estimate; a candidate once the value network exists. My paired matchups (the same deal and luck for both versions) already apply the simpler "Baseline" control variate of the same group (J. Davidson, C. Archibald, M. Bowling, [AAMAS 2013](https://webdocs.cs.ualberta.ca/~bowling/publications/b2hd-13aamas-baseline.html))
 - **Optimisers for very noisy measurements**
   - Reference: R. Coulom, [*CLOP: Confident Local Optimization for Noisy Black-Box Parameter Tuning*](https://www.remi-coulom.fr/CLOP/CLOP.pdf); L. Kocsis, C. Szepesvári, [*Universal parameter optimisation in games based on SPSA*](https://www.datalearner.com/academic/journal-papers/0885-6125/volumes-and-issues/63/paper-detail/11141), Machine Learning 2006
   - Why not yet: Texel's method replaces game-playing optimisation for the weights; CLOP stays an option if a parameter can only be measured by playing

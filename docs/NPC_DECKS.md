@@ -19,7 +19,7 @@ of your deck because of an inverted check (see below). This option chooses what 
 - **Adaptive:** the same idea done fully. The NPC keeps its faction, leader and heroes; its whole
   deck is made legal and playable, and its weakest units are swapped for better cards of its
   faction until it matches the strength of *your* deck at that match: 85% on Easy, 100% on
-  Normal, 110% on Hard. A fair fight at every stage of the game.
+  Normal, 110% on Hard, so the fight stays fair at every stage of the game.
 - **Strong:** the best deck the NPC's faction allows under the same rules.
 
 How the two dials (AI difficulty and NPC decks) combine: [Choosing your
@@ -45,7 +45,7 @@ untouched. No card or deck definition is added, removed or edited.
   <img src="img/requirements-light.svg" alt="Extra NPC cards by the strength of the player's deck: vanilla gives about 223 of 225 at any strength; with Better Gwent On, Hard reaches all extras at 160, Normal at 240, Easy at 320" width="880">
 </picture>
 
-Our own recorded player decks measured 214-284, so Hard NPCs keep every extra card against a
+My own recorded player decks measured 214-284, so Hard NPCs keep every extra card against a
 normal deck; the fix mainly makes the early game and Easy/Normal fair. The bug is also listed
 with the other [bugs of the base game](game-study/base-game-bugs.md).
 
@@ -77,7 +77,7 @@ affected.
 
 An NPC deck reacts only to what an NPC may know before a match: the strength of the player's
 selected deck (the game's own NPC decks already add cards by it) and the player's faction.
-Never the player's leader or individual cards. During a match the AI sees what both players
+It never uses the player's leader or individual cards. During a match the AI sees what both players
 see: the board, the graveyards, both leaders and the number of cards in hand.
 
 ## Copies of a card
@@ -89,7 +89,7 @@ in every NPC deck, also when a quest adds its own extra cards to the NPC.
 
 ## How a deck is built
 
-Like a seasoned player builds, from the NPC's own faction plus neutral cards:
+The builder works the way a seasoned player builds, from the NPC's own faction plus neutral cards:
 
 - **Identity:** same faction and leader; the NPC's heroes stay in its deck.
 - **Size:** at least 22 units; special cards limited to a lean playable kit. Native NPC decks
@@ -143,22 +143,23 @@ Every Gwent opponent, including quest and tournament players, except the tutoria
   player-deck matchups in Adaptive pass with no violation).
 - Simulator benchmarks compare Original, Adaptive and Strong against player-style decks
   (early-game, random, power, synergy and my own real decks) with the same luck.
-  Target: Adaptive close to an even match, Strong above it.
 
   Measured in the simulator (same decks and luck; the player side is played by Better AI):
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/deck-modes-dark.svg">
-  <img src="img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 35-40%, Adaptive 64-74%, Strong 68-71% with Better AI" width="880">
+  <img src="img/deck-modes-light.svg" alt="NPC win share by deck mode against all player-style decks, Easy to Hard, Better AI vs native AI: Original 42-44% vs 30-34%, Adaptive 73-78% vs 58-59%, Strong 78-84% vs 65-73%" width="880">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="img/deck-modes-mine-dark.svg">
-  <img src="img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 29-35%, Adaptive 61-71%, Strong 60-66% with Better AI" width="880">
+  <img src="img/deck-modes-mine-light.svg" alt="NPC win share by deck mode against my own real decks, Easy to Hard, Better AI vs native AI: Original 28-29% vs 19-21%, Adaptive 62-70% vs 46-50%, Strong 70-72% vs 54-58%" width="880">
 </picture>
 
-  Against my own real decks (140 games per cell), Adaptive goes from 37% on Easy to 53% on
-  Hard, an even fight, and Strong stays hard but winnable at 52-55% on every level.
+  Test, 14 October 2026, against my own real decks (about 900 games per cell): the NPC played
+  by Better AI wins 62-70% with Adaptive and 70-72% with Strong; the native AI wins 46-50% and
+  54-58% with the same decks. Over all player-style decks and all 9 settings (47,104 games),
+  Better AI wins 25% more often than the native AI.
 - In game: Adaptive decks were played and matched the table; switch the option on and off in
   the same save and the native deck returns.
 
