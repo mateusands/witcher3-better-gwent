@@ -29,7 +29,7 @@ start)
     | S "$2" 300 2>&1 | tr -d '\r' | grep -a "^QUEUED\|^STATE" | tr '\n' ' '; echo;;
 wait)
   sleep 60
-  until S "$2" 60 < "$HERE/probe.txt" 2>&1 | tr -d '\r' | grep -a "^STATUS" | awk '{exit !($4>0 && $3+$5>=$4)}'; do sleep 60; done
+  until S "$2" 60 < "$HERE/probe.txt" 2>&1 | tr -d '\r' | grep -a "^STATUS" | awk '{exit !($3==0 && $4>0)}'; do sleep 60; done
   "$HERE/pulldb.sh" "$2" "$3";;
 *) sed -n 2,7p "$0"; exit 1;;
 esac

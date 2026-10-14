@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS tasks(
   status TEXT NOT NULL DEFAULT 'pending', result TEXT, error TEXT, worker INTEGER,
   started REAL, finished REAL, UNIQUE(job_id, idx));
 CREATE INDEX IF NOT EXISTS tasks_status ON tasks(status, id);
+-- The claim query and every per-job count filter tasks by job and status (150 ms -> 0.2 ms
+-- per claim on a 73,000-task database, Lab audit of 13 October 2026).
+CREATE INDEX IF NOT EXISTS tasks_job_status ON tasks(job_id, status);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -322,7 +325,7 @@ def _sprt_llr(stats, config):
 
 # Job kind 'ab': candidate (policy, npc_decks) against base (base_policy, base_decks), paired on the
 # same matchup and luck, in batches, until the SPRT decides or max_tasks matchups were played.
-AB_DEFAULTS = dict(batch=200, max_tasks=6000)
+AB_DEFAULTS = dict(batch=100, max_tasks=6000)
 
 
 def _ab_matchups(params):
@@ -382,28 +385,35 @@ def ab_eval(payload):
 
 
 def ab_step(db):
-    """When an 'ab' batch is finished: decide with the SPRT, or queue the next batch."""
+    """Check each 'ab' job's SPRT on its finished matchups. A decision (or max_tasks finished)
+    stops the job and removes its pending tasks; otherwise, once the last batch has no pending
+    task left, the next batch is queued while its last tasks still run (no idle workers at the
+    end of a batch), never beyond max_tasks queued."""
     stepped = []
     for jid, params in db.execute("SELECT id, params FROM jobs WHERE kind='ab' AND status='active'").fetchall():
         db.execute('BEGIN IMMEDIATE')
         try:
             params = json.loads(params)
-            if one(db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status IN ('pending','running')", (jid,))[0]:
-                db.execute('COMMIT'); continue
             diffs = [r['candidate'] - r['base'] for (r,) in
                      ((json.loads(x),) for (x,) in db.execute("SELECT result FROM tasks WHERE job_id=? AND status='done'", (jid,)).fetchall())]
             stats = _sprt_stats(diffs)
             verdict = _sprt_decide(stats, params['sprt'])
-            if verdict or stats.n >= params['max_tasks']:
+            queued = one(db, 'SELECT COUNT(*) FROM tasks WHERE job_id=?', (jid,))[0]
+            open_tasks = one(db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status IN ('pending','running')", (jid,))[0]
+            if verdict or stats.n >= params['max_tasks'] or (queued >= params['max_tasks'] and not open_tasks):
                 result = {'H1': 'better', 'H0': 'not better'}.get(verdict, 'undecided')
                 params['verdict'] = dict(result=result, n=stats.n, mean=stats.mean, z=stats.z,
                                          llr=_sprt_llr(stats, params['sprt']))
                 db.execute("UPDATE jobs SET params=?, status='done' WHERE id=?", (json.dumps(params), jid))
-            else:
+                db.execute("DELETE FROM tasks WHERE job_id=? AND status='pending'", (jid,))
+            elif queued < params['max_tasks'] and not one(
+                    db, "SELECT COUNT(*) FROM tasks WHERE job_id=? AND status='pending'", (jid,))[0]:
                 start = one(db, 'SELECT COALESCE(MAX(idx)+1, 0) FROM tasks WHERE job_id=?', (jid,))[0]
-                add_tasks(db, jid, _ab_batch(params, params['batches']), start)
+                add_tasks(db, jid, _ab_batch(params, params['batches'])[:params['max_tasks'] - queued], start)
                 params['batches'] += 1
                 db.execute('UPDATE jobs SET params=? WHERE id=?', (json.dumps(params), jid))
+            else:
+                db.execute('COMMIT'); continue
             db.execute('COMMIT')
             stepped.append((jid, stats.n, verdict))
         except BaseException:
@@ -725,14 +735,17 @@ def tune_eval(payload):
     return dict(score=score, games=games)
 
 
+# Fair share: the active job with pending work and the fewest running tasks goes next, so several
+# jobs advance side by side instead of one after the other (uses the tasks_job_status index).
+CLAIM_JOB = ("SELECT j.id FROM jobs j WHERE j.status='active' AND EXISTS "
+             "(SELECT 1 FROM tasks p WHERE p.job_id=j.id AND p.status='pending') "
+             "ORDER BY (SELECT COUNT(*) FROM tasks r WHERE r.job_id=j.id AND r.status='running'), j.id LIMIT 1")
+
+
 def claim(db, worker):
     db.execute('BEGIN IMMEDIATE')
     try:
-        # Fair share: the active job with pending work and the fewest running tasks goes next,
-        # so several jobs advance side by side instead of one after the other.
-        job = one(db, "SELECT j.id FROM jobs j WHERE j.status='active' AND EXISTS "
-                      "(SELECT 1 FROM tasks p WHERE p.job_id=j.id AND p.status='pending') "
-                      "ORDER BY (SELECT COUNT(*) FROM tasks r WHERE r.job_id=j.id AND r.status='running'), j.id LIMIT 1")
+        job = one(db, CLAIM_JOB)
         row = job and one(db, "SELECT id, payload FROM tasks WHERE job_id=? AND status='pending' ORDER BY id LIMIT 1",
                           (job[0],))
         if row:
