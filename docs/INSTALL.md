@@ -1,4 +1,4 @@
-# Better Gwent 0.9.0 beta — installation
+# Better Gwent 0.9.1 beta — installation
 
 A stronger Gwent opponent for The Witcher 3, game patch 5.01 (tested on Steam; GOG untested).
 The mod changes how the NPCs play Gwent; it adds no cards and changes no card. With the mod

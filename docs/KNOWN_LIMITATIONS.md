@@ -61,12 +61,16 @@ Seen in recorded matches:
 
 ## Performance
 
-- **The frame rate drops while the NPC thinks.** The AI runs in the Gwent screen itself, in small
-  slices between frames so the game never freezes, but each frame then spends part of its time on
-  the search, and the board's animations can stutter until the move is chosen. Recorded matches on
-  Hard (13 October 2026, 200 decisions): about 1 s of thinking on average, up to about 2.4 s for nine
-  moves in ten, and about 4.6 s at the longest. Easy and Normal search less and think for less time.
-  The frame rate returns to normal as soon as the NPC plays.
+- **The frame rate drops while the NPC thinks.** The AI runs in the Gwent screen itself, on the
+  same thread that draws the game, in small slices so the game never freezes: 10 ms of search in
+  each frame of the Gwent screen, which runs at 24 frames per second. Test, 14 October 2026
+  (MangoHud on every frame, Hard, Ryzen 5 5500 and RX 6600, 75 Hz screen): with 20 ms slices the
+  game held about 41 fps while the NPC thought (3 matches, 37 decisions, median 0.65 s of
+  thinking); with the 10 ms slices it holds about 63 fps (2 matches, 23 decisions), and the NPC
+  takes longer instead: median 1.9 s, 4.0 s for nine moves in ten. The rest of the match stays at
+  75 fps. The search is capped by the number of positions it looks at, not by time, so the slice
+  changes how long the NPC thinks, never which move it plays; a safety limit (4 s on Easy, 8 s on
+  Normal, 12 s on Hard) only stops a rare long search, and none reached it in the test.
 
 ## Compatibility with other mods
 

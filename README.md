@@ -12,7 +12,7 @@ vanilla when the mod is turned Off, and it can be installed or removed at any ti
 *Formerly "Better Gwent AI": the AI is now one feature among several.*
 
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
-**Status: 0.9.0 beta.**
+**Status: 0.9.1 beta.**
 
 ## Features
 
@@ -39,6 +39,17 @@ This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED
 Extract the archive into the game folder, register `modGwentAI.xml;` in the filelists if they
 exist, start the game and switch the mod On in **Options > Mods > Better Gwent**. Full steps,
 updating from "Better Gwent AI" and uninstall: [docs/INSTALL.md](docs/INSTALL.md).
+
+**Safe for your playthrough.** The mod never changes your saves and never replaces a game file:
+it only adds its own folder, a menu file and one line in the filelists. You can install or
+remove it at any time, mid-playthrough included, and it should not cause conflicts or problems.
+If you want to be extra careful, back up your saves first and try it.
+
+**While the NPC thinks** the frame rate drops a little: the AI runs on the same thread that
+draws the game, so it gets only a small slice of each frame. Test, 14 October 2026 (Hard, 75 Hz
+screen): about 63 fps while the NPC thinks, 75 fps the rest of the match, and about 2 s per NPC
+move on Hard. The slice changes how long the NPC thinks, never which move it plays.
+[Details](docs/KNOWN_LIMITATIONS.md#performance)
 
 ## Options
 

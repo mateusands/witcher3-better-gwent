@@ -84,15 +84,16 @@ files or the save.
   - Then self-play parameter tuning and a small value network (see [Research](RESEARCH.md)).
   - **Eredin's "discard two, pick one" leader:** neither the native AI nor Better Gwent's AI uses
     it today; Better Gwent's AI will search it like the other leaders.
-- **Smoother thinking:** the frame rate still drops while the NPC thinks. Test, 13 October 2026:
-  giving the search a smaller share of each frame while cards move and a larger one while the
-  board is still made the drops worse in game, so it was reverted to the fixed 20 ms share.
-  Another approach is still open.
+- **Smoother thinking:** the frame rate still drops while the NPC thinks, now less. Test,
+  13 October 2026: a smaller share of each frame while cards move and a larger one while the board
+  is still made the drops worse in game, and it was reverted. Test, 14 October 2026: a fixed 10 ms
+  share instead of 20 ms raised the frame rate while the NPC thinks from about 41 to about 63 fps,
+  with the same moves and a longer wait; the search code is also about 12% faster with the same
+  moves (203 recorded NPC decisions). Next: a cheaper search, so the wait gets shorter again.
 - **NPC decks:** the automatic deck tuner (Decoys and weather per player faction, hero variety,
   an even fight on Adaptive), with fair play (only your deck's faction and strength are read).
 - **Content the game left unfinished** (no card or rule changes):
   - the Medic and leader revive window shows its sentence again (done);
-  - the agile card sound the game never plays;
   - a sound for Skellige's faction ability, which today calls a sound that does not exist (done
     with care, so nothing breaks if the sound is missing);
   - the glossary page on leader cards, ready in the game but never unlocked, and the entry on
