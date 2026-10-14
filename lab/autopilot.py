@@ -24,7 +24,12 @@ IDEAS = tuple(
     [('fusion25', 'original'), ('fusion20', 'strong'), ('fusion30', 'strong'),
      ('spy-first+fusion25', 'original'), ('spy-first+fusion25', 'strong'), ('spy-first+fusion25', 'balanced')]
     + [('fusion%d' % n, decks) for n in (20, 30, 15, 35, 10, 40) for decks in ('balanced', 'original')]
-    + [('fusion%d' % n, 'strong') for n in (15, 35, 10, 40)])
+    + [('fusion%d' % n, 'strong') for n in (15, 35, 10, 40)]
+    # 14 October 2026: the search switches tried only on Adaptive on Runpod, retried on Original
+    # and Strong (the deck mode changed verdicts before: spy-first). r1cap20 is decided on both.
+    + [(s, decks) for s in ('beliefs6', 'beliefs8', 'beam4', 'beam12', 'pass10', 'pass25',
+                            'caution25', 'caution50', 'r1cap10', 'r1cap15')
+       for decks in ('original', 'strong')])
 
 # Decided on Runpod, 13 October 2026 (round 15): not queued again here. The ones that passed
 # there are confirmed here on new seeds.

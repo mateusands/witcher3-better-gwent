@@ -119,3 +119,19 @@ def test_runpod_verdicts_are_reported_and_not_tested_again():
     assert {'Runpod fusion15 original', 'Runpod spy-first+fusion25 original'} <= {e['name'] for e in rep['rejected']}
     assert autopilot.confirmations([]) == []                       # nothing left to confirm from Runpod
     assert autopilot.next_ideas([], explore=1)[0]['name'] == 'AUTO idea r1cap20 original'
+
+
+def test_search_switches_tried_only_on_adaptive_are_retried_on_original_and_strong():
+    # Spec (owner, 14 October 2026): the autopilot must not run out of ideas. The fusion family is
+    # nearly done; the search switches tried only on Adaptive on Runpod (beliefs, beam, pass,
+    # caution, r1cap) are retried on Original and Strong, after the fusion ideas: the deck mode
+    # changed verdicts before (spy-first was worse on Adaptive, better on Original). r1cap20 is
+    # already decided on both.
+    retried = [(s, d) for s in ('beliefs6', 'beliefs8', 'beam4', 'beam12', 'pass10', 'pass25',
+                                'caution25', 'caution50', 'r1cap10', 'r1cap15')
+               for d in ('original', 'strong')]
+    ideas = list(autopilot.IDEAS)
+    last_fusion = max(i for i, (s, _) in enumerate(ideas) if s.startswith(('fusion', 'spy-first')))
+    for idea in retried:
+        assert idea in ideas and ideas.index(idea) > last_fusion, idea
+    assert ('r1cap20', 'strong') not in ideas
