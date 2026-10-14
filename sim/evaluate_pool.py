@@ -71,7 +71,8 @@ def scene(npc_seat, seed, npc_policy, npc_mode=None):
     hook = ExitStack()
     # Experiment switches change the NPC only; the stand-in player keeps the shipped AI.
     v8.NPC_SEAT = npc_seat
-    v8.ORIGINAL_DECKS = npc_mode in (None, 'original')
+    # Lab switch "no-original-ai": the Original decks without the Original-mode AI (A/B base).
+    v8.ORIGINAL_DECKS = npc_mode in (None, 'original') and 'no-original-ai' not in v8.VARIANT
     hook.callback(setattr, v8, 'ORIGINAL_DECKS', False)
     if 'player-mulligan' in v8.VARIANT:
         # As in the game, the player may exchange up to two opening cards (same evaluated rule),

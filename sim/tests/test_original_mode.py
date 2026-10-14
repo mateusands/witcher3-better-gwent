@@ -101,3 +101,18 @@ def test_the_lab_plays_original_mode_like_the_game():
             assert v8.original_decks_for(1) is expected and v8.original_decks_for(0) is False
     controller = (ROOT / 'sim/gwentsim/gwint/sequence_ai_controller.py').read_text()
     assert 'original_decks=response_v8.original_decks_for(own)' in controller
+
+
+def test_lab_switch_turns_the_original_mode_ai_off(monkeypatch):
+    # Spec (owner, 14 October 2026): spy-first and fusion20 were proven on Hard only, but the mod
+    # uses them on every level with the Original decks. To measure them on Easy and Normal, an A/B
+    # base plays the Original decks without them: Lab switch "no-original-ai" (Lab only).
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import gwentsim.response_v8 as v8
+    from evaluate_pool import scene
+    for variant, expected in ((frozenset(), True), (frozenset({'no-original-ai'}), False)):
+        monkeypatch.setattr(v8, 'VARIANT', variant)
+        with scene(1, 7, 'response-v8', 'original'):
+            assert v8.ORIGINAL_DECKS is expected
+            assert v8.original_decks_for(1) is expected
