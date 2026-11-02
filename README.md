@@ -1,5 +1,12 @@
 # Better Gwent
 
+> [!IMPORTANT]
+> **Development is paused.** Testing this mod takes a lot of compute (millions of simulated
+> matches), and I don't have the resources to keep running those tests right now, so I can't
+> continue the project for the time being. The 0.9.1 beta stays available as it is.
+> **Pull requests are welcome**: if you want to pick something up, feel free to open one.
+> See [CONTRIBUTING.md](CONTRIBUTING.md) and [Development](docs/DEVELOPMENT.md) to get started.
+
 Smarter opponents and fair decks, from White Orchard to the endgame. An unofficial mod for
 The Witcher 3: Wild Hunt (**Steam patch 5.01**) that gives Gwent a stronger opponent AI with
 three difficulty levels, NPC decks that can follow the strength of yours, better wagers and the
@@ -12,7 +19,7 @@ vanilla when the mod is turned Off, and it can be installed or removed at any ti
 *Formerly "Better Gwent AI": the AI is now one feature among several.*
 
 This is an unofficial fan work and is not approved or endorsed by CD PROJEKT RED.
-**Status: 0.9.1 beta.**
+**Status: 0.9.1 beta, development paused.**
 
 ## Features
 
